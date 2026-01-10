@@ -5,130 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AVA • Entrar</title>
 
-    <!-- CSS único do projeto (visual clean) -->
     <link rel="stylesheet" href="./assets/css/site.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
 
-    <!-- Ícones (leve e via CDN) -->
+    <!-- Ícones -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css"
     />
   </head>
 
-  <body>
-    <!-- Header fixo (se você já usa um layout.js, pode manter; aqui é estático por enquanto) -->
-    <header class="site-header">
-      <div class="container header-inner">
-        <a class="brand" href="./index.html">AVA</a>
-
-        <nav class="nav">
-          <a href="./index.html">Home</a>
-          <a href="./signup.html">Criar conta</a>
-        </nav>
-      </div>
-    </header>
-
-    <main class="page">
-      <div class="container">
-        <section class="card">
-          <h1 class="h1">Entrar</h1>
-          <p class="muted">Faça login para acessar o AVA.</p>
-
-          <!-- STATUS / ERROS -->
-          <div id="status" class="muted" style="margin: 10px 0 14px 0">
-            Informe seus dados para entrar.
+  <body class="auth">
+    <div class="auth-shell">
+      <section class="auth-card">
+        <!-- ESQUERDA -->
+        <aside class="auth-hero">
+          <div class="auth-brand">
+            <div class="auth-logo">AVA</div>
+            <div>
+              <h1>Ambiente Virtual</h1>
+              <p class="muted" style="margin: 2px 0 0">
+                Acesso a cursos, atividades, notas e certificados.
+              </p>
+            </div>
           </div>
 
-          <!-- OAUTH / SOCIAL LOGIN -->
-          <div class="row" style="flex-direction: column; align-items: stretch">
-            <button class="btn" id="btn-google" type="button">
-              <i class="bx bxl-google" style="font-size: 18px"></i>
-              <span style="margin-left: 8px">Entrar com Google</span>
-            </button>
+          <p>
+            Entre para acompanhar suas turmas, entregar atividades e ver seu
+            progresso. A Home do sistema é pública — você pode navegar mesmo sem
+            login.
+          </p>
 
-            <button class="btn" id="btn-github" type="button">
-              <i class="bx bxl-github" style="font-size: 18px"></i>
-              <span style="margin-left: 8px">Entrar com GitHub</span>
-            </button>
-
-            <div class="hr"></div>
-
-            <!-- LOGIN COM SENHA -->
-            <form id="form-login">
-              <label>
-                <b>E-mail</b>
-                <input class="input" name="email" type="email" required />
-              </label>
-
-              <div style="height: 10px"></div>
-
-              <label>
-                <b>Senha</b>
-                <input class="input" name="password" type="password" required />
-              </label>
-
-              <div class="row" style="margin-top: 14px">
-                <button class="btn btn-primary" type="submit">
-                  <i class="bx bx-log-in" style="font-size: 18px"></i>
-                  <span style="margin-left: 8px">Entrar</span>
-                </button>
-
-                <button class="btn" id="btn-forgot" type="button">
-                  Esqueci minha senha
-                </button>
-              </div>
-            </form>
-
-            <div class="hr"></div>
-
-            <!-- “OUTRAS COISAS” comuns: link mágico -->
-            <div
-              class="row"
-              style="flex-direction: column; align-items: stretch"
-            >
-              <button class="btn" id="btn-magic" type="button">
-                <i class="bx bx-mail-send" style="font-size: 18px"></i>
-                <span style="margin-left: 8px"
-                  >Enviar link mágico (sem senha)</span
+          <div class="auth-points">
+            <div class="auth-point">
+              <i class="bx bx-book-open"></i>
+              <div>
+                <b>Meus cursos</b>
+                <span
+                  >Conteúdos e links organizados por módulos e unidades.</span
                 >
+              </div>
+            </div>
+
+            <div class="auth-point">
+              <i class="bx bx-task"></i>
+              <div>
+                <b>Atividades com prazo</b>
+                <span>Envio online, tentativas e critérios de aprovação.</span>
+              </div>
+            </div>
+
+            <div class="auth-point">
+              <i class="bx bx-award"></i>
+              <div>
+                <b>Certificado automático</b>
+                <span>Emitido ao atingir os critérios definidos na turma.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-footer">
+            <a href="./index.html">Voltar para a Home</a>
+          </div>
+        </aside>
+
+        <!-- DIREITA -->
+        <div class="auth-form">
+          <h2>Entrar</h2>
+          <p class="auth-sub">
+            Acesse com e-mail e senha ou continue com uma conta.
+          </p>
+
+          <!-- Botões extras (você ativa quando quiser no JS) -->
+          <div class="auth-actions">
+            <button class="btn-social" type="button" id="btnGoogle">
+              <i class="bx bxl-google"></i> Continuar com Google
+            </button>
+            <button class="btn-social" type="button" id="btnGithub">
+              <i class="bx bxl-github"></i> Continuar com GitHub
+            </button>
+          </div>
+
+          <div class="auth-divider">OU</div>
+
+          <form id="formLogin">
+            <label>
+              <b>E-mail</b>
+              <input
+                class="input"
+                type="email"
+                id="email"
+                required
+                autocomplete="email"
+              />
+            </label>
+
+            <div style="height: 10px"></div>
+
+            <label>
+              <b>Senha</b>
+              <input
+                class="input"
+                type="password"
+                id="password"
+                required
+                autocomplete="current-password"
+              />
+            </label>
+
+            <div class="row" style="margin-top: 14px">
+              <button class="btn btn-primary" type="submit" id="btnLogin">
+                <i class="bx bx-log-in"></i> Entrar
               </button>
 
-              <small class="muted">
-                Você recebe um link por e-mail para entrar. Ótimo para quem
-                esquece senha.
-              </small>
+              <button class="btn" type="button" id="btnForgot">
+                Esqueci a senha
+              </button>
             </div>
 
-            <div class="hr"></div>
+            <div id="msg" class="auth-status"></div>
 
-            <div class="row">
-              <a href="./index.html">Voltar</a>
+            <div class="auth-links">
               <a href="./signup.html">Criar conta</a>
-              <a href="./app.html">Ir para App</a>
+              <a href="./index.html">Home</a>
             </div>
+          </form>
 
-            <small class="muted">
-              Se algo falhar, abra o Console (F12) para ver detalhes.
-            </small>
-
-            <pre id="logs" class="logs" style="display: none"></pre>
+          <div class="auth-footer">
+            Dica: quando você estiver logada, o menu das páginas internas e da
+            Home vai mostrar seu
+            <b>Nome</b> (se existir) ou seu e-mail.
           </div>
-        </section>
-      </div>
-    </main>
+        </div>
+      </section>
+    </div>
 
-    <footer class="site-footer">
-      <div class="container footer-inner">
-        <span>AVA • protótipo</span>
-        <span class="muted">© <span id="year"></span></span>
-      </div>
-    </footer>
-
-    <script>
-      document.getElementById('year').textContent = new Date().getFullYear();
-    </script>
-
-    <!-- JS separado (no próximo passo eu te mando o login.js completo) -->
     <script type="module" src="./assets/js/login.js"></script>
   </body>
 </html>

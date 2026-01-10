@@ -4,23 +4,78 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AVA • Criar conta</title>
+
     <link rel="stylesheet" href="./assets/css/site.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css"
+    />
   </head>
 
-  <body data-page="signup">
-    <div id="site-header"></div>
-
-    <main class="page">
-      <div class="container">
-        <section class="card" style="max-width: 720px; margin: 0 auto">
-          <h1 class="h1">Criar conta</h1>
-          <p class="muted">Crie sua conta para acessar o AVA.</p>
-
-          <div class="hr"></div>
-
-          <form id="formSignup" class="grid" style="gap: 12px">
+  <body class="auth">
+    <div class="auth-shell">
+      <section class="auth-card">
+        <!-- ESQUERDA -->
+        <aside class="auth-hero">
+          <div class="auth-brand">
+            <div class="auth-logo">AVA</div>
             <div>
-              <label><b>Nome</b> (vai aparecer no menu)</label>
+              <h1>Criar conta</h1>
+              <p class="muted" style="margin: 2px 0 0">
+                Seu nome pode aparecer no menu quando estiver logada.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            Crie sua conta para se inscrever em turmas (com código/chave),
+            acessar conteúdos e realizar atividades.
+          </p>
+
+          <div class="auth-points">
+            <div class="auth-point">
+              <i class="bx bx-user"></i>
+              <div>
+                <b>Perfil básico</b>
+                <span>Nome e e-mail para identificação no AVA.</span>
+              </div>
+            </div>
+
+            <div class="auth-point">
+              <i class="bx bx-lock-alt"></i>
+              <div>
+                <b>Autenticação segura</b>
+                <span>Supabase Auth com sessão e renovação automática.</span>
+              </div>
+            </div>
+
+            <div class="auth-point">
+              <i class="bx bx-code-alt"></i>
+              <div>
+                <b>Estrutura pronta</b>
+                <span
+                  >Depois a gente liga cursos, módulos, aulas e
+                  atividades.</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-footer">
+            <a href="./index.html">Voltar para a Home</a>
+          </div>
+        </aside>
+
+        <!-- DIREITA -->
+        <div class="auth-form">
+          <h2>Criar conta</h2>
+          <p class="auth-sub">Preencha seus dados para começar.</p>
+
+          <form id="formSignup">
+            <label>
+              <b>Nome</b>
               <input
                 class="input"
                 type="text"
@@ -28,10 +83,12 @@
                 required
                 autocomplete="name"
               />
-            </div>
+            </label>
 
-            <div>
-              <label><b>E-mail</b></label>
+            <div style="height: 10px"></div>
+
+            <label>
+              <b>E-mail</b>
               <input
                 class="input"
                 type="email"
@@ -39,10 +96,12 @@
                 required
                 autocomplete="email"
               />
-            </div>
+            </label>
 
-            <div>
-              <label><b>Senha</b></label>
+            <div style="height: 10px"></div>
+
+            <label>
+              <b>Senha</b>
               <input
                 class="input"
                 type="password"
@@ -50,28 +109,32 @@
                 required
                 autocomplete="new-password"
               />
-            </div>
+            </label>
 
-            <div class="row">
+            <div class="row" style="margin-top: 14px">
               <button class="btn btn-primary" type="submit" id="btnSignup">
-                Criar conta
+                <i class="bx bx-user-plus"></i> Criar conta
               </button>
-              <a class="btn" href="./login.html">Já tenho conta</a>
-              <a class="btn" href="./index.html">Voltar</a>
+
+              <a class="btn" href="./login.html"> Já tenho conta </a>
             </div>
 
-            <div id="msg" class="muted"></div>
+            <div id="msg" class="auth-status"></div>
+
+            <div class="auth-links">
+              <a href="./login.html">Entrar</a>
+              <a href="./index.html">Home</a>
+            </div>
           </form>
 
-          <div class="hr"></div>
-          <small class="muted">Se algo falhar, abra o Console (F12).</small>
-        </section>
-      </div>
-    </main>
+          <div class="auth-footer">
+            O nome informado aqui é usado como prioridade para aparecer no menu
+            quando você estiver logada.
+          </div>
+        </div>
+      </section>
+    </div>
 
-    <div id="site-footer"></div>
-
-    <script type="module" src="./assets/js/layout.js"></script>
     <script type="module" src="./assets/js/signup.js"></script>
   </body>
 </html>
