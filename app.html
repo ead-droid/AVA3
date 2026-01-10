@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AVA • App</title>
+
+    <link rel="stylesheet" href="./assets/css/base.css" />
+    <link rel="stylesheet" href="./assets/css/app.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="card header-card">
+        <div>
+          <h1>AVA • Área logada</h1>
+          <small id="userLine">Carregando usuário...</small>
+        </div>
+
+        <button id="btnLogout" class="btn-secondary">Sair</button>
+      </div>
+
+      <div class="card">
+        <h2>Status</h2>
+        <div id="status">Validando sessão...</div>
+
+        <hr />
+        <small
+          >Se não aparecer nada, abra o Console (F12). Essa página só abre com
+          login.</small
+        >
+      </div>
+    </div>
+
+    <script type="module" src="./assets/js/appPage.js"></script>
+  </body>
+</html>
