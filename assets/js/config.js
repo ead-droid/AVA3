@@ -1,5 +1,5 @@
 // assets/js/config.js
-// ⚠️ Pode ficar público (GitHub Pages). NÃO coloque SERVICE_ROLE aqui.
 
-export const SUPABASE_URL = 'COLE_AQUI_SUA_SUPABASE_URL';
-export const SUPABASE_ANON_KEY = 'COLE_AQUI_SUA_SUPABASE_ANON_KEY';
+export const SUPABASE_URL = 'https://ecscehhpflwpqvwigmgn.supabase.co';
+export const SUPABASE_ANON_KEY =
+  'sb_publishable_B5Z9KWQTLvV9rs9pD9nudw_05swf7wS';
