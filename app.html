@@ -3,51 +3,48 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AVA • App</title>
-
-    <link rel="stylesheet" href="./assets/css/base.css" />
-    <link rel="stylesheet" href="./assets/css/app.css" />
+    <title>AVA • Minha área</title>
     <link rel="stylesheet" href="./assets/css/site.css" />
   </head>
 
-  <body>
-    <main class="wrap">
-      <section class="card">
-        <div class="top">
-          <div>
-            <h1>AVA • App</h1>
-            <p class="muted" id="subtitle">Carregando sua sessão...</p>
+  <body data-page="app" data-auth="required">
+    <div id="site-header"></div>
+
+    <main class="page">
+      <div class="container">
+        <section class="card">
+          <h1 class="h1">Minha área</h1>
+          <p class="muted">
+            Aqui começam os módulos do AVA (cursos, ofertas, módulos, aulas...).
+          </p>
+
+          <div class="hr"></div>
+
+          <div class="grid cols-2">
+            <div class="card">
+              <h2 class="h2">Usuário</h2>
+              <div class="badge" id="userBadge">Carregando...</div>
+            </div>
+
+            <div class="card">
+              <h2 class="h2">Próximos passos</h2>
+              <ul class="muted">
+                <li>Menu lateral (perfil, cursos, notas)</li>
+                <li>Meus cursos (courses + course_offers)</li>
+                <li>Página do curso (módulos e unidades)</li>
+              </ul>
+            </div>
           </div>
 
-          <div class="row">
-            <a class="link" href="./index.html">Home</a>
-            <button id="btn-logout" class="btn-ghost" type="button">
-              Sair
-            </button>
-          </div>
-        </div>
-
-        <div class="box">
-          <h2>Status</h2>
-          <div id="status">Verificando autenticação...</div>
-        </div>
-
-        <div class="box">
-          <h2>Próximos passos do projeto teste rodando</h2>
-          <ul>
-            <li>Menu lateral (perfil, cursos, módulos, notas)</li>
-            <li>Listagem “Meus cursos” (courses + course_offers)</li>
-            <li>Página do curso (módulos e unidades)</li>
-          </ul>
-        </div>
-
-        <small class="muted"
-          >Esta página exige login. Se não tiver sessão, ela redireciona para o
-          login automaticamente.</small
-        >
-      </section>
+          <div class="hr"></div>
+          <pre class="logs" id="logs" style="display: none"></pre>
+        </section>
+      </div>
     </main>
 
-    <script type="module" src="./assets/js/appPage.js"></script>
+    <div id="site-footer"></div>
+
+    <script type="module" src="./assets/js/layout.js"></script>
+    <script type="module" src="./assets/js/app.js"></script>
   </body>
 </html>

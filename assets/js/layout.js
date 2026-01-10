@@ -1,68 +1,72 @@
 // assets/js/layout.js
-import { supabase } from './supabaseClient.js';
+import {
+  supabase,
+  getSessionSafe,
+  getUserDisplayName,
+} from './supabaseClient.js';
 
 const headerEl = document.getElementById('site-header');
 const footerEl = document.getElementById('site-footer');
 
-function urlTo(filename) {
-  // sempre relativo -> funciona no GitHub Pages (/AVA3/)
-  return new URL(`./${filename}`, window.location.href).toString();
+function urlTo(file) {
+  // relativo -> funciona dentro de /AVA3/
+  return new URL(`./${file}`, window.location.href).toString();
 }
 
-function getActivePage() {
+function pageKey() {
   return document.body?.dataset?.page || '';
 }
 
 function renderFooter() {
   if (!footerEl) return;
   const year = new Date().getFullYear();
+
   footerEl.innerHTML = `
     <footer class="site-footer">
       <div class="container footer-inner">
-        <small>© ${year} • AVA</small>
-        <small class="muted">Educação a Distância • SECITECI</small>
+        <div class="small">© ${year} • AVA</div>
+        <div class="small muted">Ambiente Virtual • SECITECI</div>
       </div>
     </footer>
   `;
 }
 
-function renderHeader({ session }) {
+function renderHeader(session) {
   if (!headerEl) return;
 
-  const active = getActivePage();
+  const active = pageKey();
   const isLogged = !!session;
+  const displayName = isLogged ? getUserDisplayName(session) : '';
 
-  // links base
-  const links = [{ label: 'Home', href: urlTo('index.html'), key: 'home' }];
+  const links = [
+    { key: 'home', label: 'Home', href: urlTo('index.html') }, // ✅ sempre aparece (logado e deslogado)
+  ];
 
-  // links condicionais
   if (isLogged) {
-    links.push({ label: 'Minha área', href: urlTo('app.html'), key: 'app' });
+    links.push({ key: 'app', label: 'Minha área', href: urlTo('app.html') });
   } else {
-    links.push({ label: 'Entrar', href: urlTo('login.html'), key: 'login' });
+    links.push({ key: 'login', label: 'Entrar', href: urlTo('login.html') });
     links.push({
+      key: 'signup',
       label: 'Criar conta',
       href: urlTo('signup.html'),
-      key: 'signup',
     });
   }
 
-  const navLinksHtml = links
+  const navHtml = links
     .map(
       (l) => `
-        <a class="nav-link ${active === l.key ? 'is-active' : ''}" href="${
-        l.href
-      }">
-          ${l.label}
-        </a>
-      `
+    <a class="nav-link ${active === l.key ? 'is-active' : ''}" href="${l.href}">
+      ${l.label}
+    </a>
+  `
     )
     .join('');
 
   const rightHtml = isLogged
     ? `
       <div class="nav-right">
-        <span class="nav-user">${session?.user?.email || ''}</span>
+        <span class="nav-user" title="${displayName}">${displayName}</span>
         <button class="btn btn-ghost" id="btn-logout" type="button">Sair</button>
       </div>
     `
@@ -77,63 +81,54 @@ function renderHeader({ session }) {
       <div class="container header-inner">
         <a class="brand" href="${urlTo('index.html')}">
           <span class="brand-dot"></span>
-          <strong>AVA</strong>
+          <span>AVA</span>
         </a>
 
-        <nav class="nav">
-          ${navLinksHtml}
-        </nav>
-
+        <nav class="nav">${navHtml}</nav>
         ${rightHtml}
       </div>
     </header>
   `;
 
-  // logout
   const btn = document.getElementById('btn-logout');
   if (btn) {
     btn.addEventListener('click', async () => {
-      try {
-        btn.disabled = true;
-        await supabase.auth.signOut();
-      } finally {
-        window.location.assign(urlTo('index.html'));
-      }
+      btn.disabled = true;
+      await supabase.auth.signOut();
+      window.location.assign(urlTo('index.html'));
     });
   }
 }
 
-async function protectIfNeeded(session) {
-  const requiresAuth = document.body?.dataset?.auth === 'required';
-  if (!requiresAuth) return;
+async function protectIfRequired(session) {
+  const requires = document.body?.dataset?.auth === 'required';
+  if (!requires) return;
 
   if (!session) {
-    // manda pro login e mantém um returnTo simples
-    const loginUrl = new URL(urlTo('login.html'));
-    loginUrl.searchParams.set(
+    const login = new URL(urlTo('login.html'));
+    // volta para a página atual depois do login
+    login.searchParams.set(
       'returnTo',
       window.location.pathname + window.location.search
     );
-    window.location.assign(loginUrl.toString());
+    window.location.assign(login.toString());
   }
 }
 
 async function main() {
   renderFooter();
 
-  // pega sessão
-  const { data } = await supabase.auth.getSession();
-  const session = data?.session || null;
+  const { session } = await getSessionSafe();
 
   // protege páginas internas
-  await protectIfNeeded(session);
+  await protectIfRequired(session);
 
-  // renderiza menu com base na sessão
-  renderHeader({ session });
+  // renderiza menu conforme sessão
+  renderHeader(session);
 
-  // se a sessão mudar em outra aba, atualiza
-  supabase.auth.onAuthStateChange((_event, _session) => {
-    renderHeader({ session: _session });
+  // se logar/deslogar em outra aba, atualiza menu
+  supabase.auth.onAuthStateChange((_evt, newSession) => {
+    renderHeader(newSession);
   });
 }
 

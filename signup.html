@@ -3,77 +3,75 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AVA • Cadastro</title>
-
-    <!-- Reaproveita seu padrão atual -->
-    <link rel="stylesheet" href="./assets/css/base.css" />
-    <!-- Reaproveita o mesmo visual do login (inputs/msg) -->
-    <link rel="stylesheet" href="./assets/css/login.css" />
+    <title>AVA • Criar conta</title>
     <link rel="stylesheet" href="./assets/css/site.css" />
   </head>
 
-  <body>
-    <main class="wrap">
-      <section class="card">
-        <h1>Criar conta</h1>
-        <p class="muted">
-          Cadastre-se para acessar o AVA. Depois você pode entrar em uma turma
-          com o código.
-        </p>
+  <body data-page="signup">
+    <div id="site-header"></div>
 
-        <form id="form-signup">
-          <label>
-            Nome completo
-            <input
-              id="full_name"
-              type="text"
-              autocomplete="name"
-              placeholder="Ex.: Eneida Carneiro"
-              required
-            />
-          </label>
+    <main class="page">
+      <div class="container">
+        <section class="card" style="max-width: 720px; margin: 0 auto">
+          <h1 class="h1">Criar conta</h1>
+          <p class="muted">Crie sua conta para acessar o AVA.</p>
 
-          <label>
-            E-mail
-            <input
-              id="email"
-              type="email"
-              autocomplete="email"
-              placeholder="seuemail@exemplo.com"
-              required
-            />
-          </label>
+          <div class="hr"></div>
 
-          <label>
-            Senha
-            <input
-              id="password"
-              type="password"
-              autocomplete="new-password"
-              placeholder="mínimo 8 caracteres"
-              required
-            />
-          </label>
+          <form id="formSignup" class="grid" style="gap: 12px">
+            <div>
+              <label><b>Nome</b> (vai aparecer no menu)</label>
+              <input
+                class="input"
+                type="text"
+                id="name"
+                required
+                autocomplete="name"
+              />
+            </div>
 
-          <button id="btn-signup" type="submit">Criar conta</button>
+            <div>
+              <label><b>E-mail</b></label>
+              <input
+                class="input"
+                type="email"
+                id="email"
+                required
+                autocomplete="email"
+              />
+            </div>
 
-          <div id="msg" class="msg" aria-live="polite"></div>
-        </form>
+            <div>
+              <label><b>Senha</b></label>
+              <input
+                class="input"
+                type="password"
+                id="password"
+                required
+                autocomplete="new-password"
+              />
+            </div>
 
-        <hr />
+            <div class="row">
+              <button class="btn btn-primary" type="submit" id="btnSignup">
+                Criar conta
+              </button>
+              <a class="btn" href="./login.html">Já tenho conta</a>
+              <a class="btn" href="./index.html">Voltar</a>
+            </div>
 
-        <div class="row">
-          <a class="link" href="./login.html">Já tenho conta</a>
-          <a class="link" href="./index.html">Voltar</a>
-        </div>
+            <div id="msg" class="muted"></div>
+          </form>
 
-        <small class="muted"
-          >Se você não conseguir entrar depois do cadastro, pode ser que o
-          Supabase esteja exigindo confirmação de e-mail.</small
-        >
-      </section>
+          <div class="hr"></div>
+          <small class="muted">Se algo falhar, abra o Console (F12).</small>
+        </section>
+      </div>
     </main>
 
+    <div id="site-footer"></div>
+
+    <script type="module" src="./assets/js/layout.js"></script>
     <script type="module" src="./assets/js/signup.js"></script>
   </body>
 </html>
