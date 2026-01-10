@@ -9,6 +9,7 @@
       body {
         font-family: Arial, sans-serif;
         padding: 24px;
+        background: #fff;
       }
       .card {
         max-width: 720px;
@@ -24,6 +25,15 @@
       small {
         color: #555;
       }
+      .debug {
+        margin-top: 12px;
+        font-size: 12px;
+        background: #fafafa;
+        border: 1px solid #eee;
+        border-radius: 10px;
+        padding: 10px;
+        white-space: pre-wrap;
+      }
     </style>
   </head>
 
@@ -32,13 +42,75 @@
       <h1>AVA rodando ✅</h1>
       <p>Teste de conexão com o Supabase:</p>
 
-      <div id="status">Carregando..4.</div>
+      <div id="status">Carregando...</div>
+
+      <div id="debug" class="debug">Logs:\n</div>
 
       <hr />
-      <small>Se ficar em branco, abra o Console (F12) e veja o erro.</small>
+      <small>Se der erro, ele aparece aqui e também no Console (F12).</small>
     </div>
 
-    <!-- IMPORTANTE: precisa ser type="module" -->
-    <script type="module" src="./assets/js/app.js"></script>
+    <script type="module">
+      const statusEl = document.getElementById('status');
+      const debugEl = document.getElementById('debug');
+
+      function log(msg) {
+        debugEl.textContent += msg + '\n';
+        console.log(msg);
+      }
+
+      function setStatus(html) {
+        statusEl.innerHTML = html;
+      }
+
+      // Sempre troca o "Carregando..." logo de cara:
+      const now = new Date().toLocaleString('pt-BR');
+      setStatus(`⏳ Inicializando... <small>(JS carregou em ${now})</small>`);
+      log(`[BOOT] JS carregou em ${now}`);
+
+      try {
+        log('[1/3] Importando supabaseClient.js ...');
+
+        // IMPORT RELATIVO (funciona no GitHub Pages /AVA3/)
+        const mod = await import('./assets/js/supabaseClient.js');
+
+        log('[2/3] Import OK. Testando conexão com o Supabase...');
+
+        // Teste real (faz request)
+        const url = `${mod.supabaseUrl()}/auth/v1/health`;
+        log(`[PING] GET ${url}`);
+
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            apikey: mod.supabaseAnonKey(),
+            Authorization: `Bearer ${mod.supabaseAnonKey()}`,
+          },
+        });
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          setStatus(
+            `❌ Não conectou. HTTP <code>${res.status}</code> <br><small>${
+              txt || 'Sem corpo de resposta'
+            }</small>`
+          );
+          log(`[ERRO] HTTP ${res.status} - ${txt}`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setStatus(
+            `✅ Conectado ao Supabase! <small>(health: ${JSON.stringify(
+              data
+            )})</small>`
+          );
+          log('[OK] Conectado ao Supabase.');
+        }
+      } catch (e) {
+        setStatus(
+          `❌ Erro ao carregar/testar Supabase: <code>${e?.message || e}</code>`
+        );
+        log(`[EXCEPTION] ${e?.stack || e?.message || e}`);
+      }
+    </script>
   </body>
 </html>

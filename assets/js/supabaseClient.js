@@ -22,3 +22,10 @@ export async function supabaseHealthCheck() {
   if (error) return { ok: false, error: error.message };
   return { ok: true, hasSession: !!data?.session };
 }
+export function supabaseUrl() {
+  return SUPABASE_URL;
+}
+
+export function supabaseAnonKey() {
+  return SUPABASE_ANON_KEY;
+}
