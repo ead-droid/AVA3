@@ -1,4 +1,4 @@
-// assets/js/config.js
+// assets/js/config.js - ok
 
 export const SUPABASE_URL = 'https://ecscehhpflwpqvwigmgn.supabase.co';
 export const SUPABASE_ANON_KEY =
