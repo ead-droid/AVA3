@@ -4,63 +4,131 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AVA • Entrar</title>
+
+    <!-- CSS único do projeto (visual clean) -->
     <link rel="stylesheet" href="./assets/css/site.css" />
+
+    <!-- Ícones (leve e via CDN) -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css"
+    />
   </head>
 
-  <body data-page="login">
-    <div id="site-header"></div>
+  <body>
+    <!-- Header fixo (se você já usa um layout.js, pode manter; aqui é estático por enquanto) -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="./index.html">AVA</a>
+
+        <nav class="nav">
+          <a href="./index.html">Home</a>
+          <a href="./signup.html">Criar conta</a>
+        </nav>
+      </div>
+    </header>
 
     <main class="page">
       <div class="container">
-        <section class="card" style="max-width: 720px; margin: 0 auto">
+        <section class="card">
           <h1 class="h1">Entrar</h1>
           <p class="muted">Faça login para acessar o AVA.</p>
 
-          <div class="hr"></div>
+          <!-- STATUS / ERROS -->
+          <div id="status" class="muted" style="margin: 10px 0 14px 0">
+            Informe seus dados para entrar.
+          </div>
 
-          <form id="formLogin" class="grid" style="gap: 12px">
-            <div>
-              <label><b>E-mail</b></label>
-              <input
-                class="input"
-                type="email"
-                id="email"
-                required
-                autocomplete="email"
-              />
+          <!-- OAUTH / SOCIAL LOGIN -->
+          <div class="row" style="flex-direction: column; align-items: stretch">
+            <button class="btn" id="btn-google" type="button">
+              <i class="bx bxl-google" style="font-size: 18px"></i>
+              <span style="margin-left: 8px">Entrar com Google</span>
+            </button>
+
+            <button class="btn" id="btn-github" type="button">
+              <i class="bx bxl-github" style="font-size: 18px"></i>
+              <span style="margin-left: 8px">Entrar com GitHub</span>
+            </button>
+
+            <div class="hr"></div>
+
+            <!-- LOGIN COM SENHA -->
+            <form id="form-login">
+              <label>
+                <b>E-mail</b>
+                <input class="input" name="email" type="email" required />
+              </label>
+
+              <div style="height: 10px"></div>
+
+              <label>
+                <b>Senha</b>
+                <input class="input" name="password" type="password" required />
+              </label>
+
+              <div class="row" style="margin-top: 14px">
+                <button class="btn btn-primary" type="submit">
+                  <i class="bx bx-log-in" style="font-size: 18px"></i>
+                  <span style="margin-left: 8px">Entrar</span>
+                </button>
+
+                <button class="btn" id="btn-forgot" type="button">
+                  Esqueci minha senha
+                </button>
+              </div>
+            </form>
+
+            <div class="hr"></div>
+
+            <!-- “OUTRAS COISAS” comuns: link mágico -->
+            <div
+              class="row"
+              style="flex-direction: column; align-items: stretch"
+            >
+              <button class="btn" id="btn-magic" type="button">
+                <i class="bx bx-mail-send" style="font-size: 18px"></i>
+                <span style="margin-left: 8px"
+                  >Enviar link mágico (sem senha)</span
+                >
+              </button>
+
+              <small class="muted">
+                Você recebe um link por e-mail para entrar. Ótimo para quem
+                esquece senha.
+              </small>
             </div>
 
-            <div>
-              <label><b>Senha</b></label>
-              <input
-                class="input"
-                type="password"
-                id="password"
-                required
-                autocomplete="current-password"
-              />
-            </div>
+            <div class="hr"></div>
 
             <div class="row">
-              <button class="btn btn-primary" type="submit" id="btnLogin">
-                Entrar
-              </button>
-              <a class="btn" href="./signup.html">Criar conta</a>
-              <a class="btn" href="./index.html">Voltar</a>
+              <a href="./index.html">Voltar</a>
+              <a href="./signup.html">Criar conta</a>
+              <a href="./app.html">Ir para App</a>
             </div>
 
-            <div id="msg" class="muted"></div>
-          </form>
+            <small class="muted">
+              Se algo falhar, abra o Console (F12) para ver detalhes.
+            </small>
 
-          <div class="hr"></div>
-          <small class="muted">Se algo falhar, abra o Console (F12).</small>
+            <pre id="logs" class="logs" style="display: none"></pre>
+          </div>
         </section>
       </div>
     </main>
 
-    <div id="site-footer"></div>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <span>AVA • protótipo</span>
+        <span class="muted">© <span id="year"></span></span>
+      </div>
+    </footer>
 
-    <script type="module" src="./assets/js/layout.js"></script>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+
+    <!-- JS separado (no próximo passo eu te mando o login.js completo) -->
     <script type="module" src="./assets/js/login.js"></script>
   </body>
 </html>
