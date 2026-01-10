@@ -377,3 +377,185 @@ body.is-authed .side-nav {
   color: var(--muted);
   padding: 10px 10px;
   border-radius: 12p
+/* ===========================
+   SIDEBAR (menu lateral fixo)
+   =========================== */
+
+:root {
+  --sidebar-w: 260px;
+}
+
+.site-header .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn.icon {
+  padding: 10px;
+  width: 40px;
+  min-width: 40px;
+  border-radius: 12px;
+}
+
+/* No desktop, o botão do menu não precisa aparecer (sidebar já é fixa) */
+#sidebar-toggle {
+  display: none;
+}
+
+body.has-sidenav {
+  padding-left: var(--sidebar-w);
+}
+
+/* Empurra header/footer para a direita por causa da sidebar fixa */
+body.has-sidenav .site-header {
+  left: var(--sidebar-w);
+}
+body.has-sidenav .site-footer {
+  left: var(--sidebar-w);
+}
+
+/* Sidebar fixa */
+.side-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  z-index: 1100;
+
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--line);
+
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  overflow: auto;
+}
+
+.side-nav .sn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(11, 87, 208, 0.06);
+  border: 1px solid rgba(11, 87, 208, 0.12);
+}
+
+.side-nav .sn-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.side-nav .sn-tag {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.sn-user {
+  padding: 0 4px;
+}
+
+.sn-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px;
+}
+
+.sn-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 12px;
+
+  color: var(--muted);
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.sn-nav a:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--text);
+}
+
+.sn-nav a.active {
+  color: var(--text);
+  background: rgba(11, 87, 208, 0.1);
+  border-color: rgba(11, 87, 208, 0.16);
+}
+
+.sn-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px;
+}
+
+.sn-footer {
+  padding: 10px 8px 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.side-overlay {
+  display: none;
+}
+
+/* MOBILE: sidebar vira gaveta */
+@media (max-width: 920px) {
+  #sidebar-toggle {
+    display: inline-flex;
+  }
+
+  body.has-sidenav {
+    padding-left: 0;
+  }
+
+  body.has-sidenav .site-header {
+    left: 0;
+  }
+
+  body.has-sidenav .site-footer {
+    left: 0;
+  }
+
+  .side-nav {
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+  }
+
+  body.sidebar-open .side-nav {
+    transform: translateX(0);
+  }
+
+  .side-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(15, 23, 42, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  body.sidebar-open .side-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
