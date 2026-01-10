@@ -305,3 +305,75 @@ a:hover {
     display: none;
   } /* depois a gente coloca menu mobile */
 }
+/* ===== SIDEBAR FIXA (MENU LATERAL) ===== */
+:root {
+  --sidebar-w: 260px;
+  --sidebar-z: 900;
+}
+
+/* o <main class="page"> passa a respeitar sidebar quando logado */
+.page {
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+}
+
+/* quando logado, empurra o conteúdo para a direita */
+body.is-authed .page {
+  padding-left: var(--sidebar-w);
+}
+
+/* sidebar em si */
+.side-nav {
+  position: fixed;
+  top: var(--header-h);
+  bottom: var(--footer-h);
+  left: 0;
+
+  width: var(--sidebar-w);
+  z-index: var(--sidebar-z);
+
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--line);
+
+  padding: 14px 12px;
+  display: none; /* só aparece quando logado */
+  overflow: auto;
+}
+
+body.is-authed .side-nav {
+  display: block;
+}
+
+.side-nav .side-title {
+  font-weight: 800;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+}
+
+.side-nav .side-sub {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 0 10px 8px;
+}
+
+.side-nav .side-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.side-nav a.side-link,
+.side-nav button.side-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 10px;
+  border-radius: 12p
