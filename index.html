@@ -3,86 +3,112 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AVA</title>
+    <title>AVA • Home</title>
 
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 24px;
-      }
-      .card {
-        max-width: 820px;
-        padding: 18px;
-        border: 1px solid #ddd;
-        border-radius: 12px;
-      }
-      .row {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 10px;
-      }
-      a.btn {
-        display: inline-block;
-        padding: 10px 12px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        text-decoration: none;
-        color: #111;
-        background: #fafafa;
-      }
-      a.btn:hover {
-        background: #f2f2f2;
-      }
-      code {
-        background: #f3f3f3;
-        padding: 2px 6px;
-        border-radius: 6px;
-      }
-      small {
-        color: #555;
-      }
-      .ok {
-        color: #0a7a2f;
-        font-weight: 600;
-      }
-      .err {
-        color: #b00020;
-        font-weight: 600;
-      }
-      pre {
-        margin-top: 10px;
-        background: #f7f7f7;
-        border: 1px solid #e6e6e6;
-        border-radius: 10px;
-        padding: 12px;
-        overflow: auto;
-        white-space: pre-wrap;
-      }
-    </style>
+    <link rel="stylesheet" href="./assets/css/site.css" />
   </head>
 
-  <body>
-    <div class="card">
-      <h1>AVA rodando ✅</h1>
+  <body data-page="home">
+    <!-- HEADER (injetado pelo layout.js) -->
+    <div id="site-header"></div>
 
-      <p>Teste de conexão com o Supabase:</p>
-      <div id="status">Carregando...</div>
+    <main class="container">
+      <section class="hero">
+        <div class="badge">
+          <i class="bx bx-shield-quarter"></i>
+          Ambiente Virtual de Aprendizagem
+        </div>
 
-      <div class="row" id="actions" style="display: none">
-        <!-- IMPORTANTE: em Project Pages o link precisa ter /AVA3/ na URL,
-             mas aqui usamos caminho relativo (./) que funciona corretamente -->
-        <a class="btn" href="./login.html">Ir para Login</a>
-        <a class="btn" href="./app.html">Ir para App</a>
-      </div>
+        <h1 style="margin-top: 12px">
+          Aprender, acompanhar e organizar — em um só lugar.
+        </h1>
+        <p>
+          Esta é a página pública do AVA. Aqui você apresenta o sistema, orienta
+          usuários e direciona para login. O acesso ao App e aos cursos acontece
+          após autenticação.
+        </p>
 
-      <pre id="logs" style="display: none"></pre>
+        <div class="hero-actions">
+          <button id="cta-primary" class="btn primary">Entrar no AVA</button>
 
-      <hr />
-      <small>Se der erro, ele aparece aqui e também no Console (F12).</small>
-    </div>
+          <button id="cta-secondary" class="btn">Ver o App (prévia)</button>
 
-    <!-- IMPORTANTE: precisa ser type="module" -->
-    <script type="module" src="./assets/js/entry.js"></script>
+          <span
+            id="home-note"
+            style="
+              display: inline-flex;
+              align-items: center;
+              color: var(--muted);
+              font-weight: 700;
+            "
+          >
+            Carregando status...
+          </span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card span-4">
+          <div class="kpi">
+            <i class="bx bx-book-open"></i>
+            <strong>Cursos e Trilhas</strong>
+          </div>
+          <p>
+            Organização por cursos, módulos e unidades, com materiais,
+            atividades e acompanhamento.
+          </p>
+        </article>
+
+        <article class="card span-4">
+          <div class="kpi">
+            <i class="bx bx-line-chart"></i>
+            <strong>Progresso e Controle</strong>
+          </div>
+          <p>
+            Área do estudante, visão de andamento, histórico e checkpoints do
+            aprendizado.
+          </p>
+        </article>
+
+        <article class="card span-4">
+          <div class="kpi">
+            <i class="bx bx-lock-alt"></i>
+            <strong>Segurança e Perfis</strong>
+          </div>
+          <p>
+            Login e controle por papéis (admin/gerente/criador/tutor/estudante)
+            com regras no Supabase.
+          </p>
+        </article>
+
+        <article class="card span-6">
+          <h3>Como funciona (visão rápida)</h3>
+          <p>
+            1) Você entra com e-mail e senha.<br />
+            2) O sistema identifica seu perfil e carrega seus cursos/turmas.<br />
+            3) No App, você acessa os conteúdos e ferramentas de acompanhamento.
+          </p>
+        </article>
+
+        <article class="card span-6">
+          <h3>Próximos passos do desenvolvimento</h3>
+          <p>
+            • Página de cadastro (signup) completa<br />
+            • Tela do App com menu lateral + cards de cursos<br />
+            • Listagem real (Supabase) de courses e course_offers<br />
+            • Proteção de rotas e RLS por perfil
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <!-- FOOTER (injetado pelo layout.js) -->
+    <div id="site-footer"></div>
+
+    <!-- Layout global (menu/rodapé) -->
+    <script type="module" src="./assets/js/layout.js"></script>
+
+    <!-- Comportamento específico da Home -->
+    <script type="module" src="./assets/js/home.js"></script>
   </body>
 </html>
