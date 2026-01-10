@@ -1,208 +1,74 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AVA • Admin • Cursos</title>
+    <title>AVA • Admin</title>
+
     <link rel="stylesheet" href="./assets/css/site.css" />
-    <style>
-      .toolbar {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        margin-top: 12px;
-      }
-      .toolbar-left,
-      .toolbar-right {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-      .input,
-      .textarea {
-        width: 100%;
-        border: 1px solid var(--line);
-        background: var(--surface);
-        color: var(--text);
-        border-radius: 12px;
-        padding: 10px 12px;
-        outline: none;
-      }
-      .textarea {
-        min-height: 110px;
-        resize: vertical;
-      }
-      .courses-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 14px;
-        margin-top: 14px;
-      }
-      dialog.course-dialog {
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 0;
-        max-width: 720px;
-        width: calc(100% - 24px);
-        box-shadow: var(--shadow);
-      }
-      dialog::backdrop {
-        background: rgba(15, 23, 42, 0.55);
-      }
-      .dialog-inner {
-        padding: 16px;
-      }
-      .dialog-title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
-      }
-      .form-grid .span-2 {
-        grid-column: span 2;
-      }
-      @media (max-width: 720px) {
-        .form-grid {
-          grid-template-columns: 1fr;
-        }
-        .form-grid .span-2 {
-          grid-column: auto;
-        }
-      }
-      .hint {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 6px;
-      }
-      .msg {
-        margin-top: 12px;
-        display: none;
-      }
-    </style>
+    <link rel="stylesheet" href="./assets/css/app.css" />
   </head>
 
-  <body data-page="admin" data-auth="required" data-role="admin">
+  <body data-page="admin" data-auth="required">
     <div id="site-header"></div>
+    <div id="site-sidebar"></div>
 
-    <main class="page">
-      <div class="container">
-        <section class="card">
-          <h1 class="h1">Admin • Cursos</h1>
-          <p class="muted">
-            Aqui você cadastra e gerencia os cursos (catálogo). Depois, cria
-            ofertas/turmas (course_offers) e vincula conteúdo (modules/lessons).
+    <main class="container">
+      <section class="card">
+        <div class="top">
+          <div>
+            <h1 style="margin: 0 0 6px">Administração</h1>
+            <p style="margin: 0; opacity: 0.85">
+              Painel para cadastrar e gerenciar cursos, módulos e ofertas
+              (turmas).
+            </p>
+          </div>
+
+          <div class="right">
+            <div class="badge" id="adminBadge">Carregando...</div>
+            <a
+              class="btn ghost"
+              href="./app.html"
+              title="Voltar para Meus cursos"
+            >
+              <i class="bx bx-arrow-back"></i> Voltar
+            </a>
+          </div>
+        </div>
+
+        <div class="box">
+          <h2>Ações rápidas</h2>
+          <p style="margin: 0 0 10px; opacity: 0.85">
+            Nesta primeira versão, deixei o painel “pronto pra plugar” os
+            formulários e rotas. Depois a gente transforma cada card em cadastro
+            real (Cursos → Módulos → Ofertas).
           </p>
 
-          <div class="hr"></div>
-
-          <div class="toolbar">
-            <div class="toolbar-left">
-              <input
-                id="q"
-                class="input"
-                style="min-width: 280px"
-                placeholder="Pesquisar curso (título/slug)..."
-              />
-              <span class="badge" id="countBadge">0 cursos</span>
-            </div>
-
-            <div class="toolbar-right">
-              <button class="btn primary" id="btnNew">
-                <i class="bx bx-plus"></i> Novo curso
-              </button>
-            </div>
-          </div>
-
-          <div id="msg" class="card msg"></div>
-
-          <div class="courses-grid" id="coursesGrid"></div>
-        </section>
-      </div>
-
-      <dialog class="course-dialog" id="courseDialog">
-        <div class="dialog-inner">
-          <div class="dialog-title">
-            <div>
-              <h2 class="h2" id="dlgTitle">Novo curso</h2>
-              <div class="muted" style="margin-top: 4px" id="dlgSubtitle">
-                Preencha os campos e salve.
+          <div class="grid">
+            <article class="card span-4">
+              <div class="kpi">
+                <i class="bx bx-book"></i>
+                <strong>Cursos</strong>
               </div>
-            </div>
+              <p style="margin: 8px 0 0; opacity: 0.85">
+                Criar e editar o catálogo de cursos.
+              </p>
+            </article>
 
-            <button class="btn" id="btnCloseDlg">
-              <i class="bx bx-x"></i>
-            </button>
+            <article class="card span-4">
+              <div class="kpi">
+                <i class="bx bx-layer"></i>
+                <strong>Módulos</strong>
+              </div>
+              <p style="margin: 8px 0 0; opacity: 0.85">
+                Organizar módulos/unidades do curso.
+              </p>
+            </article>
+
+            <article class="card span-4"></article>
           </div>
-
-          <div class="hr"></div>
-
-          <form id="courseForm">
-            <input type="hidden" id="courseId" />
-
-            <div class="form-grid">
-              <label class="span-2">
-                <b>Título</b>
-                <input id="title" class="input" maxlength="120" required />
-                <div class="hint">
-                  Aparece para o aluno e vira base do slug.
-                </div>
-              </label>
-
-              <label>
-                <b>Slug</b>
-                <input id="slug" class="input" maxlength="140" />
-                <div class="hint">
-                  Opcional. Se vazio, geramos automaticamente.
-                </div>
-              </label>
-
-              <label>
-                <b>Carga horária (horas)</b>
-                <input id="ch" class="input" type="number" min="0" step="1" />
-                <div class="hint">Opcional (depende do seu schema).</div>
-              </label>
-
-              <label class="span-2">
-                <b>Descrição</b>
-                <textarea
-                  id="description"
-                  class="textarea"
-                  maxlength="1200"
-                ></textarea>
-                <div class="hint">Até 1200 caracteres (resumo do curso).</div>
-              </label>
-            </div>
-
-            <div class="hr"></div>
-
-            <div style="display: flex; gap: 10px; justify-content: flex-end">
-              <button type="button" class="btn" id="btnCancel">Cancelar</button>
-              <button type="submit" class="btn primary" id="btnSave">
-                <i class="bx bx-save"></i> Salvar
-              </button>
-            </div>
-
-            <div class="hint" style="margin-top: 10px">
-              Observação: se salvar falhar com “permission denied”, é RLS/policy
-              no Supabase (o front só reflete isso).
-            </div>
-          </form>
         </div>
-      </dialog>
+      </section>
     </main>
-
-    <div id="site-footer"></div>
-
-    <script type="module" src="./assets/js/layout.js"></script>
-    <script type="module" src="./assets/js/admin.js"></script>
   </body>
 </html>
