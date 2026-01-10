@@ -10,6 +10,21 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+/**
+ * Health check simples para o front:
+ * - valida que o client consegue conversar com o Supabase Auth
+ * - NÃO depende de permissões de tabelas (RLS) para funcionar em página pública
+ */
+export async function supabaseHealthCheck() {
+  try {
+    const { error } = await supabase.auth.getSession();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, error: null };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
 export async function getSessionSafe() {
   const { data, error } = await supabase.auth.getSession();
   if (error) return { session: null, error: error.message };
