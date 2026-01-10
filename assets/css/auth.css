@@ -1,0 +1,55 @@
+:root {
+  --auth-bg: #f6f7fb;
+  --auth-card: #ffffff;
+  --auth-border: #e8e8ee;
+}
+
+.auth-bg {
+  background: var(--auth-bg);
+}
+
+.auth-shell {
+  max-width: 520px;
+  background: var(--auth-card);
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+}
+
+.auth-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #0d6efd;
+  color: #fff;
+  font-size: 18px;
+}
+
+.auth-tabs .nav-link {
+  border-radius: 999px;
+  padding: 10px 14px;
+}
+
+.auth-divider {
+  position: relative;
+  text-align: center;
+}
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #e6e6ee;
+}
+.auth-divider span {
+  position: relative;
+  background: #fff;
+  padding: 0 10px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
