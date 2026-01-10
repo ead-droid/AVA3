@@ -17,7 +17,6 @@
 
   --container: 1100px;
   --sidebar-w: 260px;
-
 }
 
 * {
@@ -307,29 +306,48 @@ a:hover {
     display: none;
   } /* depois a gente coloca menu mobile */
 }
-/* ===== SIDEBAR FIXA (MENU LATERAL) ===== */
+/* ===========================
+   SIDEBAR OFICIAL (fixa/drawer)
+   Mantém: .site-sidebar + .side-item + overlay
+   =========================== */
+
 :root {
   --sidebar-w: 260px;
-  --sidebar-z: 900;
+  --sidebar-w-collapsed: 88px;
+  --sidebar-z: 1200;
 }
 
-/* o <main class="page"> passa a respeitar sidebar quando logado */
-.page {
-  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+/* Botão toggle só aparece no mobile */
+#sidebar-toggle {
+  display: none;
 }
 
-/* quando logado, empurra o conteúdo para a direita */
-body.is-authed .page {
+/* Quando a página tem sidebar */
+body.has-sidebar {
   padding-left: var(--sidebar-w);
 }
 
-/* sidebar em si */
-.side-nav {
+/* Header/footer fixos respeitam a sidebar no desktop */
+body.has-sidebar .site-header,
+body.has-sidebar .site-footer {
+  left: var(--sidebar-w);
+}
+
+/* Estado colapsado (se você usar depois) */
+body.has-sidebar.sidebar-collapsed {
+  padding-left: var(--sidebar-w-collapsed);
+}
+body.has-sidebar.sidebar-collapsed .site-header,
+body.has-sidebar.sidebar-collapsed .site-footer {
+  left: var(--sidebar-w-collapsed);
+}
+
+/* Sidebar fixa (entre header e footer) */
+.site-sidebar {
   position: fixed;
+  left: 0;
   top: var(--header-h);
   bottom: var(--footer-h);
-  left: 0;
-
   width: var(--sidebar-w);
   z-index: var(--sidebar-z);
 
@@ -337,433 +355,25 @@ body.is-authed .page {
   backdrop-filter: blur(10px);
   border-right: 1px solid var(--line);
 
-  padding: 14px 12px;
-  display: none; /* só aparece quando logado */
-  overflow: auto;
-}
-
-body.is-authed .side-nav {
-  display: block;
-}
-
-.side-nav .side-title {
-  font-weight: 800;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-}
-
-.side-nav .side-sub {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 0 10px 8px;
-}
-
-.side-nav .side-links {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.side-nav a.side-link,
-.side-nav button.side-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  padding: 10px 10px;
-  border-radius: 12p
-/* ===========================
-   SIDEBAR (menu lateral fixo)
-   =========================== */
-
-:root {
-  --sidebar-w: 260px;
-}
-
-.site-header .left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.btn.icon {
-  padding: 10px;
-  width: 40px;
-  min-width: 40px;
-  border-radius: 12px;
-}
-
-/* No desktop, o botão do menu não precisa aparecer (sidebar já é fixa) */
-#sidebar-toggle {
-  display: none;
-}
-
-body.has-sidenav {
-  padding-left: var(--sidebar-w);
-}
-
-/* Empurra header/footer para a direita por causa da sidebar fixa */
-body.has-sidenav .site-header {
-  left: var(--sidebar-w);
-}
-body.has-sidenav .site-footer {
-  left: var(--sidebar-w);
-}
-
-/* Sidebar fixa */
-.side-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: var(--sidebar-w);
-  z-index: 1100;
-
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid var(--line);
-
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  overflow: auto;
-}
-
-.side-nav .sn-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(11, 87, 208, 0.06);
-  border: 1px solid rgba(11, 87, 208, 0.12);
-}
-
-.side-nav .sn-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 900;
-  letter-spacing: -0.2px;
-}
-
-.side-nav .sn-tag {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--muted);
-}
-
-.sn-user {
-  padding: 0 4px;
-}
-
-.sn-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 4px;
-}
-
-.sn-nav a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  padding: 10px 12px;
-  border-radius: 12px;
-
-  color: var(--muted);
-  font-weight: 700;
-  border: 1px solid transparent;
-}
-
-.sn-nav a:hover {
-  background: rgba(15, 23, 42, 0.04);
-  color: var(--text);
-}
-
-.sn-nav a.active {
-  color: var(--text);
-  background: rgba(11, 87, 208, 0.1);
-  border-color: rgba(11, 87, 208, 0.16);
-}
-
-.sn-actions {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 4px;
-}
-
-.sn-footer {
-  padding: 10px 8px 2px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.side-overlay {
-  display: none;
-}
-
-/* MOBILE: sidebar vira gaveta */
-@media (max-width: 920px) {
-  #sidebar-toggle {
-    display: inline-flex;
-  }
-
-  body.has-sidenav {
-    padding-left: 0;
-  }
-
-  body.has-sidenav .site-header {
-    left: 0;
-  }
-
-  body.has-sidenav .site-footer {
-    left: 0;
-  }
-
-  .side-nav {
-    transform: translateX(-105%);
-    transition: transform 0.2s ease;
-  }
-
-  body.sidebar-open .side-nav {
-    transform: translateX(0);
-  }
-
-  .side-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 1090;
-    background: rgba(15, 23, 42, 0.35);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  body.sidebar-open .side-overlay {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-/* ===== Sidebar + ajustes de layout (AV A3) ===== */
-:root {
-  --sidebar-w: 280px;
-  --sidebar-w-collapsed: 88px;
-}
-
-/* área principal ganha respiro */
-.page {
-  padding: 22px 0 32px;
-}
-
-/* botão ícone (toggle sidebar) */
-.icon-btn {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  height: 40px;
-  width: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-}
-.icon-btn i {
-  font-size: 20px;
-}
-.icon-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* quando existe sidebar, empurra conteúdo e alinha header/footer */
-body.has-sidebar {
-  padding-left: var(--sidebar-w);
-}
-body.has-sidebar .site-header,
-body.has-sidebar .site-footer {
-  padding-left: var(--sidebar-w);
-}
-
-body.has-sidebar.sidebar-collapsed {
-  padding-left: var(--sidebar-w-collapsed);
-}
-body.has-sidebar.sidebar-collapsed .site-header,
-body.has-sidebar.sidebar-collapsed .site-footer {
-  padding-left: var(--sidebar-w-collapsed);
-}
-
-/* sidebar fixa */
-.site-sidebar {
-  position: fixed;
-  left: 0;
-  top: var(--header-h);
-  bottom: var(--footer-h);
-  width: var(--sidebar-w);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid var(--line);
   padding: 12px;
   overflow: auto;
-  z-index: 1200;
 }
 
+/* Grupo de itens */
 .side-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+/* Separador */
 .side-divider {
   height: 1px;
   background: var(--line);
   margin: 12px 4px;
 }
 
-.side-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-}
-.side-item i {
-  font-size: 20px;
-  color: var(--brand);
-}
-.side-item:hover {
-  background: rgba(11, 87, 208, 0.06);
-  border-color: rgba(11, 87, 208, 0.14);
-}
-.side-item.active {
-  background: rgba(11, 87, 208, 0.10);
-  border-color: rgba(11, 87, 208, 0.20);
-}
-.side-item.danger i {
-  color: #b42318;
-}
-.side-item.danger:hover {
-  background: rgba(180, 35, 24, 0.07);
-  border-color: rgba(180, 35, 24, 0.15);
-}
-
-/* colapsado (desktop) */
-body.sidebar-collapsed .site-sidebar {
-  width: var(--sidebar-w-collapsed);
-}
-body.sidebar-collapsed .side-label {
-  display: none;
-}
-body.sidebar-collapsed .side-item {
-  justify-content: center;
-}
-
-/* overlay + modo mobile (drawer) */
-.sidebar-overlay {
-  display: none;
-}
-
-@media (max-width: 920px) {
-  /* no mobile não empurra nada */
-  body.has-sidebar {
-    padding-left: 0;
-  }
-  body.has-sidebar .site-header,
-  body.has-sidebar .site-footer {
-    padding-left: 0;
-  }
-
-  .site-sidebar {
-    transform: translateX(-100%);
-    transition: transform 180ms ease;
-    width: min(var(--sidebar-w), 88vw);
-  }
-
-  body.sidebar-open .site-sidebar {
-    transform: translateX(0);
-  }
-
-  .sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.35);
-    z-index: 1190;
-  }
-  body.sidebar-open .sidebar-overlay {
-    display: block;
-  }
-}
-/* ===========================
-   SIDEBAR (menu lateral fixo)
-   =========================== */
-
-:root {
-  --sidebar-w: 260px;
-}
-
-/* Quando existe sidebar, empurra o layout */
-body.has-sidebar {
-  padding-left: var(--sidebar-w);
-}
-
-/* Header e footer fixos respeitando sidebar (desktop) */
-body.has-sidebar .site-header,
-body.has-sidebar .site-footer {
-  left: var(--sidebar-w);
-}
-
-/* Sidebar fixa entre header e footer */
-.site-sidebar {
-  position: fixed;
-  left: 0;
-  top: var(--header-h);
-  bottom: var(--footer-h);
-  width: var(--sidebar-w);
-  z-index: 1200;
-
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid var(--line);
-
-  padding: 12px;
-  overflow: auto;
-}
-
-.side-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.side-divider {
-  height: 1px;
-  background: var(--line);
-  margin: 12px 4px;
-}
-
+/* Item do menu */
 .side-item {
   display: flex;
   align-items: center;
@@ -772,6 +382,7 @@ body.has-sidebar .site-footer {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid transparent;
+
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -798,13 +409,17 @@ body.has-sidebar .site-footer {
   font-weight: 700;
 }
 
-/* Overlay (mobile) */
+/* Overlay (usado no mobile drawer) */
 .sidebar-overlay {
   display: none;
 }
 
 /* MOBILE: sidebar vira gaveta */
 @media (max-width: 920px) {
+  #sidebar-toggle {
+    display: inline-flex;
+  }
+
   body.has-sidebar {
     padding-left: 0;
   }
@@ -815,11 +430,12 @@ body.has-sidebar .site-footer {
   }
 
   .site-sidebar {
-    transform: translateX(-105%);
-    transition: transform 0.2s ease;
-    width: min(var(--sidebar-w), 88vw);
     top: 0;
     bottom: 0;
+    width: min(var(--sidebar-w), 88vw);
+
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
   }
 
   body.sidebar-open .site-sidebar {
@@ -830,7 +446,7 @@ body.has-sidebar .site-footer {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 1190;
+    z-index: calc(var(--sidebar-z) - 10);
     background: rgba(15, 23, 42, 0.35);
     opacity: 0;
     pointer-events: none;
