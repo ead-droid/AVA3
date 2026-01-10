@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AVA • Cadastro</title>
+
+    <!-- Reaproveita seu padrão atual -->
+    <link rel="stylesheet" href="./assets/css/base.css" />
+    <!-- Reaproveita o mesmo visual do login (inputs/msg) -->
+    <link rel="stylesheet" href="./assets/css/login.css" />
+  </head>
+
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>Criar conta</h1>
+        <p class="muted">
+          Cadastre-se para acessar o AVA. Depois você pode entrar em uma turma
+          com o código.
+        </p>
+
+        <form id="form-signup">
+          <label>
+            Nome completo
+            <input
+              id="full_name"
+              type="text"
+              autocomplete="name"
+              placeholder="Ex.: Eneida Carneiro"
+              required
+            />
+          </label>
+
+          <label>
+            E-mail
+            <input
+              id="email"
+              type="email"
+              autocomplete="email"
+              placeholder="seuemail@exemplo.com"
+              required
+            />
+          </label>
+
+          <label>
+            Senha
+            <input
+              id="password"
+              type="password"
+              autocomplete="new-password"
+              placeholder="mínimo 8 caracteres"
+              required
+            />
+          </label>
+
+          <button id="btn-signup" type="submit">Criar conta</button>
+
+          <div id="msg" class="msg" aria-live="polite"></div>
+        </form>
+
+        <hr />
+
+        <div class="row">
+          <a class="link" href="./login.html">Já tenho conta</a>
+          <a class="link" href="./index.html">Voltar</a>
+        </div>
+
+        <small class="muted"
+          >Se você não conseguir entrar depois do cadastro, pode ser que o
+          Supabase esteja exigindo confirmação de e-mail.</small
+        >
+      </section>
+    </main>
+
+    <script type="module" src="./assets/js/signup.js"></script>
+  </body>
+</html>
