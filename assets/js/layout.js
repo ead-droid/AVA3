@@ -1,137 +1,140 @@
 // assets/js/layout.js
 import { supabase } from './supabaseClient.js';
 
-function ensureBoxicons() {
-  if (document.querySelector('link[data-boxicons="1"]')) return;
+const headerEl = document.getElementById('site-header');
+const footerEl = document.getElementById('site-footer');
 
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css';
-  link.setAttribute('data-boxicons', '1');
-  document.head.appendChild(link);
-}
-
-function rel(path) {
-  // sempre relativo (funciona no /AVA3/)
-  return new URL(`./${path}`, window.location.href).toString();
+function urlTo(filename) {
+  // sempre relativo -> funciona no GitHub Pages (/AVA3/)
+  return new URL(`./${filename}`, window.location.href).toString();
 }
 
 function getActivePage() {
-  // defina <body data-page="home"> etc.
-  return document.body.dataset.page || '';
+  return document.body?.dataset?.page || '';
 }
 
-function renderHeaderFooter() {
-  ensureBoxicons();
-
-  const page = getActivePage();
-
-  const headerHost = document.getElementById('site-header');
-  const footerHost = document.getElementById('site-footer');
-
-  if (headerHost) {
-    headerHost.innerHTML = `
-      <header class="site-header">
-        <div class="inner">
-          <a class="brand" href="${rel('index.html')}">
-            <span class="dot"></span>
-            <span>AVA</span>
-          </a>
-
-          <nav class="nav" aria-label="Menu principal">
-            <a class="navlink ${page === 'home' ? 'active' : ''}" href="${rel(
-      'index.html'
-    )}">Início</a>
-            <a class="navlink ${page === 'login' ? 'active' : ''}" href="${rel(
-      'login.html'
-    )}">Entrar</a>
-            <a class="navlink ${page === 'app' ? 'active' : ''}" href="${rel(
-      'app.html'
-    )}">App</a>
-          </nav>
-
-          <div class="right">
-            <span id="user-pill" class="badge" style="display:none;">
-              <i class="bx bx-user"></i> <span id="user-email"></span>
-            </span>
-
-            <a id="auth-link" class="btn primary" href="${rel('login.html')}">
-              <i class="bx bx-log-in"></i> Entrar
-            </a>
-
-            <button id="logout-btn" class="btn ghost" style="display:none;">
-              <i class="bx bx-log-out"></i> Sair
-            </button>
-          </div>
-        </div>
-      </header>
-    `;
-  }
-
-  if (footerHost) {
-    footerHost.innerHTML = `
-      <footer class="site-footer">
-        <div class="inner">
-          <div>© ${new Date().getFullYear()} AVA • Protótipo</div>
-          <div class="footer-links">
-            <a href="${rel('index.html')}">Home</a>
-            <a href="${rel('login.html')}">Login</a>
-            <a href="${rel('app.html')}">App</a>
-          </div>
-        </div>
-      </footer>
-    `;
-  }
+function renderFooter() {
+  if (!footerEl) return;
+  const year = new Date().getFullYear();
+  footerEl.innerHTML = `
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <small>© ${year} • AVA</small>
+        <small class="muted">Educação a Distância • SECITECI</small>
+      </div>
+    </footer>
+  `;
 }
 
-async function syncAuthUI() {
-  const authLink = document.getElementById('auth-link');
-  const logoutBtn = document.getElementById('logout-btn');
-  const userPill = document.getElementById('user-pill');
-  const userEmail = document.getElementById('user-email');
+function renderHeader({ session }) {
+  if (!headerEl) return;
 
-  if (!authLink || !logoutBtn) return;
+  const active = getActivePage();
+  const isLogged = !!session;
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    // se der erro, mantém botão de entrar
-    return;
-  }
+  // links base
+  const links = [{ label: 'Home', href: urlTo('index.html'), key: 'home' }];
 
-  const session = data?.session;
-  const email = session?.user?.email || '';
-
-  if (session) {
-    authLink.href = rel('app.html');
-    authLink.innerHTML = `<i class="bx bx-grid-alt"></i> Ir para o App`;
-
-    logoutBtn.style.display = 'inline-flex';
-    if (userPill && userEmail) {
-      userPill.style.display = 'inline-flex';
-      userEmail.textContent = email || 'sessão ativa';
-    }
+  // links condicionais
+  if (isLogged) {
+    links.push({ label: 'Minha área', href: urlTo('app.html'), key: 'app' });
   } else {
-    authLink.href = rel('login.html');
-    authLink.innerHTML = `<i class="bx bx-log-in"></i> Entrar`;
-
-    logoutBtn.style.display = 'none';
-    if (userPill) userPill.style.display = 'none';
+    links.push({ label: 'Entrar', href: urlTo('login.html'), key: 'login' });
+    links.push({
+      label: 'Criar conta',
+      href: urlTo('signup.html'),
+      key: 'signup',
+    });
   }
 
-  logoutBtn.onclick = async () => {
-    await supabase.auth.signOut();
-    window.location.assign(rel('index.html'));
-  };
+  const navLinksHtml = links
+    .map(
+      (l) => `
+        <a class="nav-link ${active === l.key ? 'is-active' : ''}" href="${
+        l.href
+      }">
+          ${l.label}
+        </a>
+      `
+    )
+    .join('');
+
+  const rightHtml = isLogged
+    ? `
+      <div class="nav-right">
+        <span class="nav-user">${session?.user?.email || ''}</span>
+        <button class="btn btn-ghost" id="btn-logout" type="button">Sair</button>
+      </div>
+    `
+    : `
+      <div class="nav-right">
+        <a class="btn btn-primary" href="${urlTo('login.html')}">Acessar</a>
+      </div>
+    `;
+
+  headerEl.innerHTML = `
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="${urlTo('index.html')}">
+          <span class="brand-dot"></span>
+          <strong>AVA</strong>
+        </a>
+
+        <nav class="nav">
+          ${navLinksHtml}
+        </nav>
+
+        ${rightHtml}
+      </div>
+    </header>
+  `;
+
+  // logout
+  const btn = document.getElementById('btn-logout');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      try {
+        btn.disabled = true;
+        await supabase.auth.signOut();
+      } finally {
+        window.location.assign(urlTo('index.html'));
+      }
+    });
+  }
 }
 
-function watchAuthChanges() {
-  supabase.auth.onAuthStateChange(() => {
-    // atualiza header/cta automaticamente
-    syncAuthUI();
+async function protectIfNeeded(session) {
+  const requiresAuth = document.body?.dataset?.auth === 'required';
+  if (!requiresAuth) return;
+
+  if (!session) {
+    // manda pro login e mantém um returnTo simples
+    const loginUrl = new URL(urlTo('login.html'));
+    loginUrl.searchParams.set(
+      'returnTo',
+      window.location.pathname + window.location.search
+    );
+    window.location.assign(loginUrl.toString());
+  }
+}
+
+async function main() {
+  renderFooter();
+
+  // pega sessão
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session || null;
+
+  // protege páginas internas
+  await protectIfNeeded(session);
+
+  // renderiza menu com base na sessão
+  renderHeader({ session });
+
+  // se a sessão mudar em outra aba, atualiza
+  supabase.auth.onAuthStateChange((_event, _session) => {
+    renderHeader({ session: _session });
   });
 }
 
-// Boot
-renderHeaderFooter();
-syncAuthUI();
-watchAuthChanges();
+main();
