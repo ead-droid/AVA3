@@ -5,13 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AVA • Home</title>
 
+    <!-- (Necessário para os ícones bx aparecerem no header/sidebar e nos cards) -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+    />
+
     <link rel="stylesheet" href="./assets/css/site.css" />
+    <link rel="stylesheet" href="./assets/css/chrome.css" />
   </head>
 
-  <body data-page="home">
-    <!-- HEADER (injetado pelo layout.js) -->
+  <body data-page="home" class="has-sidebar">
     <div id="site-header"></div>
+    <div id="site-sidebar"></div>
 
+    <!-- Adequação: manter um único <main> (evita conflito de layout) -->
     <main class="container">
       <section class="hero">
         <div class="badge">
@@ -23,21 +31,21 @@
           Aprender, acompanhar e organizar — em um só lugar.
         </h1>
         <p>
-          Esta é a página pública do AVA. Aqui você apresenta o sistema, orienta
-          usuários e direciona para login. O acesso ao App e aos cursos acontece
-          após autenticação.
+          Esta é a página pública do AVA (Index). Como adicionamos a classe
+          <strong>has-sidebar</strong> no body, o menu lateral aparece aqui para
+          teste.
         </p>
 
         <div class="hero-actions">
           <button id="cta-primary" class="btn primary">Entrar no AVA</button>
-
           <button id="cta-secondary" class="btn">Ver o App (prévia)</button>
 
           <span
             id="home-note"
             style="
-              display: inline-flex;
-              align-items: center;
+              display: block;
+              margin-top: 10px;
+              font-size: 13px;
               color: var(--muted);
               font-weight: 700;
             "
@@ -53,10 +61,7 @@
             <i class="bx bx-book-open"></i>
             <strong>Cursos e Trilhas</strong>
           </div>
-          <p>
-            Organização por cursos, módulos e unidades, com materiais,
-            atividades e acompanhamento.
-          </p>
+          <p>Um lugar para organizar módulos, aulas, materiais e atividades.</p>
         </article>
 
         <article class="card span-4">
@@ -64,51 +69,22 @@
             <i class="bx bx-line-chart"></i>
             <strong>Progresso e Controle</strong>
           </div>
-          <p>
-            Área do estudante, visão de andamento, histórico e checkpoints do
-            aprendizado.
-          </p>
+          <p>Área do estudante, visão de andamento e histórico.</p>
         </article>
 
         <article class="card span-4">
           <div class="kpi">
             <i class="bx bx-lock-alt"></i>
-            <strong>Segurança e Perfis</strong>
+            <strong>Login e Segurança</strong>
           </div>
-          <p>
-            Login e controle por papéis (admin/gerente/criador/tutor/estudante)
-            com regras no Supabase.
-          </p>
-        </article>
-
-        <article class="card span-6">
-          <h3>Como funciona (visão rápida)</h3>
-          <p>
-            1) Você entra com e-mail e senha.<br />
-            2) O sistema identifica seu perfil e carrega seus cursos/turmas.<br />
-            3) No App, você acessa os conteúdos e ferramentas de acompanhamento.
-          </p>
-        </article>
-
-        <article class="card span-6">
-          <h3>Próximos passos do desenvolvimento</h3>
-          <p>
-            • Página de cadastro (signup) completa<br />
-            • Tela do App com menu lateral + cards de cursos<br />
-            • Listagem real (Supabase) de courses e course_offers<br />
-            • Proteção de rotas e RLS por perfil
-          </p>
+          <p>Acesso com autenticação. Admin visível apenas para staff.</p>
         </article>
       </section>
     </main>
 
-    <!-- FOOTER (injetado pelo layout.js) -->
     <div id="site-footer"></div>
 
-    <!-- Layout global (menu/rodapé) -->
-    <script type="module" src="./assets/js/layout.js"></script>
-
-    <!-- Comportamento específico da Home -->
+    <script type="module" src="./assets/js/chrome.js"></script>
     <script type="module" src="./assets/js/home.js"></script>
   </body>
 </html>

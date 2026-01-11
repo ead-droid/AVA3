@@ -7,40 +7,40 @@
 
     <link rel="stylesheet" href="./assets/css/site.css" />
     <link rel="stylesheet" href="./assets/css/chrome.css" />
+
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
   </head>
 
-  <body data-page="app" data-auth="required">
-    <!-- CHROME -->
+  <body data-page="app">
     <div id="site-header"></div>
     <div id="site-sidebar"></div>
 
-    <main class="page">
-      <div class="container">
-        <section class="card">
-          <h1 class="h1">Minha área</h1>
-          <p class="muted">
-            Aqui você verá seus cursos. (Esta página exige login.)
-          </p>
+    <main class="container">
+      <section
+        class="card"
+        style="
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 30px;
+          margin-top: 20px;
+        "
+      >
+        <h1>Meus Cursos</h1>
+        <p style="color: #666">Painel do aluno.</p>
 
-          <div class="hr"></div>
+        <div style="border-top: 1px solid #eee; margin: 20px 0"></div>
 
-          <!-- Área do app -->
-          <div id="app-root">
-            <div class="muted">Carregando...</div>
-          </div>
-
-          <div class="hr"></div>
-          <pre class="logs" id="logs" style="display: none"></pre>
-        </section>
-      </div>
+        <div id="app-root">Carregando...</div>
+      </section>
     </main>
 
     <div id="site-footer"></div>
 
-    <!-- CHROME -->
     <script type="module" src="./assets/js/chrome.js"></script>
-
-    <!-- App -->
     <script type="module" src="./assets/js/app.js"></script>
   </body>
 </html>
