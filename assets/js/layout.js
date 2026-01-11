@@ -7,7 +7,6 @@ import {
 
 function ensureBoxicons() {
   if (document.querySelector('link[data-boxicons="1"]')) return;
-
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = 'https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css';
@@ -16,11 +15,10 @@ function ensureBoxicons() {
 }
 
 function rel(path) {
-  // sempre relativo (funciona no /AVA3/)
   return new URL(`./${path}`, window.location.href).toString();
 }
 
-function getPage() {
+function getActivePage() {
   return document.body?.dataset?.page || '';
 }
 
@@ -28,12 +26,46 @@ function needsAuth() {
   return document.body?.dataset?.auth === 'required';
 }
 
+/**
+ * Checa se usuário é admin.
+ * Ordem:
+ * 1) tenta RPC public.is_admin(uid) (ideal, pode funcionar mesmo com RLS travando SELECT)
+ * 2) fallback: lê profiles.role (se policy permitir)
+ */
+async function checkIsAdmin(uid) {
+  // 1) RPC (tenta nomes comuns de parâmetro)
+  const rpcTries = [{ uid }, { user_id: uid }, { p_uid: uid }];
+  for (const args of rpcTries) {
+    try {
+      const { data, error } = await supabase.rpc('is_admin', args);
+      if (!error) return !!data;
+    } catch (_) {}
+  }
+
+  // 2) Fallback: SELECT em profiles
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', uid)
+      .maybeSingle();
+
+    if (error) return false;
+    const role = (data?.role ?? '').toString().toLowerCase();
+    return role === 'admin';
+  } catch (_) {
+    return false;
+  }
+}
+
 function renderHeaderFooter() {
   ensureBoxicons();
 
-  const page = getPage();
+  const page = getActivePage();
 
   const headerHost = document.getElementById('site-header');
+  const footerHost = document.getElementById('site-footer');
+
   if (headerHost) {
     headerHost.innerHTML = `
       <header class="site-header">
@@ -47,16 +79,16 @@ function renderHeaderFooter() {
             <a class="navlink ${page === 'home' ? 'active' : ''}" href="${rel(
       'index.html'
     )}">Início</a>
-            <a id="nav-app" class="navlink ${
-              page === 'app' ? 'active' : ''
-            }" href="${rel('app.html')}">Minha área</a>
+            <a class="navlink ${page === 'app' ? 'active' : ''}" href="${rel(
+      'app.html'
+    )}">Minha área</a>
 
-            <!-- Admin começa oculto, só aparece se validar admin -->
+            <!-- Admin: começa oculto, só aparece se confirmar admin -->
             <a id="nav-admin" class="navlink ${
               page === 'admin' ? 'active' : ''
             }" href="${rel('admin.html')}" style="display:none;">Admin</a>
 
-            <!-- Esse link vira "Sair" quando logado -->
+            <!-- Auth: vira Sair quando logado -->
             <a id="nav-auth" class="navlink ${
               page === 'login' ? 'active' : ''
             }" href="${rel('login.html')}">Entrar</a>
@@ -71,7 +103,7 @@ function renderHeaderFooter() {
               <i class="bx bx-log-in"></i> Entrar
             </a>
 
-            <button id="logout-btn" class="btn ghost" type="button" style="display:none;">
+            <button id="logout-btn" class="btn ghost" style="display:none;" type="button">
               <i class="bx bx-log-out"></i> Sair
             </button>
           </div>
@@ -80,7 +112,6 @@ function renderHeaderFooter() {
     `;
   }
 
-  const footerHost = document.getElementById('site-footer');
   if (footerHost) {
     footerHost.innerHTML = `
       <footer class="site-footer">
@@ -88,8 +119,8 @@ function renderHeaderFooter() {
           <div>© ${new Date().getFullYear()} AVA • Protótipo</div>
           <div class="footer-links">
             <a href="${rel('index.html')}">Home</a>
-            <a id="footer-auth" href="${rel('login.html')}">Login</a>
             <a href="${rel('app.html')}">Minha área</a>
+            <a id="footer-auth" href="${rel('login.html')}">Login</a>
           </div>
         </div>
       </footer>
@@ -97,59 +128,43 @@ function renderHeaderFooter() {
   }
 }
 
-async function fetchMyProfile(uid) {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('name, role')
-      .eq('id', uid)
-      .maybeSingle();
-
-    if (error) return { profile: null, error: error.message };
-    return { profile: data || null, error: null };
-  } catch (e) {
-    return { profile: null, error: e?.message || String(e) };
-  }
-}
-
 async function doLogout() {
   try {
     await supabase.auth.signOut();
-  } catch (_) {
-    // ignora
-  }
+  } catch (_) {}
   window.location.assign(rel('index.html'));
 }
 
 async function syncAuthUI() {
+  const navAdmin = document.getElementById('nav-admin');
+  const navAuth = document.getElementById('nav-auth');
+
   const authLink = document.getElementById('auth-link');
   const logoutBtn = document.getElementById('logout-btn');
 
   const userPill = document.getElementById('user-pill');
-  const userNameEl = document.getElementById('user-name');
+  const userName = document.getElementById('user-name');
 
-  const navAuth = document.getElementById('nav-auth');
-  const navAdmin = document.getElementById('nav-admin');
   const footerAuth = document.getElementById('footer-auth');
 
-  // 1) sessão (segura)
   const { session } = await getSessionSafe();
   const isAuthed = !!session;
 
-  // classe útil pro CSS se você quiser no futuro
   document.body.classList.toggle('is-authed', isAuthed);
 
-  // Se página exige login e não está logado, manda pro login
+  // se página exige login
   if (!isAuthed && needsAuth()) {
     window.location.assign(rel('login.html'));
     return;
   }
 
-  // 2) estado DESLOGADO
+  // DESLOGADO
   if (!isAuthed) {
     if (userPill) userPill.style.display = 'none';
     if (authLink) authLink.style.display = 'inline-flex';
     if (logoutBtn) logoutBtn.style.display = 'none';
+
+    if (navAdmin) navAdmin.style.display = 'none';
 
     if (navAuth) {
       navAuth.textContent = 'Entrar';
@@ -163,35 +178,27 @@ async function syncAuthUI() {
       footerAuth.onclick = null;
     }
 
-    // Admin nunca aparece deslogado
-    if (navAdmin) navAdmin.style.display = 'none';
     return;
   }
 
-  // 3) estado LOGADO
+  // LOGADO
+  const displayName = getUserDisplayName(session);
   const email = session.user?.email || '';
-  let displayName = getUserDisplayName(session) || email;
+  const uid = session.user?.id;
 
-  // tenta pegar nome/role do profiles (se RLS permitir)
-  const { profile } = await fetchMyProfile(session.user.id);
-
-  const profileName =
-    profile?.name && String(profile.name).trim()
-      ? String(profile.name).trim()
-      : '';
-  if (profileName) displayName = profileName;
-
-  if (userPill) {
+  if (userPill && userName) {
     userPill.style.display = 'inline-flex';
-    userPill.title = email || displayName || '';
+    userPill.title = email || displayName;
+    userName.textContent = displayName;
   }
-  if (userNameEl) userNameEl.textContent = displayName;
 
-  // botão principal
   if (authLink) authLink.style.display = 'none';
-  if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+  if (logoutBtn) {
+    logoutBtn.style.display = 'inline-flex';
+    logoutBtn.onclick = doLogout;
+  }
 
-  // menu horizontal vira "Sair"
+  // navAuth vira "Sair"
   if (navAuth) {
     navAuth.textContent = 'Sair';
     navAuth.href = '#';
@@ -201,7 +208,6 @@ async function syncAuthUI() {
     };
   }
 
-  // rodapé vira "Sair"
   if (footerAuth) {
     footerAuth.textContent = 'Sair';
     footerAuth.href = '#';
@@ -211,16 +217,13 @@ async function syncAuthUI() {
     };
   }
 
-  // botão sair (direita)
-  if (logoutBtn) {
-    logoutBtn.onclick = async () => {
-      await doLogout();
-    };
+  // Admin: só se confirmar admin
+  let isAdmin = false;
+  if (uid) {
+    isAdmin = await checkIsAdmin(uid);
   }
+  document.body.classList.toggle('is-admin', isAdmin);
 
-  // Admin: só mostra se confirmar role=admin (se não conseguir ler, fica oculto)
-  const role = (profile?.role ?? '').toString().toLowerCase();
-  const isAdmin = role === 'admin';
   if (navAdmin) navAdmin.style.display = isAdmin ? '' : 'none';
 }
 
@@ -229,9 +232,7 @@ function watchAuthChanges() {
     supabase.auth.onAuthStateChange(() => {
       syncAuthUI();
     });
-  } catch (_) {
-    // se por algum motivo falhar, não derruba layout
-  }
+  } catch (_) {}
 }
 
 // Boot
