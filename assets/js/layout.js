@@ -1,13 +1,9 @@
 // assets/js/layout.js
-// Layout global: header, footer, sidebar (quando existir), e controle de menus por sessão/role.
-
-function rel(path) {
-  return new URL(`./${path}`, window.location.href).toString();
-}
-
-function getActivePage() {
-  return document.body.dataset.page || '';
-}
+import {
+  supabase,
+  getSessionSafe,
+  getUserDisplayName,
+} from './supabaseClient.js';
 
 function ensureBoxicons() {
   if (document.querySelector('link[data-boxicons="1"]')) return;
@@ -19,39 +15,25 @@ function ensureBoxicons() {
   document.head.appendChild(link);
 }
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => {
-    const m = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    };
-    return m[c] || c;
-  });
+function rel(path) {
+  // sempre relativo (funciona no /AVA3/)
+  return new URL(`./${path}`, window.location.href).toString();
 }
 
-async function getSupabaseClient() {
-  // supabaseClient.js deve existir em assets/js/
-  try {
-    const mod = await import('./supabaseClient.js');
-    return mod.supabase;
-  } catch (e) {
-    console.warn('[layout] Falha ao importar supabaseClient.js', e);
-    return null;
-  }
+function getPage() {
+  return document.body?.dataset?.page || '';
+}
+
+function needsAuth() {
+  return document.body?.dataset?.auth === 'required';
 }
 
 function renderHeaderFooter() {
   ensureBoxicons();
 
-  const page = getActivePage();
-  const headerHost = document.getElementById('site-header');
-  const footerHost = document.getElementById('site-footer');
-  const sidebarHost = document.getElementById('site-sidebar');
+  const page = getPage();
 
-  // HEADER
+  const headerHost = document.getElementById('site-header');
   if (headerHost) {
     headerHost.innerHTML = `
       <header class="site-header">
@@ -61,30 +43,27 @@ function renderHeaderFooter() {
             <span>AVA</span>
           </a>
 
-          <button id="sidebar-toggle" class="btn icon ghost" type="button" aria-label="Abrir/fechar menu lateral">
-            <i class="bx bx-menu"></i>
-          </button>
-
           <nav class="nav" aria-label="Menu principal">
-            <a id="nav-home" class="navlink ${
-              page === 'home' ? 'active' : ''
-            }" href="${rel('index.html')}">Início</a>
-
+            <a class="navlink ${page === 'home' ? 'active' : ''}" href="${rel(
+      'index.html'
+    )}">Início</a>
             <a id="nav-app" class="navlink ${
               page === 'app' ? 'active' : ''
-            }" href="${rel('app.html')}" style="display:none;">
-              Minha área
-            </a>
+            }" href="${rel('app.html')}">Minha área</a>
 
+            <!-- Admin começa oculto, só aparece se validar admin -->
             <a id="nav-admin" class="navlink ${
               page === 'admin' ? 'active' : ''
-            }" href="${rel('admin.html')}" style="display:none;">
-              Admin
-            </a>
+            }" href="${rel('admin.html')}" style="display:none;">Admin</a>
+
+            <!-- Esse link vira "Sair" quando logado -->
+            <a id="nav-auth" class="navlink ${
+              page === 'login' ? 'active' : ''
+            }" href="${rel('login.html')}">Entrar</a>
           </nav>
 
           <div class="right">
-            <span id="user-pill" class="badge" style="display:none;">
+            <span id="user-pill" class="badge" style="display:none;" title="">
               <i class="bx bx-user"></i> <span id="user-name"></span>
             </span>
 
@@ -92,7 +71,7 @@ function renderHeaderFooter() {
               <i class="bx bx-log-in"></i> Entrar
             </a>
 
-            <button id="logout-btn" class="btn ghost" style="display:none;">
+            <button id="logout-btn" class="btn ghost" type="button" style="display:none;">
               <i class="bx bx-log-out"></i> Sair
             </button>
           </div>
@@ -101,50 +80,7 @@ function renderHeaderFooter() {
     `;
   }
 
-  // SIDEBAR (só aparece se existir #site-sidebar na página)
-  if (sidebarHost) {
-    document.body.classList.add('has-sidebar');
-
-    sidebarHost.innerHTML = `
-      <aside class="sidebar" id="sidebar" aria-label="Menu lateral">
-        <div class="sidebar-top">
-          <div class="sidebar-title">Menu</div>
-          <button class="btn icon ghost sidebar-collapse" id="sidebar-collapse" type="button" aria-label="Recolher menu lateral">
-            <i class="bx bx-chevron-left"></i>
-          </button>
-        </div>
-
-        <nav class="sidebar-nav">
-          <a class="sidelink" id="side-app" href="${rel('app.html')}">
-            <i class="bx bx-grid-alt"></i>
-            <span>Minha área</span>
-          </a>
-
-          <a class="sidelink" id="side-admin" href="${rel('admin.html')}">
-            <i class="bx bx-cog"></i>
-            <span>Admin</span>
-          </a>
-
-          <div class="sidebar-sep"></div>
-
-          <a class="sidelink" id="side-home" href="${rel('index.html')}">
-            <i class="bx bx-home"></i>
-            <span>Início</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-footer">
-          <button id="side-logout" class="btn ghost w-100" type="button">
-            <i class="bx bx-log-out"></i> Sair
-          </button>
-        </div>
-      </aside>
-
-      <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
-    `;
-  }
-
-  // FOOTER
+  const footerHost = document.getElementById('site-footer');
   if (footerHost) {
     footerHost.innerHTML = `
       <footer class="site-footer">
@@ -152,13 +88,8 @@ function renderHeaderFooter() {
           <div>© ${new Date().getFullYear()} AVA • Protótipo</div>
           <div class="footer-links">
             <a href="${rel('index.html')}">Home</a>
-            <a id="foot-login" href="${rel('login.html')}">Login</a>
-            <a id="foot-app" href="${rel(
-              'app.html'
-            )}" style="display:none;">Minha área</a>
-            <a id="foot-admin" href="${rel(
-              'admin.html'
-            )}" style="display:none;">Admin</a>
+            <a id="footer-auth" href="${rel('login.html')}">Login</a>
+            <a href="${rel('app.html')}">Minha área</a>
           </div>
         </div>
       </footer>
@@ -166,248 +97,144 @@ function renderHeaderFooter() {
   }
 }
 
-function setActiveLinks() {
-  const page = getActivePage();
-  const byId = (id) => document.getElementById(id);
-
-  // Top nav
-  byId('nav-home')?.classList.toggle('active', page === 'home');
-  byId('nav-app')?.classList.toggle('active', page === 'app');
-  byId('nav-admin')?.classList.toggle('active', page === 'admin');
-
-  // Side nav
-  byId('side-app')?.classList.toggle('active', page === 'app');
-  byId('side-admin')?.classList.toggle('active', page === 'admin');
-  byId('side-home')?.classList.toggle('active', page === 'home');
-}
-
-function setupSidebarToggles() {
-  const sidebar = document.getElementById('sidebar');
-  const collapseBtn = document.getElementById('sidebar-collapse');
-  const toggleBtn = document.getElementById('sidebar-toggle');
-  const backdrop = document.getElementById('sidebar-backdrop');
-
-  if (!sidebar) return;
-
-  const setCollapsed = (collapsed) => {
-    document.body.classList.toggle('sidebar-collapsed', collapsed);
-    localStorage.setItem('ava_sidebar_collapsed', collapsed ? '1' : '0');
-  };
-
-  const setMobileOpen = (open) => {
-    document.body.classList.toggle('sidebar-open', open);
-  };
-
-  // restaura estado (desktop)
-  const saved = localStorage.getItem('ava_sidebar_collapsed');
-  if (saved === '1') setCollapsed(true);
-
-  collapseBtn?.addEventListener('click', () => {
-    setCollapsed(!document.body.classList.contains('sidebar-collapsed'));
-  });
-
-  toggleBtn?.addEventListener('click', () => {
-    // mobile: abre/fecha
-    setMobileOpen(!document.body.classList.contains('sidebar-open'));
-  });
-
-  backdrop?.addEventListener('click', () => setMobileOpen(false));
-
-  // fechando ao navegar no mobile
-  sidebar.querySelectorAll('a').forEach((a) => {
-    a.addEventListener('click', () => setMobileOpen(false));
-  });
-}
-
-async function fetchProfileRole(supabase, uid) {
-  // tenta ler role/nome na tabela profiles
+async function fetchMyProfile(uid) {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, name, role')
+      .select('name, role')
       .eq('id', uid)
       .maybeSingle();
 
-    if (error) throw error;
-    return data || null;
+    if (error) return { profile: null, error: error.message };
+    return { profile: data || null, error: null };
   } catch (e) {
-    // Se RLS bloquear, isso vai falhar — e aí tratamos como não-admin.
-    console.warn(
-      '[layout] Não foi possível ler profiles (RLS?)',
-      e?.message || e
-    );
-    return null;
+    return { profile: null, error: e?.message || String(e) };
   }
 }
 
-async function applyAuthUI() {
-  const supabase = await getSupabaseClient();
+async function doLogout() {
+  try {
+    await supabase.auth.signOut();
+  } catch (_) {
+    // ignora
+  }
+  window.location.assign(rel('index.html'));
+}
 
+async function syncAuthUI() {
   const authLink = document.getElementById('auth-link');
   const logoutBtn = document.getElementById('logout-btn');
+
   const userPill = document.getElementById('user-pill');
   const userNameEl = document.getElementById('user-name');
 
-  const navApp = document.getElementById('nav-app');
+  const navAuth = document.getElementById('nav-auth');
   const navAdmin = document.getElementById('nav-admin');
+  const footerAuth = document.getElementById('footer-auth');
 
-  const footLogin = document.getElementById('foot-login');
-  const footApp = document.getElementById('foot-app');
-  const footAdmin = document.getElementById('foot-admin');
+  // 1) sessão (segura)
+  const { session } = await getSessionSafe();
+  const isAuthed = !!session;
 
-  const sideApp = document.getElementById('side-app');
-  const sideAdmin = document.getElementById('side-admin');
-  const sideLogout = document.getElementById('side-logout');
+  // classe útil pro CSS se você quiser no futuro
+  document.body.classList.toggle('is-authed', isAuthed);
 
-  // Fallback: se supabase nem carregar, mantém UI pública.
-  if (!supabase) {
-    navApp && (navApp.style.display = 'none');
-    navAdmin && (navAdmin.style.display = 'none');
-    footApp && (footApp.style.display = 'none');
-    footAdmin && (footAdmin.style.display = 'none');
-    if (userPill) userPill.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-    if (authLink) {
-      authLink.href = rel('login.html');
-      authLink.innerHTML = `<i class="bx bx-log-in"></i> Entrar`;
-      authLink.style.display = 'inline-flex';
-    }
-    sideAdmin && (sideAdmin.style.display = 'none');
-    sideLogout && (sideLogout.style.display = 'none');
+  // Se página exige login e não está logado, manda pro login
+  if (!isAuthed && needsAuth()) {
+    window.location.assign(rel('login.html'));
     return;
   }
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.warn('[layout] Erro getSession:', error.message);
-    return;
-  }
-
-  const session = data?.session;
-  const user = session?.user;
-
-  if (!session) {
-    // DESLOGADO
-    navApp && (navApp.style.display = 'none');
-    navAdmin && (navAdmin.style.display = 'none');
-    footApp && (footApp.style.display = 'none');
-    footAdmin && (footAdmin.style.display = 'none');
-    footLogin && (footLogin.style.display = 'inline');
-
+  // 2) estado DESLOGADO
+  if (!isAuthed) {
     if (userPill) userPill.style.display = 'none';
-
+    if (authLink) authLink.style.display = 'inline-flex';
     if (logoutBtn) logoutBtn.style.display = 'none';
-    if (authLink) {
-      authLink.href = rel('login.html');
-      authLink.innerHTML = `<i class="bx bx-log-in"></i> Entrar`;
-      authLink.style.display = 'inline-flex';
+
+    if (navAuth) {
+      navAuth.textContent = 'Entrar';
+      navAuth.href = rel('login.html');
+      navAuth.onclick = null;
     }
 
-    // sidebar (se existir): some tudo que é “privado”
-    sideApp && (sideApp.style.display = 'none');
-    sideAdmin && (sideAdmin.style.display = 'none');
-    sideLogout && (sideLogout.style.display = 'none');
+    if (footerAuth) {
+      footerAuth.textContent = 'Login';
+      footerAuth.href = rel('login.html');
+      footerAuth.onclick = null;
+    }
 
+    // Admin nunca aparece deslogado
+    if (navAdmin) navAdmin.style.display = 'none';
     return;
   }
 
-  // LOGADO
-  const uid = user.id;
-  const email = user.email || '';
+  // 3) estado LOGADO
+  const email = session.user?.email || '';
+  let displayName = getUserDisplayName(session) || email;
 
-  // busca profile (role + nome)
-  const profile = await fetchProfileRole(supabase, uid);
-  const role = (profile?.role || '').toLowerCase();
-  const isAdmin = role === 'admin';
+  // tenta pegar nome/role do profiles (se RLS permitir)
+  const { profile } = await fetchMyProfile(session.user.id);
 
-  const displayName =
-    profile?.full_name ||
-    profile?.name ||
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    email ||
-    'Conta';
+  const profileName =
+    profile?.name && String(profile.name).trim()
+      ? String(profile.name).trim()
+      : '';
+  if (profileName) displayName = profileName;
 
-  // Top nav
-  navApp && (navApp.style.display = 'inline-flex');
-  navAdmin && (navAdmin.style.display = isAdmin ? 'inline-flex' : 'none');
-
-  // Footer
-  footLogin && (footLogin.style.display = 'none');
-  footApp && (footApp.style.display = 'inline');
-  footAdmin && (footAdmin.style.display = isAdmin ? 'inline' : 'none');
-
-  // user pill
-  if (userPill && userNameEl) {
+  if (userPill) {
     userPill.style.display = 'inline-flex';
-    userNameEl.textContent = displayName;
-    userPill.title = esc(email);
+    userPill.title = email || displayName || '';
   }
+  if (userNameEl) userNameEl.textContent = displayName;
 
-  // Botões Entrar/Sair
+  // botão principal
   if (authLink) authLink.style.display = 'none';
   if (logoutBtn) logoutBtn.style.display = 'inline-flex';
 
-  // Sidebar
-  if (sideApp) sideApp.style.display = 'flex';
-  if (sideAdmin) sideAdmin.style.display = isAdmin ? 'flex' : 'none';
-  if (sideLogout) sideLogout.style.display = 'inline-flex';
-
-  const doLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      window.location.assign(rel('index.html'));
-    }
-  };
-
-  logoutBtn && (logoutBtn.onclick = doLogout);
-  sideLogout && sideLogout.addEventListener('click', doLogout);
-
-  // Se estiver em /admin e NÃO for admin: manda pro app
-  if (getActivePage() === 'admin' && !isAdmin) {
-    window.location.replace(rel('app.html'));
-    return;
+  // menu horizontal vira "Sair"
+  if (navAuth) {
+    navAuth.textContent = 'Sair';
+    navAuth.href = '#';
+    navAuth.onclick = async (e) => {
+      e.preventDefault();
+      await doLogout();
+    };
   }
+
+  // rodapé vira "Sair"
+  if (footerAuth) {
+    footerAuth.textContent = 'Sair';
+    footerAuth.href = '#';
+    footerAuth.onclick = async (e) => {
+      e.preventDefault();
+      await doLogout();
+    };
+  }
+
+  // botão sair (direita)
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      await doLogout();
+    };
+  }
+
+  // Admin: só mostra se confirmar role=admin (se não conseguir ler, fica oculto)
+  const role = (profile?.role ?? '').toString().toLowerCase();
+  const isAdmin = role === 'admin';
+  if (navAdmin) navAdmin.style.display = isAdmin ? '' : 'none';
 }
 
-async function applyGuards() {
-  const authMode = document.body.dataset.auth; // "required" se quiser proteger
-  if (authMode !== 'required') return;
-
-  const supabase = await getSupabaseClient();
-  if (!supabase) {
-    // se não dá pra ler supabase, manda pro login para evitar página “quebrada”
-    window.location.replace(rel('login.html'));
-    return;
-  }
-
-  const { data } = await supabase.auth.getSession();
-  if (!data?.session) {
-    window.location.replace(rel('login.html'));
-  }
-}
-
-async function boot() {
-  renderHeaderFooter();
-  setActiveLinks();
-  setupSidebarToggles();
-  await applyAuthUI();
-  await applyGuards();
-
-  const supabase = await getSupabaseClient();
-  if (supabase) {
-    supabase.auth.onAuthStateChange((event) => {
-      // Evita loop: INITIAL_SESSION dispara no carregamento.
-      if (
-        event === 'SIGNED_IN' ||
-        event === 'SIGNED_OUT' ||
-        event === 'USER_UPDATED'
-      ) {
-        window.location.reload();
-      }
+function watchAuthChanges() {
+  try {
+    supabase.auth.onAuthStateChange(() => {
+      syncAuthUI();
     });
+  } catch (_) {
+    // se por algum motivo falhar, não derruba layout
   }
 }
 
-boot();
+// Boot
+renderHeaderFooter();
+syncAuthUI();
+watchAuthChanges();
