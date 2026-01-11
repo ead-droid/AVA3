@@ -19,31 +19,98 @@ async function initChrome() {
     inject('site-sidebar', doc, 'sidebar');
     inject('site-footer', doc, 'footer');
 
-    // Estado inicial
-    document.body.classList.add('has-sidebar');
+    // Restaura estado do menu (fechado/aberto)
     restoreState();
 
-    // Inicia verificação de login
+    // Inicia verificação de permissões
     checkAuth();
   } catch (err) {
     console.error(err);
   }
 }
 
-// === TOGGLE E RESTAURAÇÃO ===
+// === VERIFICAÇÃO DE LOGIN E PERMISSÃO (ADMIN) ===
+async function checkAuth() {
+  try {
+    // 1. Pega a sessão atual
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const pill = document.getElementById('user-pill');
+    const actions = document.getElementById('auth-actions');
+    const nameEl = document.getElementById('user-name');
+    const logoutBtn = document.getElementById('side-logout');
+
+    // Links que devem ser protegidos
+    const adminLink = document.getElementById('link-admin');
+    const adminGroup = document.getElementById('sidebar-admin-group');
+
+    if (session) {
+      // --- USUÁRIO LOGADO ---
+
+      // A. Ajusta visual (Esconde botão entrar, mostra perfil)
+      if (pill) pill.style.display = 'flex';
+      if (actions) actions.style.display = 'none';
+      if (logoutBtn) {
+        logoutBtn.style.display = 'flex';
+        logoutBtn.onclick = async () => {
+          await supabase.auth.signOut();
+          goTo('login.html');
+        };
+      }
+
+      // B. Define o Nome (Metadados ou Email)
+      const meta = session.user.user_metadata || {};
+      // Tenta 'full_name', 'name', ou parte do email
+      const displayName =
+        meta.full_name || meta.name || session.user.email.split('@')[0];
+      if (nameEl) nameEl.textContent = displayName;
+
+      // C. VERIFICA SE É ADMIN (Consulta no Banco)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      // Se o role for 'admin', mostra os links
+      if (profile && profile.role === 'admin') {
+        if (adminLink) adminLink.style.display = 'block';
+        if (adminGroup) adminGroup.style.display = 'block';
+      } else {
+        // Garante que fiquem ocultos se não for admin
+        if (adminLink) adminLink.style.display = 'none';
+        if (adminGroup) adminGroup.style.display = 'none';
+      }
+    } else {
+      // --- VISITANTE ---
+      if (pill) pill.style.display = 'none';
+      if (actions) actions.style.display = 'block'; // Botão Entrar visível
+      if (adminLink) adminLink.style.display = 'none';
+      if (adminGroup) adminGroup.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('Erro ao verificar auth:', e);
+  }
+}
+
+// === LÓGICA DE ABRIR/FECHAR MENU ===
 document.addEventListener('click', (e) => {
   if (
     e.target.closest('#sidebar-toggle') ||
     e.target.closest('#sidebar-overlay')
   ) {
     const isMobile = window.innerWidth <= 900;
+    const body = document.body;
+
     if (isMobile) {
-      document.body.classList.toggle('sidebar-open');
+      body.classList.toggle('sidebar-open');
     } else {
-      document.body.classList.toggle('sidebar-collapsed');
+      body.classList.toggle('sidebar-collapsed');
       localStorage.setItem(
         'sidebar_collapsed',
-        document.body.classList.contains('sidebar-collapsed')
+        body.classList.contains('sidebar-collapsed')
       );
     }
   }
@@ -52,55 +119,8 @@ document.addEventListener('click', (e) => {
 function restoreState() {
   if (window.innerWidth > 900) {
     const collapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+    document.body.classList.add('has-sidebar');
     if (collapsed) document.body.classList.add('sidebar-collapsed');
-  }
-}
-
-// === AUTH (AQUI ESTÁ A CORREÇÃO DO NOME) ===
-async function checkAuth() {
-  try {
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session;
-
-    const pill = document.getElementById('user-pill');
-    const actions = document.getElementById('auth-actions');
-    const nameEl = document.getElementById('user-name');
-    const logoutBtn = document.getElementById('side-logout');
-    const adminLink = document.getElementById('link-admin');
-    const adminGroup = document.getElementById('sidebar-admin-group');
-
-    if (session) {
-      // 1. Mostrar interface de logado
-      if (pill) pill.style.display = 'flex';
-      if (actions) actions.style.display = 'none';
-      if (logoutBtn) logoutBtn.style.display = 'flex';
-
-      // 2. Definir o Nome (Tenta metadados, senão email)
-      const fullName = session.user.user_metadata?.full_name;
-      const emailName = session.user.email.split('@')[0];
-      const displayName = fullName || emailName || 'Usuário';
-
-      // Força a atualização do texto
-      if (nameEl) nameEl.textContent = displayName;
-
-      // 3. Ações de Admin (Exemplo)
-      if (adminLink) adminLink.style.display = 'block';
-      if (adminGroup) adminGroup.style.display = 'block';
-
-      // 4. Logout
-      if (logoutBtn) {
-        logoutBtn.onclick = async () => {
-          await supabase.auth.signOut();
-          goTo('login.html');
-        };
-      }
-    } else {
-      // Visitante
-      if (pill) pill.style.display = 'none';
-      if (actions) actions.style.display = 'block';
-    }
-  } catch (e) {
-    console.warn('Auth check failed:', e);
   }
 }
 
