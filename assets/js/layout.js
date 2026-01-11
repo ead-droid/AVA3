@@ -18,31 +18,26 @@ function rel(path) {
   return new URL(`./${path}`, window.location.href).toString();
 }
 
-function getActivePage() {
+function page() {
   return document.body?.dataset?.page || '';
 }
 
-function needsAuth() {
+function isAuthRequiredPage() {
   return document.body?.dataset?.auth === 'required';
 }
 
-/**
- * Checa se usuário é admin.
- * Ordem:
- * 1) tenta RPC public.is_admin(uid) (ideal, pode funcionar mesmo com RLS travando SELECT)
- * 2) fallback: lê profiles.role (se policy permitir)
- */
+/** Tenta validar admin por RPC e, se não der, tenta por profiles.role */
 async function checkIsAdmin(uid) {
-  // 1) RPC (tenta nomes comuns de parâmetro)
-  const rpcTries = [{ uid }, { user_id: uid }, { p_uid: uid }];
-  for (const args of rpcTries) {
+  // 1) RPC (se existir)
+  const tries = [{ uid }, { user_id: uid }, { p_uid: uid }];
+  for (const args of tries) {
     try {
       const { data, error } = await supabase.rpc('is_admin', args);
       if (!error) return !!data;
     } catch (_) {}
   }
 
-  // 2) Fallback: SELECT em profiles
+  // 2) fallback: profiles.role (precisa policy select own)
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -51,20 +46,42 @@ async function checkIsAdmin(uid) {
       .maybeSingle();
 
     if (error) return false;
-    const role = (data?.role ?? '').toString().toLowerCase();
-    return role === 'admin';
+    return String(data?.role || '').toLowerCase() === 'admin';
   } catch (_) {
     return false;
   }
 }
 
+function ensureSidebarHosts() {
+  // Só cria sidebar automaticamente em páginas privadas (ex.: app.html/admin.html)
+  if (!isAuthRequiredPage()) return;
+
+  let sidebar = document.getElementById('site-sidebar');
+  if (!sidebar) {
+    sidebar = document.createElement('aside');
+    sidebar.id = 'site-sidebar';
+    document.body.insertBefore(sidebar, document.querySelector('main') || null);
+  }
+  sidebar.classList.add('site-sidebar');
+
+  let overlay = document.getElementById('sidebar-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.classList.add('sidebar-overlay');
+}
+
 function renderHeaderFooter() {
   ensureBoxicons();
+  ensureSidebarHosts();
 
-  const page = getActivePage();
+  const p = page();
 
   const headerHost = document.getElementById('site-header');
   const footerHost = document.getElementById('site-footer');
+  const sidebarHost = document.getElementById('site-sidebar');
 
   if (headerHost) {
     headerHost.innerHTML = `
@@ -76,22 +93,17 @@ function renderHeaderFooter() {
           </a>
 
           <nav class="nav" aria-label="Menu principal">
-            <a class="navlink ${page === 'home' ? 'active' : ''}" href="${rel(
+            <a class="navlink ${p === 'home' ? 'active' : ''}" href="${rel(
       'index.html'
     )}">Início</a>
-            <a class="navlink ${page === 'app' ? 'active' : ''}" href="${rel(
+            <a class="navlink ${p === 'app' ? 'active' : ''}" href="${rel(
       'app.html'
     )}">Minha área</a>
 
-            <!-- Admin: começa oculto, só aparece se confirmar admin -->
+            <!-- Admin começa oculto: só aparece se confirmar admin -->
             <a id="nav-admin" class="navlink ${
-              page === 'admin' ? 'active' : ''
+              p === 'admin' ? 'active' : ''
             }" href="${rel('admin.html')}" style="display:none;">Admin</a>
-
-            <!-- Auth: vira Sair quando logado -->
-            <a id="nav-auth" class="navlink ${
-              page === 'login' ? 'active' : ''
-            }" href="${rel('login.html')}">Entrar</a>
           </nav>
 
           <div class="right">
@@ -103,7 +115,7 @@ function renderHeaderFooter() {
               <i class="bx bx-log-in"></i> Entrar
             </a>
 
-            <button id="logout-btn" class="btn ghost" style="display:none;" type="button">
+            <button id="logout-btn" class="btn ghost" type="button" style="display:none;">
               <i class="bx bx-log-out"></i> Sair
             </button>
           </div>
@@ -126,6 +138,60 @@ function renderHeaderFooter() {
       </footer>
     `;
   }
+
+  // Sidebar (só em páginas com data-auth="required")
+  if (sidebarHost) {
+    sidebarHost.innerHTML = `
+      <div class="sb-head">
+        <div class="sb-title">
+          <span class="sb-dot"></span>
+          <div>
+            <div class="sb-ttl">Menu</div>
+            <div class="sb-sub">Navegação</div>
+          </div>
+        </div>
+
+        <button class="sb-collapse" id="sb-collapse" type="button" title="Recolher/Expandir">
+          &laquo;
+        </button>
+      </div>
+
+      <nav class="sb-nav" aria-label="Menu lateral">
+        <a class="sb-item ${p === 'app' ? 'active' : ''}" href="${rel(
+      'app.html'
+    )}">
+          <i class="bx bx-grid-alt"></i>
+          <span class="sb-label">Minha área</span>
+        </a>
+
+        <a class="sb-item ${p === 'home' ? 'active' : ''}" href="${rel(
+      'index.html'
+    )}">
+          <i class="bx bx-home"></i>
+          <span class="sb-label">Início</span>
+        </a>
+
+        <a id="sb-admin" class="sb-item ${
+          p === 'admin' ? 'active' : ''
+        }" href="${rel('admin.html')}" style="display:none;">
+          <i class="bx bx-lock-alt"></i>
+          <span class="sb-label">Admin</span>
+        </a>
+      </nav>
+    `;
+
+    const btn = document.getElementById('sb-collapse');
+    if (btn) {
+      btn.onclick = () => {
+        document.body.classList.toggle('sidebar-collapsed');
+      };
+    }
+
+    const overlay = document.getElementById('sidebar-overlay');
+    if (overlay) {
+      overlay.onclick = () => document.body.classList.remove('sidebar-open');
+    }
+  }
 }
 
 async function doLogout() {
@@ -137,46 +203,42 @@ async function doLogout() {
 
 async function syncAuthUI() {
   const navAdmin = document.getElementById('nav-admin');
-  const navAuth = document.getElementById('nav-auth');
+  const sbAdmin = document.getElementById('sb-admin');
 
   const authLink = document.getElementById('auth-link');
   const logoutBtn = document.getElementById('logout-btn');
 
   const userPill = document.getElementById('user-pill');
-  const userName = document.getElementById('user-name');
+  const userNameEl = document.getElementById('user-name');
 
   const footerAuth = document.getElementById('footer-auth');
 
   const { session } = await getSessionSafe();
-  const isAuthed = !!session;
+  const authed = !!session;
 
-  document.body.classList.toggle('is-authed', isAuthed);
+  document.body.classList.toggle('is-authed', authed);
 
-  // se página exige login
-  if (!isAuthed && needsAuth()) {
+  // Sidebar só faz sentido quando autenticado
+  document.body.classList.toggle('has-sidebar', authed && isAuthRequiredPage());
+
+  if (!authed && isAuthRequiredPage()) {
     window.location.assign(rel('login.html'));
     return;
   }
 
-  // DESLOGADO
-  if (!isAuthed) {
+  if (!authed) {
     if (userPill) userPill.style.display = 'none';
     if (authLink) authLink.style.display = 'inline-flex';
     if (logoutBtn) logoutBtn.style.display = 'none';
-
-    if (navAdmin) navAdmin.style.display = 'none';
-
-    if (navAuth) {
-      navAuth.textContent = 'Entrar';
-      navAuth.href = rel('login.html');
-      navAuth.onclick = null;
-    }
 
     if (footerAuth) {
       footerAuth.textContent = 'Login';
       footerAuth.href = rel('login.html');
       footerAuth.onclick = null;
     }
+
+    if (navAdmin) navAdmin.style.display = 'none';
+    if (sbAdmin) sbAdmin.style.display = 'none';
 
     return;
   }
@@ -186,26 +248,17 @@ async function syncAuthUI() {
   const email = session.user?.email || '';
   const uid = session.user?.id;
 
-  if (userPill && userName) {
+  if (userPill && userNameEl) {
     userPill.style.display = 'inline-flex';
     userPill.title = email || displayName;
-    userName.textContent = displayName;
+    userNameEl.textContent = displayName || email;
   }
 
+  // Mantém apenas "Sair" da DIREITA
   if (authLink) authLink.style.display = 'none';
   if (logoutBtn) {
     logoutBtn.style.display = 'inline-flex';
     logoutBtn.onclick = doLogout;
-  }
-
-  // navAuth vira "Sair"
-  if (navAuth) {
-    navAuth.textContent = 'Sair';
-    navAuth.href = '#';
-    navAuth.onclick = async (e) => {
-      e.preventDefault();
-      await doLogout();
-    };
   }
 
   if (footerAuth) {
@@ -217,25 +270,23 @@ async function syncAuthUI() {
     };
   }
 
-  // Admin: só se confirmar admin
+  // Admin: só aparece se confirmar admin
   let isAdmin = false;
-  if (uid) {
-    isAdmin = await checkIsAdmin(uid);
-  }
+  if (uid) isAdmin = await checkIsAdmin(uid);
+
   document.body.classList.toggle('is-admin', isAdmin);
 
   if (navAdmin) navAdmin.style.display = isAdmin ? '' : 'none';
+  if (sbAdmin) sbAdmin.style.display = isAdmin ? '' : 'none';
 }
 
 function watchAuthChanges() {
   try {
-    supabase.auth.onAuthStateChange(() => {
-      syncAuthUI();
-    });
+    supabase.auth.onAuthStateChange(() => syncAuthUI());
   } catch (_) {}
 }
 
-// Boot
+// BOOT
 renderHeaderFooter();
 syncAuthUI();
 watchAuthChanges();
