@@ -1,53 +1,111 @@
-import { getSessionSafe, getUserDisplayName } from './supabaseClient.js';
+import { supabase } from './supabaseClient.js';
+import { goTo } from './router.js';
 
-const appRoot = document.getElementById('app-root');
-const logsEl = document.getElementById('logs');
+const LAYOUT_URL = './assets/chrome.html';
 
-function log(msg) {
-  if (logsEl) {
-    logsEl.style.display = 'block';
-    logsEl.textContent += msg + '\n';
+async function initChrome() {
+  ensureSlot('site-header');
+  ensureSlot('site-sidebar');
+  ensureSlot('site-footer');
+
+  try {
+    const res = await fetch(LAYOUT_URL);
+    if (!res.ok) throw new Error('Menu error');
+    const text = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    inject('site-header', doc, 'header');
+    inject('site-sidebar', doc, 'sidebar');
+    inject('site-footer', doc, 'footer');
+
+    document.body.classList.add('has-sidebar');
+    restoreState();
+
+    await checkAuth(); // Checa permissão
+
+    supabase.auth.onAuthStateChange(() => checkAuth());
+  } catch (err) {
+    console.error(err);
   }
-  // Console log para debug
-  console.log(msg);
 }
 
-async function main() {
-  log('[APP] Carregando sessão...');
+async function checkAuth() {
+  try {
+    // 1. Pega elementos com segurança (evita o erro TypeError)
+    const nameEl = document.getElementById('user-name');
+    const adminLink = document.getElementById('link-admin'); // Link do topo
+    const adminGroup = document.getElementById('sidebar-admin-group'); // Link lateral
 
-  // Verifica se o elemento existe antes de tentar escrever nele
-  if (appRoot) {
-    appRoot.innerHTML = '<div class="muted">Verificando autenticação...</div>';
+    // 2. Esconde Admin por padrão
+    if (adminLink) adminLink.style.display = 'none';
+    if (adminGroup) adminGroup.style.display = 'none';
+
+    const {
+      data: { session },
+      error: sessErr,
+    } = await supabase.auth.getSession();
+    if (sessErr || !session) return;
+
+    // 3. Atualiza nome na tela (COM PROTEÇÃO)
+    if (nameEl) nameEl.textContent = session.user.email;
+
+    // 4. Busca Role no Banco
+    const { data: rows, error } = await supabase
+      .from('profiles')
+      .select('role, name')
+      .eq('id', session.user.id)
+      .limit(1);
+
+    const profile = rows && rows.length > 0 ? rows[0] : null;
+
+    if (profile) {
+      // Atualiza nome se tiver
+      if (nameEl && profile.name) nameEl.textContent = profile.name;
+
+      // VERIFICAÇÃO DE ADMIN
+      const role = String(profile.role || '')
+        .trim()
+        .toLowerCase();
+      console.log('Cargo do usuário:', role);
+
+      if (role === 'admin') {
+        console.log('LIGANDO MODO ADMIN');
+        if (adminLink) adminLink.style.display = 'block'; // Mostra botão
+        if (adminGroup) adminGroup.style.display = 'block'; // Mostra menu lateral
+
+        // Ativa cliques
+        if (adminLink) wireLink(adminLink);
+      }
+    }
+  } catch (e) {
+    console.error('Erro no Auth:', e);
   }
-
-  const { session, error } = await getSessionSafe();
-
-  if (error) {
-    if (appRoot)
-      appRoot.innerHTML = `<div style="color:red">❌ Erro: ${error}</div>`;
-    log('[ERR] ' + error);
-    return;
-  }
-
-  if (!session) {
-    // Se não tem sessão, o chrome.js vai cuidar dos botões de login
-    if (appRoot) appRoot.innerHTML = `<div>⚠️ Você não está logado.</div>`;
-    log('[WARN] Sem sessão');
-    return;
-  }
-
-  const name = getUserDisplayName(session);
-
-  // Mostra mensagem de sucesso na área principal
-  if (appRoot) {
-    appRoot.innerHTML = `
-        <div style="padding: 20px; background: #e0e7ff; border-radius: 8px; color: #333;">
-            <h3>✅ Bem-vindo(a), ${name}!</h3>
-            <p>Seus cursos serão listados aqui.</p>
-        </div>
-      `;
-  }
-  log('[OK] Sessão ativa: ' + name);
 }
 
-main();
+function wireLink(el) {
+  el.addEventListener('click', (e) => {
+    // Garante navegação
+    window.location.href = el.href;
+  });
+}
+
+// Funções auxiliares de layout
+function ensureSlot(id) {
+  if (!document.getElementById(id)) {
+    const div = document.createElement('div');
+    div.id = id;
+    if (id === 'site-footer') document.body.appendChild(div);
+    else document.body.insertBefore(div, document.body.firstChild);
+  }
+}
+function inject(id, doc, slot) {
+  const el = document.getElementById(id);
+  const content = doc.querySelector(`[data-slot="${slot}"]`);
+  if (el && content) el.innerHTML = content.innerHTML;
+}
+function restoreState() {
+  /* Lógica do menu lateral... */
+}
+
+initChrome();

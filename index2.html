@@ -1,26 +1,85 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Teste Menu</title>
-    <link rel="stylesheet" href="./assets/css/site.css" />
-    <link rel="stylesheet" href="./assets/css/chrome.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVA3 - Dashboard</title>
+
     <link
-      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+    />
+
+    <style>
+      body {
+        background-color: #f8f9fa;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Ajuste para o conteúdo não ficar escondido atrás do menu fixo */
+      main {
+        margin-top: 60px; /* Altura do Header */
+      }
+
+      @media (min-width: 992px) {
+        body.has-sidebar main {
+          margin-left: 250px; /* Largura do Sidebar */
+        }
+        body.sidebar-collapsed main {
+          margin-left: 0;
+        }
+        body.sidebar-collapsed .sidebar-content {
+          transform: translateX(-100%);
+        }
+      }
+
+      /* Sidebar Fixo */
+      [data-slot='sidebar'] {
+        position: fixed;
+        top: 60px;
+        bottom: 0;
+        left: 0;
+        width: 250px;
+        z-index: 1000;
+        transition: all 0.3s;
+      }
+      body.sidebar-collapsed [data-slot='sidebar'] {
+        transform: translateX(-100%);
+      }
+    </style>
   </head>
-  <body class="has-sidebar">
+  <body>
     <div id="site-header"></div>
     <div id="site-sidebar"></div>
 
-    <main class="container" style="padding: 40px">
-      <h1>Teste Final</h1>
-      <p>Se o menu apareceu, funcionou.</p>
+    <main class="p-4">
+      <div class="container-fluid">
+        <h1>Meus Cursos</h1>
+        <p class="lead">Bem-vindo ao seu painel de estudos.</p>
+
+        <div class="card mt-4 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Teste de Visual</h5>
+            <p class="card-text">
+              Se você está vendo este cartão branco com sombra e botões bonitos,
+              o Bootstrap funcionou!
+            </p>
+            <button class="btn btn-primary">Botão Exemplo</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <div id="site-footer"></div>
 
-    <script type="module" src="./assets/js/chrome.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module" src="./chrome.js"></script>
   </body>
 </html>
