@@ -1,51 +1,61 @@
 import { supabase } from './supabaseClient.js';
-// Se tiver import { goTo } ... mantenha, se não usar, pode remover.
 
+/**
+ * CONFIGURAÇÃO DE CAMINHOS
+ * Verifique se o chrome.html está na pasta assets. 
+ * Se estiver na mesma pasta que este JS, mude para './chrome.html'
+ */
 const LAYOUT_URL = './assets/chrome.html';
 
 async function initChrome() {
+  // 1. Cria os slots necessários no HTML da página antes de injetar
   ensureSlot('site-header');
   ensureSlot('site-sidebar');
   ensureSlot('site-footer');
 
   try {
-    // 1. Carrega o HTML do menu
+    // 2. Busca o layout compartilhado
     const res = await fetch(LAYOUT_URL);
-    if (!res.ok) throw new Error('Falha ao carregar menu');
+    if (!res.ok) throw new Error(`Não foi possível carregar o arquivo: ${LAYOUT_URL}`);
+    
     const text = await res.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
 
+    // 3. Injeta o conteúdo nos slots
     inject('site-header', doc, 'header');
     inject('site-sidebar', doc, 'sidebar');
     inject('site-footer', doc, 'footer');
 
+    // 4. Configura as interações de UI (Menu sanduíche)
     document.body.classList.add('has-sidebar');
-    restoreState();
+    setupSidebarToggle();
 
-    // 2. Tenta restaurar visualmente o estado ADMIN antes mesmo de checar no banco
-    // Isso evita que o menu "suma" enquanto carrega
-    applyCachedRole();
+    // 5. Autenticação e Níveis de Acesso
+    applyCachedRole(); // Mostra Admin instantaneamente se estiver no cache
+    await checkAuth(); // Valida a sessão real com o Supabase
 
-    // 3. Verificação real de auth (Banco de dados)
-    await checkAuth();
-
-    // Monitora mudanças (login/logout em outras abas)
+    // 6. Monitoramento em tempo real
     supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
-            localStorage.removeItem('ava3_role'); // Limpa cache ao sair
+            localStorage.removeItem('ava3_role');
             window.location.href = 'login.html';
-        } else {
+        } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
             checkAuth();
         }
     });
 
   } catch (err) {
-    console.error('Erro no Chrome:', err);
+    console.error('Erro ao inicializar interface (Chrome):', err);
+    // Fallback: se o fetch falhar, removemos travamentos visuais
+    const header = document.getElementById('site-header');
+    if (header) header.innerHTML = '<div style="padding:10px; color:red;">Erro ao carregar menu.</div>';
   }
 }
 
-// Aplica visualmente o que está salvo no navegador para não piscar
+/**
+ * Gerencia a visibilidade de elementos baseado no papel do usuário salvo no navegador
+ */
 function applyCachedRole() {
     const cachedRole = localStorage.getItem('ava3_role');
     const adminLink = document.getElementById('link-admin');
@@ -57,46 +67,42 @@ function applyCachedRole() {
     }
 }
 
+/**
+ * Validação principal de login e permissões
+ */
 async function checkAuth() {
   try {
     const nameEl = document.getElementById('user-name');
     const userPillContainer = document.getElementById('user-pill');
     const authActions = document.getElementById('auth-actions');
     const logoutBtn = document.getElementById('side-logout');
-    
-    // Elementos Admin
     const adminLink = document.getElementById('link-admin');
     const adminGroup = document.getElementById('sidebar-admin-group');
 
-    // 1. Verifica Sessão Local do Supabase
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      // Visitante
       if (userPillContainer) userPillContainer.style.display = 'none';
       if (authActions) authActions.style.display = 'block';
-      
-      // Esconde admin se não tiver sessão
       if (adminLink) adminLink.style.display = 'none';
       if (adminGroup) adminGroup.style.display = 'none';
       return;
     }
 
-    // --- USUÁRIO LOGADO ---
+    // Usuário Logado
     if (authActions) authActions.style.display = 'none';
     if (userPillContainer) userPillContainer.style.display = 'flex';
 
-    // Botão Sair
     if (logoutBtn) {
       logoutBtn.style.display = 'flex';
       logoutBtn.onclick = async () => {
-        localStorage.removeItem('ava3_role'); // Limpa cache
+        localStorage.removeItem('ava3_role');
         await supabase.auth.signOut();
         window.location.href = 'login.html';
       };
     }
 
-    // 2. Busca Perfil no Banco para confirmar Role
+    // Busca perfil para definir Role
     const { data: rows } = await supabase
       .from('profiles')
       .select('name, role')
@@ -104,19 +110,11 @@ async function checkAuth() {
       .limit(1);
 
     const profile = rows?.[0];
+    if (nameEl) nameEl.textContent = profile?.name || session.user.email;
 
-    // Atualiza nome na tela
-    const displayName = profile?.name || session.user.email;
-    if (nameEl) nameEl.textContent = displayName;
-
-    // --- LÓGICA DE ADMIN (CACHEADA) ---
-    const roleRaw = profile?.role;
-    const role = roleRaw ? String(roleRaw).toLowerCase().trim() : 'aluno';
-
-    // Salva no navegador para a próxima vez ser instantâneo
+    const role = profile?.role ? String(profile.role).toLowerCase().trim() : 'aluno';
     localStorage.setItem('ava3_role', role);
 
-    // Aplica visibilidade final baseada no banco
     if (role === 'admin') {
       if (adminLink) adminLink.style.display = 'flex';
       if (adminGroup) adminGroup.style.display = 'block';
@@ -126,28 +124,41 @@ async function checkAuth() {
     }
 
   } catch (e) {
-    console.error('Erro no checkAuth:', e);
+    console.error('Erro na verificação de autenticação:', e);
   }
 }
 
-// Funções Auxiliares
+/**
+ * FUNÇÕES AUXILIARES DE INJEÇÃO
+ */
 function ensureSlot(id) {
   if (!document.getElementById(id)) {
     const div = document.createElement('div');
     div.id = id;
-    if (id === 'site-footer') document.body.appendChild(div);
-    else document.body.insertBefore(div, document.body.firstChild);
+    if (id === 'site-footer') {
+        document.body.appendChild(div);
+    } else {
+        document.body.insertBefore(div, document.body.firstChild);
+    }
   }
 }
-function inject(id, doc, slot) {
-  const el = document.getElementById(id);
-  const content = doc.querySelector(`[data-slot="${slot}"]`);
-  if (el && content) el.innerHTML = content.innerHTML;
-}
-function restoreState() {
-  const btn = document.getElementById('sidebar-toggle');
-  if (btn)
-    btn.onclick = () => document.body.classList.toggle('sidebar-collapsed');
+
+function inject(id, doc, slotName) {
+  const container = document.getElementById(id);
+  const source = doc.querySelector(`[data-slot="${slotName}"]`);
+  if (container && source) {
+    container.innerHTML = source.innerHTML;
+  }
 }
 
+function setupSidebarToggle() {
+  const btn = document.getElementById('sidebar-toggle');
+  if (btn) {
+    btn.onclick = () => {
+      document.body.classList.toggle('sidebar-collapsed');
+    };
+  }
+}
+
+// Inicia o processo
 initChrome();
