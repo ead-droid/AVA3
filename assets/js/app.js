@@ -1,137 +1,117 @@
 import { supabase } from './supabaseClient.js';
 
-const LAYOUT_URL = './assets/chrome.html';
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    loadAvailableClasses(userId);
+});
 
-async function initChrome() {
-  ensureSlot('site-header');
-  ensureSlot('site-sidebar');
-  ensureSlot('site-footer');
+async function loadAvailableClasses(userId) {
+    const container = document.getElementById('classes-container');
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px;"><i class="bx bx-loader-alt bx-spin" style="font-size: 2rem; color: #0b57d0;"></i></div>';
 
-  try {
-    const res = await fetch(LAYOUT_URL);
-    if (!res.ok) throw new Error('Menu error');
-    const text = await res.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-
-    inject('site-header', doc, 'header');
-    inject('site-sidebar', doc, 'sidebar');
-    inject('site-footer', doc, 'footer');
-
-    document.body.classList.add('has-sidebar');
-    restoreState();
-
-    await checkAuth(); 
-    supabase.auth.onAuthStateChange(() => checkAuth());
-
-    loadMyCourses();
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function loadMyCourses() {
-    const container = document.getElementById('app-root');
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: enrollments, error } = await supabase
-        .from('class_enrollments')
+    const { data: classes, error } = await supabase
+        .from('classes')
         .select(`
             *,
-            classes (
-                id, name, code,
-                courses (title, description, image_url)
-            )
+            courses (title, description),
+            class_enrollments (user_id, status)
         `)
-        .eq('user_id', user.id)
-        .order('joined_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
     if (error) {
-        container.innerHTML = `<div class="alert alert-danger">Erro: ${error.message}</div>`;
+        console.error(error);
+        container.innerHTML = '<p style="text-align:center; color: red;">Erro ao carregar turmas.</p>';
         return;
     }
 
-    if (!enrollments || enrollments.length === 0) {
-        container.innerHTML = `<div class="text-center py-5 text-muted"><h4>Nenhum curso.</h4></div>`;
+    container.innerHTML = '';
+
+    if (!classes || classes.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color: #666; grid-column: 1/-1;">Nenhuma turma disponível no momento.</p>';
         return;
     }
 
-    container.innerHTML = '<div class="row g-4" id="courses-grid"></div>';
-    const grid = document.getElementById('courses-grid');
-
-    enrollments.forEach(enroll => {
-        const cls = enroll.classes;
-        const course = cls.courses;
-        const progress = enroll.progress_percent || 0;
+    classes.forEach(cls => {
+        const courseTitle = cls.courses?.title || 'Curso Geral';
         
-        let footerHtml = '';
-        if (enroll.status === 'active') {
-            // CORREÇÃO: Garante que o link use 'id'
-            footerHtml = `<a href="classroom.html?id=${cls.id}" class="btn btn-primary w-100">Acessar Aula</a>`;
-        } else {
-            footerHtml = `<button class="btn btn-secondary w-100" disabled>${enroll.status}</button>`;
+        let enrollmentStatus = null;
+        if (userId && cls.class_enrollments) {
+            const enrollment = cls.class_enrollments.find(e => e.user_id === userId);
+            if (enrollment) enrollmentStatus = enrollment.status;
         }
 
-        const col = document.createElement('div');
-        col.className = 'col-md-4';
-        col.innerHTML = `
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title fw-bold">${course.title}</h5>
-                    <p class="card-text text-muted small">${cls.name}</p>
-                    <div class="progress mb-3" style="height: 5px;">
-                        <div class="progress-bar" style="width: ${progress}%"></div>
-                    </div>
-                    ${footerHtml}
+        let btnHtml = '';
+        if (!userId) {
+            btnHtml = `<button onclick="window.location.href='login.html'" class="btn-enroll"><i class='bx bx-log-in'></i> Entrar para Inscrever-se</button>`;
+        } else if (enrollmentStatus === 'active') {
+            // LINK CORRIGIDO AQUI TAMBÉM
+            btnHtml = `<button onclick="window.location.href='classroom.html?id=${cls.id}'" class="btn-enroll" style="background-color: #10b981;"><i class='bx bx-play-circle'></i> Acessar Aula</button>`;
+        } else if (enrollmentStatus === 'pending') {
+            btnHtml = `<button disabled class="btn-enroll" style="background-color: #f59e0b; cursor: default;"><i class='bx bx-time'></i> Aguardando Aprovação</button>`;
+        } else {
+            btnHtml = `<button onclick="enrollInClass('${cls.id}', ${cls.requires_approval})" class="btn-enroll"><i class='bx bx-user-plus'></i> Matricular-se</button>`;
+        }
+
+        const startDate = cls.start_date ? new Date(cls.start_date).toLocaleDateString('pt-BR') : 'Imediato';
+
+        const html = `
+            <article class="course-card">
+                <div class="card-header-img">
+                    <i class='bx bx-book-reader'></i>
                 </div>
-            </div>
+                <div class="card-body">
+                    <div class="badge-course">${courseTitle}</div>
+                    <h3 class="card-title">${cls.name}</h3>
+                    
+                    <div class="card-meta">
+                        <div><i class='bx bx-calendar'></i> Início: ${startDate}</div>
+                        ${cls.max_students ? `<div><i class='bx bx-group'></i> Vagas limitadas</div>` : ''}
+                    </div>
+
+                    <div class="card-footer">
+                        ${btnHtml}
+                    </div>
+                </div>
+            </article>
         `;
-        grid.appendChild(col);
+        
+        container.insertAdjacentHTML('beforeend', html);
     });
 }
 
-// --- AUTH ---
-async function checkAuth() {
-  try {
+window.enrollInClass = async (classId, requiresApproval) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-        document.getElementById('auth-actions').style.display = 'block';
-        document.getElementById('user-pill').style.display = 'none';
+        window.location.href = 'login.html';
         return;
     }
-    
-    document.getElementById('auth-actions').style.display = 'none';
-    const userPill = document.getElementById('user-pill');
-    if(userPill) userPill.style.display = 'flex';
-    if(document.getElementById('user-name')) document.getElementById('user-name').textContent = session.user.email;
 
-    // Admin Check
-    const { data: rows } = await supabase.from('profiles').select('role').eq('id', session.user.id).limit(1);
-    if (rows && rows[0] && rows[0].role === 'admin') {
-        if(document.getElementById('link-admin')) document.getElementById('link-admin').style.display = 'block';
-        if(document.getElementById('sidebar-admin-group')) document.getElementById('sidebar-admin-group').style.display = 'block';
+    const status = requiresApproval ? 'pending' : 'active';
+    const btn = document.activeElement;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Processando...';
+    btn.disabled = true;
+
+    const { error } = await supabase
+        .from('class_enrollments')
+        .insert({
+            class_id: classId,
+            user_id: session.user.id,
+            status: status,
+            progress_percent: 0
+        });
+
+    if (error) {
+        alert("Erro: " + error.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    } else {
+        if (requiresApproval) {
+            alert("Solicitação enviada! Aguarde a aprovação.");
+            window.location.reload();
+        } else {
+            window.location.href = `classroom.html?id=${classId}`;
+        }
     }
-  } catch (e) { console.error(e); }
-}
-
-function ensureSlot(id) {
-  if (!document.getElementById(id)) {
-    const div = document.createElement('div');
-    div.id = id;
-    document.body.appendChild(div);
-  }
-}
-function inject(id, doc, slot) {
-  const el = document.getElementById(id);
-  const content = doc.querySelector(`[data-slot="${slot}"]`);
-  if (el && content) el.innerHTML = content.innerHTML;
-}
-function restoreState() {
-  const btn = document.getElementById('sidebar-toggle');
-  if (btn) btn.onclick = () => document.body.classList.toggle('sidebar-collapsed');
-}
-
-initChrome();
+};

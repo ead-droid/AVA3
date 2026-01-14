@@ -7,7 +7,8 @@
     
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="./assets/css/chrome.css">
-    <link rel="stylesheet" href="./assets/css/site.css"> </head>
+    <link rel="stylesheet" href="./assets/css/site.css">
+</head>
 <body class="has-sidebar">
 
     <div id="site-header"></div>
@@ -37,14 +38,12 @@
     <script type="module">
         import { supabase } from './assets/js/supabaseClient.js';
 
-        // Script inline simples para carregar cursos
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
 
             const container = document.getElementById('my-courses-list');
             
-            // Busca matrículas
             const { data: enrollments, error } = await supabase
                 .from('class_enrollments')
                 .select(`
@@ -68,14 +67,11 @@
                 return;
             }
 
-            // Renderiza Cards
             enrollments.forEach(enroll => {
                 const cls = enroll.classes;
-                // Calcula progresso (baseado no array completed)
                 const completed = enroll.grades?.completed?.length || 0;
-                // Nota: O total de aulas precisaria ser buscado, aqui vamos estimar ou usar o campo salvo se tiver
-                // Para simplificar visualmente:
-                const progressWidth = Math.min(100, completed * 5); // Exemplo visual
+                // Exemplo visual de progresso (pode ajustar a lógica se tiver o total)
+                const progressWidth = Math.min(100, completed * 5); 
 
                 const html = `
                     <article class="course-card">
@@ -97,7 +93,7 @@
                             </div>
 
                             <div class="card-footer">
-                                <a href="class-dashboard.html?id=${cls.id}" class="btn-enroll">
+                                <a href="classroom.html?id=${cls.id}" class="btn-enroll">
                                     Continuar Estudando
                                 </a>
                             </div>
