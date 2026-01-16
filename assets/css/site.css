@@ -36,6 +36,17 @@ body {
   border: 1px solid var(--border);
   box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
+
+/* No CSS da index.html */
+.btn-primary {
+    background-color: var(--brand) !important;
+    border-color: var(--brand) !important;
+}
+
+.btn-outline-secondary.disabled {
+    border-color: var(--line);
+    color: var(--text-muted);
+}
 .hero h1 { font-size: 2rem; font-weight: 800; color: #111; margin: 10px 0; }
 .hero p { font-size: 1rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 20px auto; }
 .hero .badge { background: #eff6ff; color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; display: inline-block; }
