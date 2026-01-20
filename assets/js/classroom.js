@@ -153,7 +153,6 @@ async function checkEditorAccess(courseId) {
 }
 
 // === FUNÇÃO DO MURAL ===
-// === FUNÇÃO DO MURAL (COM FILTRO DE PRIVACIDADE) ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
     if (!container) return; 
@@ -298,9 +297,18 @@ window.markPostRead = (postId, btn) => {
 };
 
 async function checkUnreadMural() {
-    const { data: posts } = await supabase.from('class_posts').select('id').eq('class_id', classId);
+    // Adicionei o .neq('type', 'INTERNAL') aqui também
+    const { data: posts } = await supabase
+        .from('class_posts')
+        .select('id')
+        .eq('class_id', classId)
+        .neq('type', 'INTERNAL'); // <--- O FILTRO QUE FALTAVA
+
     if (!posts) return;
+
+    // Conta apenas os que não foram lidos E não são internos
     const unreadCount = posts.filter(p => !getReadPosts().includes(p.id)).length;
+    
     const badge = document.getElementById('mural-badge');
     if (badge) {
         badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
