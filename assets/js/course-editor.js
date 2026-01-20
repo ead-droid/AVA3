@@ -232,8 +232,84 @@ window.abrirModalSecao = (mId, next, e) => { if(e) e.stopPropagation(); document
 window.editarSecao = (sec) => { document.getElementById('sec_id').value = sec.id; document.getElementById('sec_module_id').value = sec.module_id; document.getElementById('sec_title').value = sec.title; document.getElementById('sec_order').value = sec.ordem; new bootstrap.Modal(document.getElementById('modalSection')).show(); };
 document.getElementById('formSection').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('sec_id').value; const data = { module_id: parseInt(document.getElementById('sec_module_id').value), title: document.getElementById('sec_title').value, ordem: parseInt(document.getElementById('sec_order').value)||1 }; let error; if(id) ({error} = await supabase.from('sections').update(data).eq('id',id)); else ({error} = await supabase.from('sections').insert(data)); if(error) alert(error.message); else { bootstrap.Modal.getInstance(document.getElementById('modalSection')).hide(); loadCourseData(); }});
 
-window.abrirModalConteudo = (mId, sId, next) => { document.getElementById('formLesson').reset(); document.getElementById('les_id').value = ''; document.getElementById('les_module_id').value = mId; document.getElementById('les_section_id').value = sId; document.getElementById('les_order').value = next; document.getElementById('les_published').checked = true; document.getElementById('les_required').checked = true; new bootstrap.Modal(document.getElementById('modalLesson')).show(); };
-window.editarConteudo = (item, mId, sId) => { document.getElementById('les_id').value = item.id; document.getElementById('les_module_id').value = mId; document.getElementById('les_section_id').value = sId; document.getElementById('les_title').value = item.title; document.getElementById('les_type').value = item.type; document.getElementById('les_url').value = item.content_url||''; document.getElementById('les_points').value = item.points||0; document.getElementById('les_order').value = item.ordem; document.getElementById('les_desc').value = item.description||''; document.getElementById('les_published').checked = item.is_published!==false; document.getElementById('les_required').checked = item.is_required!==false; new bootstrap.Modal(document.getElementById('modalLesson')).show(); };
-document.getElementById('formLesson').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('les_id').value; const data = { module_id: parseInt(document.getElementById('les_module_id').value), section_id: parseInt(document.getElementById('les_section_id').value), title: document.getElementById('les_title').value, type: document.getElementById('les_type').value, content_url: document.getElementById('les_url').value||null, points: parseFloat(document.getElementById('les_points').value)||0, description: document.getElementById('les_desc').value||null, ordem: parseInt(document.getElementById('les_order').value)||1, is_published: document.getElementById('les_published').checked, is_required: document.getElementById('les_required').checked }; let error; if(id) ({error} = await supabase.from('lessons').update(data).eq('id',id)); else ({error} = await supabase.from('lessons').insert(data)); if(error) alert(error.message); else { bootstrap.Modal.getInstance(document.getElementById('modalLesson')).hide(); loadCourseData(); }});
+window.abrirModalConteudo = (mId, sId, next) => { 
+    document.getElementById('formLesson').reset(); 
+    document.getElementById('les_id').value = ''; 
+    document.getElementById('les_module_id').value = mId; 
+    document.getElementById('les_section_id').value = sId; 
+    document.getElementById('les_order').value = next; 
+    document.getElementById('les_published').checked = true; 
+    document.getElementById('les_required').checked = true; 
+    // --- LINHAS ADICIONADAS PARA LIMPAR DATAS ---
+    document.getElementById('les_start').value = ''; 
+    document.getElementById('les_end').value = ''; 
+    // --------------------------------------------
+    new bootstrap.Modal(document.getElementById('modalLesson')).show(); 
+};
+window.editarConteudo = (item, mId, sId) => { 
+    document.getElementById('les_id').value = item.id; 
+    document.getElementById('les_module_id').value = mId; 
+    document.getElementById('les_section_id').value = sId; 
+    document.getElementById('les_title').value = item.title; 
+    document.getElementById('les_type').value = item.type; 
+    document.getElementById('les_url').value = item.content_url||''; 
+    document.getElementById('les_points').value = item.points||0; 
+    document.getElementById('les_order').value = item.ordem; 
+    document.getElementById('les_desc').value = item.description||''; 
+    document.getElementById('les_published').checked = item.is_published!==false; 
+    document.getElementById('les_required').checked = item.is_required!==false; 
+    
+    // --- CORREÇÃO DE NOMES DE COLUNA ---
+    const formatData = (isoStr) => {
+        if(!isoStr) return '';
+        const d = new Date(isoStr);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 16);
+    };
 
+    // Aqui mapeamos as colunas da sua imagem para os inputs do formulário
+    document.getElementById('les_start').value = formatData(item.available_from);
+    document.getElementById('les_end').value = formatData(item.available_until);
+    // -----------------------------------
+
+    new bootstrap.Modal(document.getElementById('modalLesson')).show(); 
+};
+
+document.getElementById('formLesson').addEventListener('submit', async (e) => { 
+    e.preventDefault(); 
+    const id = document.getElementById('les_id').value; 
+    
+    // Pega os valores do formulário
+    const startVal = document.getElementById('les_start').value;
+    const endVal = document.getElementById('les_end').value;
+
+    const data = { 
+        module_id: parseInt(document.getElementById('les_module_id').value), 
+        section_id: parseInt(document.getElementById('les_section_id').value), 
+        title: document.getElementById('les_title').value, 
+        type: document.getElementById('les_type').value, 
+        content_url: document.getElementById('les_url').value||null, 
+        points: parseFloat(document.getElementById('les_points').value)||0, 
+        description: document.getElementById('les_desc').value||null, 
+        ordem: parseInt(document.getElementById('les_order').value)||1, 
+        is_published: document.getElementById('les_published').checked, 
+        is_required: document.getElementById('les_required').checked,
+        
+        // --- CORREÇÃO DE NOMES DE COLUNA ---
+        // Envia para available_from e available_until conforme sua tabela
+        available_from: startVal ? new Date(startVal).toISOString() : null,
+        available_until: endVal ? new Date(endVal).toISOString() : null
+        // -----------------------------------
+    }; 
+    
+    let error; 
+    if(id) ({error} = await supabase.from('lessons').update(data).eq('id',id)); 
+    else ({error} = await supabase.from('lessons').insert(data)); 
+    
+    if(error) alert(error.message); 
+    else { 
+        bootstrap.Modal.getInstance(document.getElementById('modalLesson')).hide(); 
+        loadCourseData(); 
+    }
+});
 window.excluirGenerico = async (table, id) => { if(!confirm('Excluir?')) return; const { error } = await supabase.from(table).delete().eq('id', id); if(error) alert(error.message); else loadCourseData(); };
