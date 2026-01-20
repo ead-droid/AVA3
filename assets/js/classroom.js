@@ -55,6 +55,9 @@ async function loadCourse() {
     if (cls) {
         document.getElementById('header-course-title').textContent = cls.courses?.title || 'Curso';
         document.getElementById('header-class-name').textContent = cls.name;
+        
+        // --- NOVA CHAMADA: Verifica se pode editar ---
+        checkEditorAccess(cls.course_id);
     }
 
     const { data: modules } = await supabase.from('modules').select(`*, sections (*, lessons (*))`).eq('course_id', cls.course_id).order('ordem', { ascending: true });
@@ -121,7 +124,35 @@ async function loadCourse() {
     });
 }
 
-// === FUNÇÃO DO MURAL (CORREÇÃO) ===
+// --- FUNÇÃO NOVA: VERIFICA PERMISSÃO E CRIA BOTÃO EDITAR ---
+async function checkEditorAccess(courseId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    // Busca perfil do usuário
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+    // Se for admin ou professor, cria o botão
+    if (profile && (profile.role === 'admin' || profile.role === 'professor')) {
+        const headerActions = document.getElementById('header-actions');
+        if (headerActions) {
+            const editBtn = document.createElement('a');
+            editBtn.href = `course-editor.html?id=${courseId}`; // Link para o ID do curso pai
+            editBtn.className = 'btn btn-sm btn-dark border-0 fw-bold shadow-sm';
+            editBtn.innerHTML = `<i class='bx bx-edit-alt'></i> Editar Conteúdo`;
+            editBtn.style.marginRight = '10px';
+            
+            // Insere antes do botão de Sair (que é o último)
+            headerActions.insertBefore(editBtn, headerActions.lastElementChild);
+        }
+    }
+}
+
+// === FUNÇÃO DO MURAL ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
     container.innerHTML = '<div class="text-center p-5"><i class="bx bx-loader-alt bx-spin fs-1"></i></div>';
@@ -194,7 +225,6 @@ function openLesson(lesson) {
         } else { initQuiz(lesson); }
     }
     updateFinishButton();
-    // No Mobile, fecha o menu ao abrir aula
     if (window.innerWidth < 992) document.getElementById('course-nav').classList.add('closed');
 }
 
@@ -263,7 +293,6 @@ function updateFinishButton() {
     btn.className = isDone ? "btn btn-success rounded-pill fw-bold" : "btn btn-outline-success rounded-pill fw-bold";
 }
 
-// Quiz e Notas (Mesma lógica funcional anterior)
 function initQuiz(lesson) { quizState = { data: { questions: lesson.quiz_data?.questions || [] }, currentIndex: -1, answers: {}, isFinished: false }; renderQuizStep(); }
 function renderQuizStep() { /* Lógica de renderização do quiz */ }
 window.loadGrades = () => { /* Lógica de carregamento de notas */ };

@@ -1,45 +1,59 @@
-import { supabase } from './supabaseClient.js';
+import { supabase } from "./supabaseClient.js";
 
-const msgEl = document.getElementById('msg');
-const form = document.getElementById('reset-form');
+const $ = (id) => document.getElementById(id);
+const form = $("form-reset");
+const msg = $("msg");
+const btn = $("btn-reset");
 
-function setMsg(type, html) {
-  msgEl.className = `alert alert-${type}`;
-  msgEl.innerHTML = html;
-  msgEl.classList.remove('d-none');
+// Mostra mensagens simples
+function showMsg(type, text) {
+  msg.className = `alert alert-${type}`;
+  msg.innerText = text;
+  msg.classList.remove("d-none");
 }
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+// Ao carregar, verificar se há sessão temporária (token do link)
+window.addEventListener("load", async () => {
+  const { data, error } = await supabase.auth.getSession();
 
-  const p1 = document.getElementById('new-pass').value;
-  const p2 = document.getElementById('new-pass2').value;
-
-  if (p1 !== p2) {
-    setMsg('danger', '❌ As senhas não conferem.');
+  if (error || !data?.session) {
+    showMsg("error", "Sessão inválida ou expirada. Solicite novo link de redefinição.");
+    form.style.display = "none";
     return;
   }
 
-  try {
-    const { error } = await supabase.auth.updateUser({ password: p1 });
+  showMsg("success", "Sessão validada! Você pode redefinir sua senha abaixo.");
+});
 
-    if (error) {
-      setMsg('danger', `❌ Falha ao atualizar senha: <b>${error.message}</b>`);
-      return;
-    }
+// Submeter nova senha
+form?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  showMsg();
+  btn.disabled = true;
+  btn.innerText = "Atualizando...";
 
-    setMsg(
-      'success',
-      '✅ Senha atualizada! Agora você pode entrar com a nova senha.'
-    );
+  const newPassword = $("new-pass").value.trim();
 
-    // Opcional: sai e volta pro login
-    await supabase.auth.signOut();
-    setTimeout(() => {
-      const url = new URL('./login.html', window.location.href);
-      window.location.assign(url.toString());
-    }, 900);
-  } catch (err) {
-    setMsg('danger', `❌ Erro inesperado: <b>${err?.message || err}</b>`);
+  if (newPassword.length < 6) {
+    showMsg("error", "A senha deve ter pelo menos 6 caracteres.");
+    btn.disabled = false;
+    btn.innerText = "Atualizar Senha";
+    return;
   }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    showMsg("error", "Erro: " + error.message);
+    btn.disabled = false;
+    btn.innerText = "Atualizar Senha";
+    return;
+  }
+
+  showMsg("success", "✅ Senha redefinida com sucesso! Redirecionando para o login...");
+  setTimeout(() => {
+    window.location.assign("login.html");
+  }, 1500);
 });

@@ -88,3 +88,175 @@ body { background-color: var(--light-bg); }
     background: #f8f9fa; border: 1px dashed #ccc;
     display: flex; align-items: center; justify-content: center;
 }
+/* ARQUIVO: assets/css/editor-styles.css */
+
+/* ... (Mantenha os estilos anteriores de .module-card, etc) ... */
+
+/* --- TASK BUILDER AVANÇADO --- */
+
+/* Card da Questão */
+.task-item-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+    position: relative;
+}
+.task-item-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+/* Cores de Borda por Tipo */
+.border-type-text { border-left: 5px solid #0d6efd; }
+.border-type-link { border-left: 5px solid #198754; }
+
+/* Editor de Texto Simples (WYSIWYG) */
+.rich-editor-container {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.rich-toolbar {
+    background: #f8f9fa;
+    border-bottom: 1px solid #ced4da;
+    padding: 5px 10px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.rich-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    color: #495057;
+    font-size: 1.1rem;
+}
+.rich-btn:hover { background: #e9ecef; color: #000; }
+.rich-btn.active { background: #e2e6ea; color: #000; }
+
+.rich-content {
+    min-height: 100px;
+    padding: 12px;
+    outline: none;
+    font-size: 0.95rem;
+    color: #212529;
+}
+.rich-content:focus { background-color: #fff; }
+
+/* Ações de Ordenação */
+.order-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.btn-move {
+    padding: 0px 6px;
+    font-size: 0.8rem;
+    line-height: 1;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #6c757d;
+}
+.btn-move:hover { background: #f8f9fa; color: #000; }
+
+/* Input de Pontos */
+.points-input-group {
+    max-width: 120px;
+}
+
+/* ARQUIVO: assets/css/editor-styles.css */
+
+:root {
+    --primary: #0d6efd;
+    --light-bg: #f8f9fa;
+    --border: #dee2e6;
+    --card-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+body { background-color: var(--light-bg); }
+
+/* --- GERAL --- */
+.cursor-pointer { cursor: pointer; }
+
+/* --- EDITOR DE TEXTO RICO (NOVO) --- */
+.rich-editor-container {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-toolbar {
+    background: #f8f9fa;
+    border-bottom: 1px solid #ced4da;
+    padding: 8px 10px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.rich-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #495057;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+}
+.rich-btn:hover { background: #e9ecef; color: #000; }
+.rich-btn.active { background: #e2e6ea; color: #000; border-color: #adb5bd; }
+
+.rich-content {
+    min-height: 300px;
+    padding: 20px;
+    outline: none;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #212529;
+    overflow-y: auto;
+}
+.rich-content:focus { background-color: #fff; }
+.rich-content img { max-width: 100%; height: auto; }
+.rich-content blockquote { border-left: 4px solid #ccc; padding-left: 15px; color: #666; }
+
+/* --- PREVIEW DRAWER --- */
+.preview-content-box {
+    background: white;
+    min-height: 100%;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* --- LISTAGEM DE AULAS --- */
+.lesson-item {
+    padding: 12px 15px; background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.2s;
+}
+.lesson-item:hover { background: #fafafa; padding-left: 18px; }
+
+.icon-circle {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 12px; font-size: 1.1rem;
+}
+.ic-video { background: #e7f1ff; color: #0d6efd; }
+.ic-doc { background: #e9ecef; color: #495057; }
+.ic-task { background: #d1e7dd; color: #198754; }
+.ic-quiz { background: #fff3cd; color: #ffc107; }
+.ic-text { background: #cfe2ff; color: #0dcaf0; }
+
+/* --- TASK BUILDER --- */
+.task-item-card { border-left: 4px solid transparent; background: #fff; border:1px solid #eee; margin-bottom: 10px; }
+.border-type-text { border-left: 5px solid #0d6efd !important; }
+.border-type-link { border-left: 5px solid #198754 !important; }

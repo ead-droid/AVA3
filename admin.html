@@ -38,7 +38,7 @@
 
             <div id="loading-spinner" class="text-center py-5">
                 <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
-                <p class="mt-3 text-muted">Carregando dados do sistema...</p>
+                <p class="mt-3 text-muted">Carregando sistema...</p>
             </div>
 
             <div id="admin-dashboard" style="display: none;">
@@ -50,7 +50,7 @@
                                 <div class="stat-label">Cursos</div>
                                 <div class="stat-number" id="count-courses">-</div>
                                 <button class="btn btn-link p-0 text-decoration-none text-primary-custom fw-bold" onclick="window.showPanel('courses')">
-                                    Gerenciar Cursos <i class='bx bx-right-arrow-alt'></i>
+                                    Gerenciar <i class='bx bx-right-arrow-alt'></i>
                                 </button>
                             </div>
                             <div class="icon-shape bg-primary bg-opacity-10 text-primary"><i class='bx bx-book-bookmark'></i></div>
@@ -63,7 +63,7 @@
                                 <div class="stat-label">Usuários</div>
                                 <div class="stat-number" id="count-users">-</div>
                                 <button class="btn btn-link p-0 text-decoration-none text-success fw-bold" onclick="window.showPanel('users')">
-                                    Gerenciar Usuários <i class='bx bx-right-arrow-alt'></i>
+                                    Gerenciar <i class='bx bx-right-arrow-alt'></i>
                                 </button>
                             </div>
                             <div class="icon-shape bg-success bg-opacity-10 text-success"><i class='bx bx-group'></i></div>
@@ -76,7 +76,7 @@
                                 <div class="stat-label">Turmas Ativas</div>
                                 <div class="stat-number" id="count-offers">-</div>
                                 <button class="btn btn-link p-0 text-decoration-none text-warning fw-bold" onclick="window.location.href='class-manager.html'">
-                                    Gerenciar Turmas <i class='bx bx-right-arrow-alt'></i>
+                                    Gerenciar <i class='bx bx-right-arrow-alt'></i>
                                 </button>
                             </div>
                             <div class="icon-shape bg-warning bg-opacity-10 text-warning"><i class='bx bx-calendar-star'></i></div>
@@ -161,7 +161,7 @@
                                         <tr>
                                             <th class="ps-4">Data</th>
                                             <th>Remetente</th>
-                                            <th>Assunto</th>
+                                            <th>Assunto / Status</th>
                                             <th class="text-end pe-4">Ação</th>
                                         </tr>
                                     </thead>
@@ -171,15 +171,6 @@
                             <div class="p-3 text-center text-muted small border-top" id="messages-empty">
                                 Carregando mensagens...
                             </div>
-                        </div>
-
-                         <div id="panel-offers" class="admin-panel p-5 text-center" style="display: none;">
-                            <i class='bx bx-calendar-star fs-1 text-muted mb-3'></i>
-                            <h4 class="fw-bold">Gestão de Turmas</h4>
-                            <p class="text-muted mb-4">O gerenciamento de turmas e matrículas possui um painel exclusivo.</p>
-                            <a href="class-manager.html" class="btn btn-outline-warning fw-bold px-4 rounded-pill">
-                                Ir para Gestão de Turmas <i class='bx bx-right-arrow-alt'></i>
-                            </a>
                         </div>
 
                     </div>
@@ -194,7 +185,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold"><i class='bx bx-book-add me-2'></i> Novo Curso</h5>
+                    <h5 class="modal-title fw-bold">Novo Curso</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4 bg-light">
@@ -207,10 +198,7 @@
                         <div class="col-md-4"><label class="fw-bold small">Tipo</label><select id="course_type" class="form-select"><option value="OUTRO">Outro</option><option value="LIVRE">Livre</option><option value="TECNICO">Técnico</option></select></div>
                         <div class="col-md-4"><label class="fw-bold small">Inscrições</label><select id="course_enroll_status" class="form-select"><option value="FECHADO">Fechado</option><option value="ABERTO">Aberto</option></select></div>
                         <div class="col-12"><label class="fw-bold small">Capa (URL)</label><input type="url" id="course_img" class="form-control" placeholder="https://..."></div>
-                        <div class="col-12 text-end mt-4">
-                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Curso</button>
-                        </div>
+                        <div class="col-12 text-end mt-4"><button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Curso</button></div>
                     </form>
                 </div>
             </div>
@@ -221,27 +209,20 @@
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold"><i class='bx bx-user-plus'></i> Cadastrar Usuário</h5>
+                    <h5 class="modal-title fw-bold">Cadastrar Usuário</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body bg-light">
                     <form id="formNewUser">
-                        <div class="mb-3"><label class="fw-bold small">Nome Completo</label><input type="text" id="new_user_name" class="form-control" required placeholder="Ex: João da Silva"></div>
-                        <div class="mb-3"><label class="fw-bold small">E-mail</label><input type="email" id="new_user_email" class="form-control" required placeholder="email@exemplo.com"></div>
-                        <div class="mb-3"><label class="fw-bold small">Senha Provisória</label><input type="password" id="new_user_password" class="form-control" required minlength="6"></div>
-                        <div class="mb-3"><label class="fw-bold small">Perfil Inicial</label>
+                        <div class="mb-3"><label class="fw-bold small">Nome</label><input type="text" id="new_user_name" class="form-control" required></div>
+                        <div class="mb-3"><label class="fw-bold small">E-mail</label><input type="email" id="new_user_email" class="form-control" required></div>
+                        <div class="mb-3"><label class="fw-bold small">Senha</label><input type="password" id="new_user_password" class="form-control" required minlength="6"></div>
+                        <div class="mb-3"><label class="fw-bold small">Perfil</label>
                             <select id="new_user_role" class="form-select">
-                                <option value="aluno">Estudante (Padrão)</option>
-                                <option value="professor">Professor</option>
-                                <option value="tutor">Tutor</option>
-                                <option value="gerente">Gerente</option>
-                                <option value="admin">Administrador</option>
+                                <option value="aluno">Estudante</option><option value="professor">Professor</option><option value="admin">Admin</option>
                             </select>
                         </div>
-                        <div class="text-end pt-2">
-                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-success fw-bold">Cadastrar</button>
-                        </div>
+                        <div class="text-end pt-2"><button type="submit" class="btn btn-success fw-bold">Cadastrar</button></div>
                     </form>
                 </div>
             </div>
@@ -252,27 +233,20 @@
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class='bx bx-edit'></i> Editar Usuário</h5>
+                    <h5 class="modal-title fw-bold">Editar Usuário</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body bg-light">
                     <form id="formEditUser">
                         <input type="hidden" id="edit_user_id">
-                        <div class="mb-3"><label class="fw-bold small">ID do Usuário</label><input type="text" id="edit_user_uid" class="form-control bg-secondary bg-opacity-10" readonly disabled></div>
-                        <div class="mb-3"><label class="fw-bold small">Nome Completo</label><input type="text" id="edit_user_name" class="form-control" required></div>
-                        <div class="mb-3"><label class="fw-bold small">Perfil (Role)</label>
+                        <div class="mb-3"><label class="fw-bold small">ID</label><input type="text" id="edit_user_uid" class="form-control bg-secondary bg-opacity-10" readonly disabled></div>
+                        <div class="mb-3"><label class="fw-bold small">Nome</label><input type="text" id="edit_user_name" class="form-control" required></div>
+                        <div class="mb-3"><label class="fw-bold small">Perfil</label>
                             <select id="edit_user_role" class="form-select">
-                                <option value="aluno">Estudante</option>
-                                <option value="tutor">Tutor</option>
-                                <option value="professor">Professor</option>
-                                <option value="gerente">Gerente</option>
-                                <option value="admin">Administrador</option>
+                                <option value="aluno">Estudante</option><option value="tutor">Tutor</option><option value="professor">Professor</option><option value="gerente">Gerente</option><option value="admin">Admin</option>
                             </select>
                         </div>
-                        <div class="text-end pt-2">
-                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary fw-bold">Salvar Alterações</button>
-                        </div>
+                        <div class="text-end pt-2"><button type="submit" class="btn btn-primary fw-bold">Salvar</button></div>
                     </form>
                 </div>
             </div>
@@ -288,7 +262,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3 border-bottom pb-3">
-                        <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex justify-content-between">
                             <div>
                                 <small class="text-muted d-block text-uppercase" style="font-size: 0.65rem;">Remetente</small>
                                 <span class="fw-bold d-block" id="msg-view-name">Nome</span> 
@@ -300,11 +274,36 @@
                             </div>
                         </div>
                     </div>
-                    <div class="p-3 bg-light rounded text-dark border" id="msg-view-content" style="white-space: pre-wrap; font-size: 0.95rem;">Mensagem...</div>
+                    
+                    <div class="p-3 bg-light rounded text-dark border mb-3" id="msg-view-content" style="white-space: pre-wrap; font-size: 0.95rem;">Mensagem...</div>
+
+                    <div class="border-top pt-3">
+                        <h6 class="fw-bold small text-primary"><i class='bx bx-conversation'></i> Atendimento</h6>
+                        <div id="msg-modal-alert" class="alert d-none py-2 px-3 small"></div>
+                        
+                        <div class="mb-2">
+                            <label class="small fw-bold text-muted">Status</label>
+                            <select id="msg_status" class="form-select form-select-sm">
+                                <option value="aberto">Aberto</option>
+                                <option value="em_andamento">Em Andamento</option>
+                                <option value="respondido">Respondido</option>
+                                <option value="fechado">Fechado</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="small fw-bold text-muted">Resposta para o aluno</label>
+                            <textarea id="msg_admin_reply" class="form-control form-control-sm" rows="3" placeholder="Escreva a resposta aqui..."></textarea>
+                        </div>
+                        <div class="text-end">
+                            <button id="btn-save-attendance" class="btn btn-sm btn-success fw-bold">
+                                <i class='bx bx-message-square-check'></i> Salvar Atendimento
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer border-top-0">
-                    <button type="button" class="btn btn-outline-danger" id="btn-delete-msg-modal"><i class='bx bx-trash'></i> Excluir</button>
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="btn-delete-msg-modal"><i class='bx bx-trash'></i> Excluir</button>
+                    <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -314,7 +313,7 @@
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class='bx bx-globe'></i> Dados de Contato (Site)</h5>
+                    <h5 class="modal-title fw-bold"><i class='bx bx-globe'></i> Configurar Site</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body bg-light">
@@ -334,13 +333,13 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="fw-bold small">WhatsApp / Telefone</label>
+                            <label class="fw-bold small">WhatsApp (Apenas números)</label>
                             <input type="text" id="conf_whatsapp" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label class="fw-bold small">Link do Mapa (Embed URL)</label>
-                            <input type="text" id="conf_map" class="form-control" placeholder="https://www.google.com/maps/embed?..." required>
-                            <div class="form-text small">Vá no Google Maps > Compartilhar > Incorporar mapa > Copie apenas o link dentro de src="..."</div>
+                            <label class="fw-bold small">Link do Mapa (URL)</label>
+                            <input type="text" id="conf_map" class="form-control" placeholder="Cole o link do iframe (src)...">
+                            <div class="form-text small">Vá no Google Maps > Compartilhar > Incorporar mapa > Copie o link dentro de src="..."</div>
                         </div>
                         <div class="text-end pt-2 border-top">
                             <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
@@ -357,13 +356,11 @@
             <td class="ps-4 fw-bold text-primary row-id">#ID</td>
             <td>
                 <div class="fw-bold row-title text-dark">Título</div>
-                <small class="text-muted row-subtitle">Tipo • 0h</small>
+                <small class="text-muted row-subtitle">Tipo</small>
             </td>
             <td><span class="badge row-status rounded-pill">Status</span></td>
             <td class="text-end pe-4">
-                <button class="btn btn-sm btn-outline-primary rounded-circle edit-btn shadow-sm" style="width:32px; height:32px; padding:0;">
-                    <i class='bx bx-pencil'></i>
-                </button>
+                <button class="btn btn-sm btn-outline-primary rounded-circle edit-btn shadow-sm" style="width:32px; height:32px; padding:0;"><i class='bx bx-pencil'></i></button>
             </td>
         </tr>
     </template>
@@ -374,30 +371,21 @@
                 <div class="fw-bold text-dark user-name">Nome</div>
                 <small class="text-muted text-uppercase user-id fw-bold" style="font-size: 0.65rem;">ID</small>
             </td>
-            <td class="user-email text-muted">email@exemplo.com</td>
+            <td class="user-email text-muted">email</td>
             <td>
                 <div class="dropdown">
-                    <button class="btn btn-sm dropdown-toggle fw-bold text-uppercase user-role-btn shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="min-width: 100px; font-size: 0.7rem;">
-                        Aluno
-                    </button>
+                    <button class="btn btn-sm dropdown-toggle fw-bold text-uppercase user-role-btn shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">Perfil</button>
                     <ul class="dropdown-menu shadow border-0">
-                        <li><h6 class="dropdown-header text-uppercase small fw-bold">Alterar Perfil</h6></li>
-                        <li><a class="dropdown-item" href="#" data-value="aluno">🎓 Aluno (Padrão)</a></li>
-                        <li><a class="dropdown-item" href="#" data-value="tutor">🤝 Tutor</a></li>
-                        <li><a class="dropdown-item" href="#" data-value="professor">👨‍🏫 Professor</a></li>
-                        <li><a class="dropdown-item" href="#" data-value="gerente">🏗️ Gerente</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger fw-bold" href="#" data-value="admin">⚡ Administrador</a></li>
+                        <li><a class="dropdown-item" href="#" data-value="aluno">Aluno</a></li>
+                        <li><a class="dropdown-item" href="#" data-value="tutor">Tutor</a></li>
+                        <li><a class="dropdown-item" href="#" data-value="professor">Professor</a></li>
+                        <li><a class="dropdown-item" href="#" data-value="admin">Admin</a></li>
                     </ul>
                 </div>
             </td>
             <td class="text-end pe-4">
-               <button class="btn btn-sm btn-outline-secondary rounded-circle btn-edit-user me-1 shadow-sm" title="Editar Usuário" style="width:32px; height:32px; padding:0;">
-                   <i class='bx bx-pencil'></i>
-               </button>
-               <button class="btn btn-sm btn-light text-danger rounded-circle btn-delete-user shadow-sm" title="Excluir Usuário" style="width:32px; height:32px; padding:0;">
-                   <i class='bx bx-trash'></i>
-               </button>
+               <button class="btn btn-sm btn-outline-secondary rounded-circle btn-edit-user me-1 shadow-sm" style="width:32px; height:32px; padding:0;"><i class='bx bx-pencil'></i></button>
+               <button class="btn btn-sm btn-light text-danger rounded-circle btn-delete-user shadow-sm" style="width:32px; height:32px; padding:0;"><i class='bx bx-trash'></i></button>
             </td>
         </tr>
     </template>

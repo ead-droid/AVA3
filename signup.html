@@ -1,140 +1,69 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AVA • Criar conta</title>
-
-    <link rel="stylesheet" href="./assets/css/site.css" />
-    <link rel="stylesheet" href="./assets/css/auth.css" />
-
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css"
-    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Conta | AVA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
 
-  <body class="auth">
-    <div class="auth-shell">
-      <section class="auth-card">
-        <!-- ESQUERDA -->
-        <aside class="auth-hero">
-          <div class="auth-brand">
-            <div class="auth-logo">AVA</div>
-            <div>
-              <h1>Criar conta</h1>
-              <p class="muted" style="margin: 2px 0 0">
-                Seu nome pode aparecer no menu quando estiver logada.
-              </p>
-            </div>
-          </div>
+  <body class="bg-gradient-to-br from-blue-600 to-indigo-700 min-h-screen flex items-center justify-center font-[Poppins]">
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center animate-fadeIn">
+      <img src="assets/img/logo.png" alt="Logo AVA" class="w-20 mx-auto mb-4" />
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">Criar sua conta</h1>
+      <p class="text-gray-500 mb-6">Preencha os campos abaixo</p>
 
-          <p>
-            Crie sua conta para se inscrever em turmas (com código/chave),
-            acessar conteúdos e realizar atividades.
-          </p>
+      <p id="msg" class="hidden mb-4 text-sm p-2 rounded-md"></p>
 
-          <div class="auth-points">
-            <div class="auth-point">
-              <i class="bx bx-user"></i>
-              <div>
-                <b>Perfil básico</b>
-                <span>Nome e e-mail para identificação no AVA.</span>
-              </div>
-            </div>
-
-            <div class="auth-point">
-              <i class="bx bx-lock-alt"></i>
-              <div>
-                <b>Autenticação segura</b>
-                <span>Supabase Auth com sessão e renovação automática.</span>
-              </div>
-            </div>
-
-            <div class="auth-point">
-              <i class="bx bx-code-alt"></i>
-              <div>
-                <b>Estrutura pronta</b>
-                <span
-                  >Depois a gente liga cursos, módulos, aulas e
-                  atividades.</span
-                >
-              </div>
-            </div>
-          </div>
-
-          <div class="auth-footer">
-            <a href="./index.html">Voltar para a Home</a>
-          </div>
-        </aside>
-
-        <!-- DIREITA -->
-        <div class="auth-form">
-          <h2>Criar conta</h2>
-          <p class="auth-sub">Preencha seus dados para começar.</p>
-
-          <form id="formSignup">
-            <label>
-              <b>Nome</b>
-              <input
-                class="input"
-                type="text"
-                id="name"
-                required
-                autocomplete="name"
-              />
-            </label>
-
-            <div style="height: 10px"></div>
-
-            <label>
-              <b>E-mail</b>
-              <input
-                class="input"
-                type="email"
-                id="email"
-                required
-                autocomplete="email"
-              />
-            </label>
-
-            <div style="height: 10px"></div>
-
-            <label>
-              <b>Senha</b>
-              <input
-                class="input"
-                type="password"
-                id="password"
-                required
-                autocomplete="new-password"
-              />
-            </label>
-
-            <div class="row" style="margin-top: 14px">
-              <button class="btn btn-primary" type="submit" id="btnSignup">
-                <i class="bx bx-user-plus"></i> Criar conta
-              </button>
-
-              <a class="btn" href="./login.html"> Já tenho conta </a>
-            </div>
-
-            <div id="msg" class="auth-status"></div>
-
-            <div class="auth-links">
-              <a href="./login.html">Entrar</a>
-              <a href="./index.html">Home</a>
-            </div>
-          </form>
-
-          <div class="auth-footer">
-            O nome informado aqui é usado como prioridade para aparecer no menu
-            quando você estiver logada.
-          </div>
+      <form id="form-signup" class="flex flex-col gap-4 text-left">
+        <div>
+          <label for="signup-name" class="block text-gray-600 mb-1 text-sm font-medium">Nome completo</label>
+          <input
+            id="signup-name"
+            type="text"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Seu nome completo"
+          />
         </div>
-      </section>
+
+        <div>
+          <label for="signup-email" class="block text-gray-600 mb-1 text-sm font-medium">E-mail</label>
+          <input
+            id="signup-email"
+            type="email"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Digite seu e-mail"
+          />
+        </div>
+
+        <div>
+          <label for="signup-pass" class="block text-gray-600 mb-1 text-sm font-medium">Senha</label>
+          <input
+            id="signup-pass"
+            type="password"
+            required
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Crie uma senha"
+          />
+        </div>
+
+        <button
+          id="btn-signup-submit"
+          type="submit"
+          class="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-70"
+        >
+          Criar Conta
+        </button>
+      </form>
+
+      <div class="mt-5 text-gray-500 text-sm">
+        Já tem uma conta?
+        <a href="login.html" class="text-blue-600 font-semibold hover:underline">Entrar</a>
+      </div>
     </div>
 
-    <script type="module" src="./assets/js/signup.js"></script>
+    <script type="module" src="assets/js/login.js"></script>
   </body>
 </html>

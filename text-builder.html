@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVA3 • Editor de Texto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="./assets/css/chrome.css">
+    <link rel="stylesheet" href="./assets/css/admin.css">
+    <link rel="stylesheet" href="./assets/css/editor-styles.css">
+</head>
+<body class="bg-light">
+    <div id="site-header"></div>
+    <div id="site-sidebar"></div>
+
+    <main class="page-content">
+        <div class="container-fluid p-4">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <button id="btn-back" class="btn btn-light border shadow-sm rounded-circle p-2"><i class='bx bx-arrow-back fs-4'></i></button>
+                <div class="flex-grow-1">
+                    <h6 class="text-muted fw-bold mb-0 small" id="hierarchy">...</h6>
+                    <h3 class="fw-bold text-dark mb-0" id="page-title">Editor de Artigo</h3>
+                </div>
+                <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveTextContent()" id="btn-save">
+                    <i class='bx bx-save me-1'></i> Salvar Conteúdo
+                </button>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="rich-toolbar sticky-top">
+                    <button class="rich-btn" data-cmd="bold" title="Negrito"><i class='bx bx-bold'></i></button>
+                    <button class="rich-btn" data-cmd="italic" title="Itálico"><i class='bx bx-italic'></i></button>
+                    <button class="rich-btn" data-cmd="underline" title="Sublinhado"><i class='bx bx-underline'></i></button>
+                    <div class="vr mx-1"></div>
+                    <button class="rich-btn" data-cmd="formatBlock" data-val="H2" title="Título"><b>H1</b></button>
+                    <button class="rich-btn" data-cmd="formatBlock" data-val="H3" title="Subtítulo"><b>H2</b></button>
+                    <div class="vr mx-1"></div>
+                    <button class="rich-btn" data-cmd="justifyLeft"><i class='bx bx-align-left'></i></button>
+                    <button class="rich-btn" data-cmd="justifyCenter"><i class='bx bx-align-middle'></i></button>
+                    <div class="vr mx-1"></div>
+                    <button class="rich-btn" data-cmd="insertUnorderedList"><i class='bx bx-list-ul'></i></button>
+                    <button class="rich-btn" data-cmd="insertOrderedList"><i class='bx bx-list-ol'></i></button>
+                    <div class="vr mx-1"></div>
+                    <button class="rich-btn" onclick="insertLink()"><i class='bx bx-link'></i></button>
+                    <button class="rich-btn" onclick="insertImage()"><i class='bx bx-image'></i></button>
+                    <button class="rich-btn" onclick="insertVideo()"><i class='bx bxl-youtube'></i></button>
+                    <div class="vr mx-1"></div>
+                    <button class="rich-btn text-danger" data-cmd="removeFormat"><i class='bx bx-eraser'></i></button>
+                </div>
+                
+                <div id="editor-area" class="rich-content" contenteditable="true" placeholder="Escreva seu conteúdo aqui..."></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./assets/js/chrome.js"></script>
+    
+    <script type="module">
+        import { supabase } from './assets/js/supabaseClient.js';
+        const params = new URLSearchParams(window.location.search);
+        const lessonId = params.get('id');
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if(!lessonId) return alert("ID inválido");
+            const { data } = await supabase.from('lessons').select('*, modules(id, courses(id))').eq('id', lessonId).single();
+            if(data) {
+                document.getElementById('page-title').textContent = data.title;
+                document.getElementById('hierarchy').textContent = "Editando conteúdo de texto";
+                // Carrega o HTML salvo no campo description
+                document.getElementById('editor-area').innerHTML = data.description || "<p>Comece a escrever...</p>";
+                
+                document.getElementById('btn-back').onclick = () => {
+                    window.location.href = `course-editor.html?id=${data.modules.courses.id}`;
+                }
+            }
+            setupToolbar();
+        });
+
+        // Setup da Toolbar
+        function setupToolbar() {
+            document.querySelectorAll('.rich-btn[data-cmd]').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    document.execCommand(btn.dataset.cmd, false, btn.dataset.val || null);
+                }
+            });
+        }
+
+        // Funções Globais para os botões de mídia
+        window.insertLink = () => {
+            const url = prompt("URL do Link:");
+            if(url) document.execCommand('createLink', false, url);
+        }
+        window.insertImage = () => {
+            const url = prompt("URL da Imagem:");
+            if(url) document.execCommand('insertImage', false, url);
+        }
+        window.insertVideo = () => {
+            const url = prompt("URL do Vídeo (Youtube) ou Embed:");
+            if(url) {
+                let embed = url;
+                if(url.includes('youtube') || url.includes('youtu.be')) {
+                    const videoId = url.split('v=')[1] || url.split('/').pop();
+                    embed = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
+                }
+                document.execCommand('insertHTML', false, `<div class="ratio ratio-16x9 my-3">${embed}</div><br>`);
+            }
+        }
+
+        window.saveTextContent = async () => {
+            const btn = document.getElementById('btn-save');
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+            
+            const html = document.getElementById('editor-area').innerHTML;
+            
+            const { error } = await supabase.from('lessons').update({ description: html }).eq('id', lessonId);
+            
+            btn.innerHTML = '<i class="bx bx-save me-1"></i> Salvar Conteúdo'; btn.disabled = false;
+            if(error) alert("Erro: " + error.message);
+            else alert("Conteúdo salvo com sucesso!");
+        }
+    </script>
+</body>
+</html>

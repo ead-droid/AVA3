@@ -5,6 +5,12 @@ const form = document.getElementById('formSignup');
 const msg = document.getElementById('msg');
 const btn = document.getElementById('btnSignup');
 
+function page(filename) {
+  return new URL(`./${filename}`, window.location.href).toString();
+}
+
+const DEFAULT_AFTER_LOGIN = 'app.html';
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   msg.textContent = '';
@@ -14,13 +20,15 @@ form.addEventListener('submit', async (e) => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
+  const emailRedirectToUrl = new URL(page('login.html'));
+  emailRedirectToUrl.searchParams.set('next', DEFAULT_AFTER_LOGIN);
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        full_name: name, // ✅ isso alimenta o nome no menu
-      },
+      data: { full_name: name },
+      emailRedirectTo: emailRedirectToUrl.toString(),
     },
   });
 
@@ -30,17 +38,14 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Pode depender da configuração do Supabase:
-  // - Se Email confirmation estiver ON, talvez precise confirmar.
-  // - Se estiver OFF, já entra direto.
   const hasSession = !!data?.session;
 
   if (hasSession) {
-    window.location.assign('./app.html');
+    window.location.assign(page(DEFAULT_AFTER_LOGIN));
     return;
   }
 
   msg.textContent =
-    '✅ Conta criada! Verifique seu e-mail para confirmar (se a confirmação estiver ativa) e depois faça login.';
+    '✅ Conta criada! Verifique seu e-mail para confirmar e depois você será redirecionado ao sistema.';
   btn.disabled = false;
 });

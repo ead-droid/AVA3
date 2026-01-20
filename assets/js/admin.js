@@ -9,20 +9,13 @@ let modalEditUser = null;
 let modalViewMsg = null;
 let modalSiteConfig = null;
 let searchTimeout = null;
+let currentMsgId = null;
 
 async function initAdminPage() {
     console.log("🚀 Admin JS Iniciado");
 
     if (window.bootstrap) {
         // Inicializa Modais se o Bootstrap estiver carregado
-        const ids = {
-            'modalCourse': 'modalCourse', 
-            'modalNewUser': 'modalNewUser', 
-            'modalEditUser': 'modalEditUser', 
-            'modalViewMessage': 'modalViewMsg',
-            'modalSiteConfig': 'modalSiteConfig'
-        };
-        
         const mCourse = document.getElementById('modalCourse');
         if(mCourse) modalCourse = new window.bootstrap.Modal(mCourse);
 
@@ -43,11 +36,13 @@ async function initAdminPage() {
     setupUserForms();
     setupUserSearch();
     setupSystemConfig();
+    setupMessageResponse();
 
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = 'login.html'; return; }
 
+        // Verifica perfil
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
         const role = profile?.role ? String(profile.role).toLowerCase().trim() : 'aluno';
 
@@ -73,7 +68,8 @@ async function initAdminPage() {
     }
 }
 
-// --- NAVEGAÇÃO ENTRE PAINÉIS ---
+// --- FUNÇÕES GLOBAIS DE NAVEGAÇÃO E MODAIS ---
+
 window.showPanel = function(panelId) {
     document.querySelectorAll('.admin-panel').forEach(el => el.style.display = 'none');
     const target = document.getElementById('panel-' + panelId);
@@ -89,11 +85,167 @@ window.showPanel = function(panelId) {
     if(titleEl) titleEl.textContent = titles[panelId] || 'Visão Geral';
 };
 
+// --- CORREÇÃO: Função para abrir o modal de Novo Curso ---
+window.openNewCourseModal = function() {
+    if (modalCourse) {
+        document.getElementById('formCourse').reset(); // Limpa o formulário
+        modalCourse.show();
+    } else {
+        console.error("Modal de curso não inicializado.");
+    }
+};
+
+// =========================================================
+// MÓDULO: MENSAGENS (FALE CONOSCO)
+// =========================================================
+async function loadMessages() {
+    const tbody = document.getElementById('table-messages');
+    const empty = document.getElementById('messages-empty');
+    if(!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    const { data: msgs, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+
+    if(error) { empty.textContent = "Erro ao carregar mensagens."; return; }
+    if(!msgs || msgs.length === 0) { empty.textContent = "Nenhuma mensagem recebida."; return; }
+
+    empty.style.display = 'none';
+
+    msgs.forEach(msg => {
+        const tr = document.createElement('tr');
+        const weight = msg.is_read ? 'normal' : 'bold';
+        const bg = msg.is_read ? '' : 'bg-light';
+        
+        let statusBadge = `<span class="badge bg-secondary opacity-50 border me-1">${msg.status}</span>`;
+        if (msg.status === 'aberto') statusBadge = `<span class="badge bg-primary me-1">ABERTO</span>`;
+        else if (msg.status === 'respondido') statusBadge = `<span class="badge bg-success me-1">RESPONDIDO</span>`;
+        else if (msg.status === 'fechado') statusBadge = `<span class="badge bg-secondary me-1">FECHADO</span>`;
+
+        tr.className = `${bg}`;
+        tr.innerHTML = `
+            <td class="ps-4 text-muted small" style="width: 120px;">${new Date(msg.created_at).toLocaleDateString()}</td>
+            <td style="font-weight: ${weight}"><div>${msg.name}</div><small class="text-muted">${msg.email}</small></td>
+            <td style="font-weight: ${weight}">
+                ${statusBadge}
+                ${msg.is_read ? '' : '<span class="badge bg-danger ms-1">Nova</span>'}
+                <div class="small text-muted text-truncate" style="max-width: 250px;">${msg.subject}</div>
+            </td>
+            <td class="text-end pe-4">
+                <button class="btn btn-sm btn-outline-primary rounded-circle btn-view-msg" title="Ler"><i class='bx bx-envelope-open'></i></button>
+            </td>
+        `;
+        tr.querySelector('.btn-view-msg').onclick = () => openMessageModal(msg);
+        tbody.appendChild(tr);
+    });
+}
+
+function openMessageModal(msg) {
+    currentMsgId = msg.id;
+    document.getElementById('msg-view-subject').textContent = msg.subject || 'Sem Assunto';
+    document.getElementById('msg-view-name').textContent = msg.name;
+    document.getElementById('msg-view-email').textContent = msg.email;
+    document.getElementById('msg-view-date').textContent = new Date(msg.created_at).toLocaleString();
+    document.getElementById('msg-view-content').textContent = msg.message;
+
+    document.getElementById('msg_status').value = msg.status || 'aberto';
+    document.getElementById('msg_admin_reply').value = msg.admin_reply || '';
+    document.getElementById('msg-modal-alert').className = 'alert d-none';
+
+    const btnDel = document.getElementById('btn-delete-msg-modal');
+    btnDel.onclick = async () => {
+        if(confirm("Excluir esta mensagem?")) {
+            await supabase.from('contact_messages').delete().eq('id', msg.id);
+            modalViewMsg.hide();
+            loadMessages();
+            loadCounts();
+        }
+    };
+
+    if(!msg.is_read) {
+        supabase.from('contact_messages').update({ is_read: true }).eq('id', msg.id).then(() => loadMessages());
+    }
+
+    if(modalViewMsg) modalViewMsg.show();
+}
+
+function setupMessageResponse() {
+    const btn = document.getElementById('btn-save-attendance');
+    if(btn) {
+        btn.onclick = async () => {
+            if(!currentMsgId) return;
+            btn.disabled = true; btn.innerHTML = 'Salvando...';
+
+            const status = document.getElementById('msg_status').value;
+            const reply = document.getElementById('msg_admin_reply').value;
+
+            const { error } = await supabase.from('contact_messages').update({
+                status: status,
+                admin_reply: reply,
+                is_read: true
+            }).eq('id', currentMsgId);
+
+            btn.disabled = false; btn.innerHTML = "<i class='bx bx-message-square-check'></i> Salvar Atendimento";
+
+            const alertBox = document.getElementById('msg-modal-alert');
+            alertBox.classList.remove('d-none');
+            
+            if (error) {
+                alertBox.className = "alert alert-danger py-2 px-3 small";
+                alertBox.textContent = "Erro: " + error.message;
+            } else {
+                alertBox.className = "alert alert-success py-2 px-3 small";
+                alertBox.textContent = "Atendimento salvo com sucesso!";
+                loadMessages(); 
+            }
+        };
+    }
+}
+
+// =========================================================
+// MÓDULO: CONFIGURAÇÕES DO SITE
+// =========================================================
+function setupSystemConfig() {
+    const form = document.getElementById('formSiteConfig');
+    if(form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = {
+                address: document.getElementById('conf_address').value,
+                email_support: document.getElementById('conf_email_sup').value,
+                email_commercial: document.getElementById('conf_email_com').value,
+                whatsapp: document.getElementById('conf_whatsapp').value,
+                map_url: document.getElementById('conf_map').value,
+                updated_at: new Date()
+            };
+            
+            const { error } = await supabase.from('site_config').upsert({ id: 1, ...updates });
+            
+            if (error) alert("Erro ao salvar: " + error.message);
+            else {
+                alert("Configurações atualizadas!");
+                modalSiteConfig.hide();
+            }
+        });
+    }
+}
+
+window.openSiteConfig = async function() {
+    if(modalSiteConfig) modalSiteConfig.show();
+    
+    const { data, error } = await supabase.from('site_config').select('*').eq('id', 1).maybeSingle();
+    if (data) {
+        document.getElementById('conf_address').value = data.address || '';
+        document.getElementById('conf_email_sup').value = data.email_support || '';
+        document.getElementById('conf_email_com').value = data.email_commercial || '';
+        document.getElementById('conf_whatsapp').value = data.whatsapp || '';
+        document.getElementById('conf_map').value = data.map_url || '';
+    }
+};
+
 // =========================================================
 // MÓDULO: CURSOS
 // =========================================================
-window.openNewCourseModal = function() { if (modalCourse) modalCourse.show(); }
-
 function setupCourseForm() {
     const form = document.getElementById('formCourse');
     const titleInp = document.getElementById('course_title');
@@ -158,9 +310,7 @@ async function loadCourses() {
 // =========================================================
 // MÓDULO: USUÁRIOS
 // =========================================================
-
 function setupUserForms() {
-    // 1. NOVO USUÁRIO
     const formNew = document.getElementById('formNewUser');
     if(formNew) {
         formNew.addEventListener('submit', async (e) => {
@@ -173,9 +323,8 @@ function setupUserForms() {
             const password = document.getElementById('new_user_password').value;
             const role = document.getElementById('new_user_role').value;
 
-            // Cliente temporário para criar usuário sem deslogar o admin
+            // Cliente Temporário para criar conta sem deslogar admin
             const tempClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
             const { data, error } = await tempClient.auth.signUp({
                 email, password,
                 options: { data: { full_name: name } }
@@ -188,8 +337,9 @@ function setupUserForms() {
             }
 
             if(data.user) {
+                // Atualiza a role no banco
                 await supabase.from('profiles').update({ role: role, name: name }).eq('id', data.user.id);
-                alert(`Usuário cadastrado!\nUm e-mail de confirmação foi enviado para ${email}.`);
+                alert(`Usuário cadastrado com sucesso!`);
                 formNew.reset();
                 modalNewUser.hide();
                 loadUsers();
@@ -198,7 +348,6 @@ function setupUserForms() {
         });
     }
 
-    // 2. EDITAR USUÁRIO
     const formEdit = document.getElementById('formEditUser');
     if(formEdit) {
         formEdit.addEventListener('submit', async (e) => {
@@ -208,15 +357,9 @@ function setupUserForms() {
                 name: document.getElementById('edit_user_name').value,
                 role: document.getElementById('edit_user_role').value
             };
-
             const { error } = await supabase.from('profiles').update(updates).eq('id', id);
-
-            if(error) alert("Erro ao atualizar: " + error.message);
-            else {
-                alert("Dados salvos com sucesso!");
-                modalEditUser.hide();
-                loadUsers(); 
-            }
+            if(error) alert("Erro: " + error.message);
+            else { alert("Salvo!"); modalEditUser.hide(); loadUsers(); }
         });
     }
 }
@@ -235,22 +378,13 @@ window.openEditUserModal = function(id, name, role) {
 };
 
 window.deleteUser = async function(id) {
-    if(!confirm("⚠️ PERIGO: Tem certeza absoluta?\n\nIsso removerá todo o histórico e matrículas deste usuário.\n\nEssa ação não pode ser desfeita.")) return;
+    if(!confirm("⚠️ PERIGO: Tem certeza absoluta? Isso removerá o acesso do usuário.")) return;
     
-    // Passo 1: Remover Matrículas (Class Enrollments) - Manual Cascade
-    const { error: errEnroll } = await supabase.from('class_enrollments').delete().eq('user_id', id);
-    if (errEnroll) console.error("Erro ao limpar matrículas:", errEnroll);
-
-    // Passo 2: Remover o Perfil
+    await supabase.from('class_enrollments').delete().eq('user_id', id);
     const { error } = await supabase.from('profiles').delete().eq('id', id);
 
-    if (error) {
-        alert("Erro ao excluir usuário: " + error.message + "\n\nVerifique se o usuário possui outros vínculos (como cursos criados).");
-    } else {
-        alert("Usuário e dados associados removidos com sucesso.");
-        loadUsers(document.getElementById('user-search-input').value);
-        loadCounts();
-    }
+    if (error) alert("Erro ao excluir: " + error.message);
+    else { alert("Usuário removido."); loadUsers(document.getElementById('user-search-input').value); loadCounts(); }
 };
 
 function setupUserSearch() {
@@ -268,48 +402,36 @@ async function loadUsers(term = '') {
     const tpl = document.getElementById('template-user-row');
     
     if(!tbody) return;
-
     tbody.innerHTML = '';
     statusDiv.style.display = 'block';
-    statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div> Carregando...';
 
-    let query = supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100);
+    let query = supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(50);
     if (term.length > 0) query = query.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
 
     const { data: users, error } = await query;
 
-    if (error) { statusDiv.textContent = "Erro ao buscar usuários."; return; }
-    if (!users || users.length === 0) { statusDiv.textContent = "Nenhum usuário encontrado."; return; }
-
     statusDiv.style.display = 'none';
+    if (error || !users || users.length === 0) return;
 
     users.forEach(u => {
         const clone = tpl.content.cloneNode(true);
         const role = u.role || 'aluno';
         
-        let displayName = u.name;
-        // Se nome for igual ao email ou vazio, tenta melhorar a exibição
-        if (!displayName || displayName === u.email) displayName = u.name || '(Sem Nome)';
-        
-        clone.querySelector('.user-name').textContent = displayName;
+        clone.querySelector('.user-name').textContent = u.name || '(Sem nome)';
         clone.querySelector('.user-id').textContent = u.id.substring(0,8) + '...';
         clone.querySelector('.user-email').textContent = u.email;
         
         const btnRole = clone.querySelector('.user-role-btn');
         btnRole.textContent = role.toUpperCase();
         
-        // Estilização do botão de Role
-        btnRole.className = 'btn btn-sm dropdown-toggle fw-bold text-uppercase user-role-btn shadow-sm';
-        if (role === 'admin') btnRole.classList.add('btn-dark', 'border-dark');
-        else if (role === 'professor') btnRole.classList.add('btn-outline-dark', 'active');
-        else if (role === 'gerente') btnRole.classList.add('btn-outline-danger');
+        if (role === 'admin') btnRole.classList.add('btn-dark');
+        else if (role === 'professor') btnRole.classList.add('btn-outline-dark');
         else btnRole.classList.add('btn-outline-secondary');
 
-        // Ações
         clone.querySelectorAll('.dropdown-item[data-value]').forEach(item => {
             item.onclick = (e) => { e.preventDefault(); changeGlobalRole(u.id, item.dataset.value); };
         });
-        clone.querySelector('.btn-edit-user').onclick = () => window.openEditUserModal(u.id, displayName, role);
+        clone.querySelector('.btn-edit-user').onclick = () => window.openEditUserModal(u.id, u.name, role);
         clone.querySelector('.btn-delete-user').onclick = () => window.deleteUser(u.id);
 
         tbody.appendChild(clone);
@@ -317,129 +439,25 @@ async function loadUsers(term = '') {
 }
 
 async function changeGlobalRole(userId, newRole) {
-    if(!confirm(`Alterar perfil para "${newRole.toUpperCase()}"?`)) return;
+    if(!confirm(`Alterar para ${newRole.toUpperCase()}?`)) return;
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
     if (error) alert("Erro: " + error.message);
     else loadUsers(document.getElementById('user-search-input').value);
 }
 
 // =========================================================
-// MÓDULO: FALE CONOSCO
-// =========================================================
-async function loadMessages() {
-    const tbody = document.getElementById('table-messages');
-    const empty = document.getElementById('messages-empty');
-    if(!tbody) return;
-
-    tbody.innerHTML = '';
-    
-    const { data: msgs, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
-
-    if(error) { empty.textContent = "Erro ao carregar mensagens."; return; }
-    if(!msgs || msgs.length === 0) { empty.textContent = "Nenhuma mensagem recebida."; return; }
-
-    empty.style.display = 'none';
-
-    msgs.forEach(msg => {
-        const tr = document.createElement('tr');
-        const weight = msg.is_read ? 'normal' : 'bold';
-        const bg = msg.is_read ? '' : 'bg-light';
-        
-        tr.className = `${bg}`;
-        tr.innerHTML = `
-            <td class="ps-4 text-muted small" style="width: 120px;">${new Date(msg.created_at).toLocaleDateString()}</td>
-            <td style="font-weight: ${weight}"><div>${msg.name}</div><small class="text-muted">${msg.email}</small></td>
-            <td style="font-weight: ${weight}">
-                <span class="badge bg-secondary bg-opacity-10 text-secondary border me-1">${msg.subject || 'Geral'}</span>
-                ${msg.is_read ? '' : '<span class="badge bg-danger ms-1">Nova</span>'}
-            </td>
-            <td class="text-end pe-4">
-                <button class="btn btn-sm btn-outline-primary rounded-circle btn-view-msg" title="Ler"><i class='bx bx-envelope-open'></i></button>
-            </td>
-        `;
-        tr.querySelector('.btn-view-msg').onclick = () => openMessageModal(msg);
-        tbody.appendChild(tr);
-    });
-}
-
-function openMessageModal(msg) {
-    document.getElementById('msg-view-subject').textContent = msg.subject || 'Sem Assunto';
-    document.getElementById('msg-view-name').textContent = msg.name;
-    document.getElementById('msg-view-email').textContent = msg.email;
-    document.getElementById('msg-view-date').textContent = new Date(msg.created_at).toLocaleString();
-    document.getElementById('msg-view-content').textContent = msg.message;
-
-    // Botão Excluir (Modal)
-    const btnDel = document.getElementById('btn-delete-msg-modal');
-    btnDel.onclick = async () => {
-        if(confirm("Excluir esta mensagem?")) {
-            await supabase.from('contact_messages').delete().eq('id', msg.id);
-            modalViewMsg.hide();
-            loadMessages();
-            loadCounts();
-        }
-    };
-
-    // Marcar como lida
-    if(!msg.is_read) {
-        supabase.from('contact_messages').update({ is_read: true }).eq('id', msg.id).then(() => loadMessages());
-    }
-
-    if(modalViewMsg) modalViewMsg.show();
-}
-
-// =========================================================
-// MÓDULO: CONFIGURAÇÕES DO SITE
-// =========================================================
-function setupSystemConfig() {
-    const form = document.getElementById('formSiteConfig');
-    if(form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const updates = {
-                address: document.getElementById('conf_address').value,
-                email_support: document.getElementById('conf_email_sup').value,
-                email_commercial: document.getElementById('conf_email_com').value,
-                whatsapp: document.getElementById('conf_whatsapp').value,
-                map_url: document.getElementById('conf_map').value,
-                updated_at: new Date()
-            };
-            const { error } = await supabase.from('site_config').update(updates).eq('id', 1);
-            if (error) alert("Erro ao salvar: " + error.message);
-            else {
-                alert("Configurações atualizadas!");
-                modalSiteConfig.hide();
-            }
-        });
-    }
-}
-
-window.openSiteConfig = async function() {
-    if(modalSiteConfig) modalSiteConfig.show();
-    
-    const { data, error } = await supabase.from('site_config').select('*').eq('id', 1).single();
-    if (data) {
-        document.getElementById('conf_address').value = data.address || '';
-        document.getElementById('conf_email_sup').value = data.email_support || '';
-        document.getElementById('conf_email_com').value = data.email_commercial || '';
-        document.getElementById('conf_whatsapp').value = data.whatsapp || '';
-        document.getElementById('conf_map').value = data.map_url || '';
-    }
-};
-
-// =========================================================
-// ESTATÍSTICAS GERAIS
+// ESTATÍSTICAS
 // =========================================================
 async function loadCounts() {
-    const { count: courses } = await supabase.from('courses').select('*', { count: 'exact', head: true });
-    const { count: users } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-    const { count: msgs } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true });
-    const { count: classes } = await supabase.from('classes').select('*', { count: 'exact', head: true }).eq('enrollment_open', true);
+    const { count: c } = await supabase.from('courses').select('*', { count: 'exact', head: true });
+    const { count: u } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+    const { count: m } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true });
+    const { count: cl } = await supabase.from('classes').select('*', { count: 'exact', head: true });
     
-    if(document.getElementById('count-courses')) document.getElementById('count-courses').textContent = courses || 0;
-    if(document.getElementById('count-users')) document.getElementById('count-users').textContent = users || 0;
-    if(document.getElementById('count-messages')) document.getElementById('count-messages').textContent = msgs || 0;
-    if(document.getElementById('count-offers')) document.getElementById('count-offers').textContent = classes || 0;
+    if(document.getElementById('count-courses')) document.getElementById('count-courses').textContent = c || 0;
+    if(document.getElementById('count-users')) document.getElementById('count-users').textContent = u || 0;
+    if(document.getElementById('count-messages')) document.getElementById('count-messages').textContent = m || 0;
+    if(document.getElementById('count-offers')) document.getElementById('count-offers').textContent = cl || 0;
 }
 
 initAdminPage();
