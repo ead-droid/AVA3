@@ -153,41 +153,79 @@ async function checkEditorAccess(courseId) {
 }
 
 // === FUNÇÃO DO MURAL ===
+// === FUNÇÃO DO MURAL (ATUALIZADA) ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
-    container.innerHTML = '<div class="text-center p-5"><i class="bx bx-loader-alt bx-spin fs-1"></i></div>';
+    if (!container) return; // Segurança caso a tab não esteja ativa
     
-    const { data: posts, error } = await supabase
-        .from('class_posts')
-        .select('*')
-        .eq('class_id', classId)
-        .order('created_at', { ascending: false });
-
-    if (error || !posts) {
-        container.innerHTML = '<div class="alert alert-warning">Erro ao carregar avisos.</div>';
+    // Loader divertido
+    container.innerHTML = '<div class="text-center p-5 w-100"><i class="bx bx-loader-alt bx-spin fs-1 text-muted"></i><p class="mt-2 text-muted">Organizando os post-its...</p></div>';
+    
+    // 1. SEGURANÇA: Garante que temos o ID da turma
+    if (!classId) {
+        container.innerHTML = '<div class="alert alert-danger">Erro: Identificação da turma não encontrada.</div>';
         return;
     }
 
-    if (posts.length === 0) {
-        container.innerHTML = '<div class="text-center p-5"><i class="bx bx-ghost display-1 text-muted"></i><p>Nenhum aviso no mural ainda.</p></div>';
+    // 2. BUSCA: Filtra EXTRITAMENTE pelo class_id da URL
+    const { data: posts, error } = await supabase
+        .from('class_posts')
+        .select('*')
+        .eq('class_id', classId) // <--- O FILTRO IMPORTANTE
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Erro mural:", error);
+        container.innerHTML = '<div class="alert alert-warning">Não foi possível carregar o mural.</div>';
+        return;
+    }
+
+    if (!posts || posts.length === 0) {
+        container.innerHTML = `
+            <div class="text-center p-5 w-100 opacity-50">
+                <i class="bx bx-note display-1"></i>
+                <h4 class="mt-3">Mural Vazio</h4>
+                <p>O professor ainda não colou nenhum aviso aqui.</p>
+            </div>`;
         return;
     }
 
     const readPosts = getReadPosts();
+
+    // Mapeamento de Cores por Tipo
+    const colorMap = {
+        'AVISO': 'post-yellow',
+        'MATERIAL': 'post-blue',
+        'EVENTO': 'post-green',
+        'URGENTE': 'post-pink',
+        'default': 'post-yellow'
+    };
+
     container.innerHTML = posts.map(post => {
         const isRead = readPosts.includes(post.id);
-        const date = new Date(post.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        const date = new Date(post.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        const type = post.type || 'AVISO';
+        const colorClass = colorMap[type.toUpperCase()] || colorMap['default'];
+        
+        // Se não for lido, mostra o selo "NOVO"
+        const newBadge = !isRead ? `<div class="new-indicator">NOVO!</div>` : '';
+
         return `
-            <div class="wall-post ${isRead ? '' : 'unread'} post-${post.type || 'AVISO'}">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="badge bg-light text-dark border">${post.type || 'AVISO'}</span>
-                    <small class="text-muted">${date}</small>
+            <div class="post-it ${colorClass}">
+                ${newBadge}
+                <div class="post-header">
+                    <span class="post-badge">${type}</span>
+                    <span class="post-date">${date}</span>
                 </div>
-                <h4 class="fw-bold">${post.title}</h4>
-                <div class="text-secondary mb-3">${post.content}</div>
-                <div class="text-end">
-                    ${isRead ? '<span class="text-success small"><i class="bx bx-check-double"></i> Lido</span>' : 
-                    `<button class="btn btn-sm btn-outline-primary" onclick="window.markPostRead('${post.id}', this)">Marcar como lido</button>`}
+                <div class="post-body">
+                    <span class="post-title">${post.title}</span>
+                    ${post.content}
+                </div>
+                <div class="post-footer">
+                    ${isRead 
+                        ? '<div class="mark-done"><i class="bx bx-check-double"></i> Lido</div>' 
+                        : `<button class="btn-read-mark" onclick="window.markPostRead('${post.id}', this)"><i class="bx bx-check"></i> Marcar como lido</button>`
+                    }
                 </div>
             </div>`;
     }).join('');

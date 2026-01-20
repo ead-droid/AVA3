@@ -59,11 +59,109 @@ body.sidebar-collapsed .classroom-layout { left: 70px !important; }
 .lesson-item.completed i.bx-check-circle { color: #10b981; font-size: 1.2rem; }
 .mod-progress-track { width: 70px; height: 6px; background-color: #e2e8f0; border-radius: 3px; margin-right: 10px; display: inline-block; vertical-align: middle; }
 .mod-progress-bar { height: 100%; background-color: #10b981; border-radius: 3px; }
-.wall-post { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-bottom: 20px; border-left: 5px solid transparent; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-.wall-post.unread { border: 1px solid #93c5fd; background-color: #f0f7ff; }
-.wall-post.post-AVISO { border-left-color: #f59e0b; }
-.wall-post.post-MATERIAL { border-left-color: #3b82f6; }
-.wall-post.post-EVENTO { border-left-color: #10b981; }
+/* --- ESTILO MURAL POST-IT (Substituir no CSS) --- */
+
+/* Container do Mural */
+#wall-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 30px;
+    padding: 20px 0;
+}
+
+/* O Cartão Post-it */
+.post-it {
+    position: relative;
+    padding: 25px;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    font-family: 'Segoe UI', 'Comic Sans MS', sans-serif; /* Fonte mais descontraída */
+    color: #333;
+    cursor: default;
+}
+
+/* Efeito de rotação leve para parecer natural */
+.post-it:nth-child(even) { transform: rotate(1deg); }
+.post-it:nth-child(odd) { transform: rotate(-1deg); }
+.post-it:hover { transform: scale(1.05) rotate(0deg); z-index: 10; box-shadow: 10px 10px 25px rgba(0,0,0,0.2); }
+
+/* Cores dos Post-its baseadas no tipo */
+.post-yellow { background: #fef3c7; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); } /* Aviso */
+.post-blue { background: #dbeafe; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }   /* Material */
+.post-green { background: #d1fae5; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }  /* Evento */
+.post-pink { background: #fce7f3; background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }   /* Urgente */
+
+/* O "Durex" ou Tachinha no topo */
+.post-it::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 35px;
+    background-color: rgba(255,255,255,0.4);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transform: translateX(-50%) rotate(-2deg);
+}
+
+/* Conteúdo do Post-it */
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 2px dashed rgba(0,0,0,0.1);
+    padding-bottom: 10px;
+}
+.post-date { font-size: 0.8rem; font-weight: bold; opacity: 0.7; }
+.post-badge { font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+
+.post-body { flex: 1; font-size: 1rem; line-height: 1.5; margin-bottom: 20px; word-wrap: break-word; }
+.post-title { font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; display: block; }
+
+.post-footer { text-align: right; }
+
+/* Botão de Lido */
+.btn-read-mark {
+    background: transparent;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: rgba(0,0,0,0.6);
+    transition: all 0.2s;
+}
+.btn-read-mark:hover { background: rgba(0,0,0,0.1); color: #000; }
+.mark-done { color: #059669; font-weight: bold; display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+
+/* Indicador de Novo */
+.new-indicator {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 5px 10px;
+    border-radius: 50px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 2;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+    40% {transform: translateY(-5px);}
+    60% {transform: translateY(-3px);}
+}
 .grades-module-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 25px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 .grades-module-header { background-color: #f8fafc; padding: 18px 25px; font-weight: 800; color: #334155; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 0.85rem; }
 .grade-item-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 25px; border-bottom: 1px solid #f1f5f9; }
