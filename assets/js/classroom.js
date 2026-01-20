@@ -33,10 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadEnrollment(session.user.id);
         await loadCourse();
         
-        // Abre a primeira aula não concluída
+        // Abre a primeira aula pendente
         if (flatLessons.length > 0) {
             const validIds = flatLessons.map(l => l.id);
-            // Limpa IDs de aulas que foram excluídas do curso mas ainda constam na matrícula
             enrollment.grades.completed = enrollment.grades.completed.filter(id => validIds.includes(id));
             
             const next = flatLessons.find(l => !enrollment.grades.completed.includes(l.id)) || flatLessons[0];
@@ -58,17 +57,16 @@ async function loadEnrollment(userId) {
         .eq('user_id', userId)
         .single();
 
-    if (error || !data) throw new Error("Sem matrícula ativa para este usuário.");
+    if (error || !data) throw new Error("Sem matrícula ativa.");
     enrollment = data;
     
-    // Garante estrutura de notas
     if (!enrollment.grades) enrollment.grades = { completed: [], scores: {} };
     if (!enrollment.grades.scores) enrollment.grades.scores = {};
     if (!enrollment.grades.completed) enrollment.grades.completed = [];
 }
 
 async function loadCourse() {
-    // 1. Carrega dados da Turma
+    // 1. Carrega Turma
     const { data: cls } = await supabase
         .from('classes')
         .select('*, courses(title)')
@@ -81,7 +79,7 @@ async function loadCourse() {
         checkEditorAccess(cls.course_id);
     }
 
-    // 2. Carrega Módulos > Seções > Lições
+    // 2. Carrega Conteúdo (Modules > Sections > Lessons)
     const { data: modules, error } = await supabase
         .from('modules')
         .select(`*, sections (*, lessons (*))`)
@@ -90,7 +88,6 @@ async function loadCourse() {
 
     if (error) { console.error("Erro ao carregar módulos:", error); return; }
     
-    // Ordenação no Front-end
     if (modules) {
         modules.forEach(mod => {
             if (mod.sections) {
@@ -107,7 +104,7 @@ async function loadCourse() {
     container.innerHTML = ''; 
     flatLessons = [];
     
-    // 3. Renderiza Menu Lateral
+    // 3. Renderiza Menu
     modules.forEach((mod, index) => {
         const modId = `mod-${mod.id}`;
         let lessonsHtml = '';
@@ -157,7 +154,6 @@ async function loadCourse() {
     });
 }
 
-// Verifica permissão para botão "Editar Conteúdo"
 async function checkEditorAccess(courseId) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -181,7 +177,7 @@ async function checkEditorAccess(courseId) {
     }
 }
 
-// === MURAL (Com filtro de segurança) ===
+// === MURAL ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
     if (!container) return; 
@@ -197,7 +193,7 @@ window.loadMural = async () => {
         .from('class_posts')
         .select('*')
         .eq('class_id', classId)
-        .neq('type', 'INTERNAL') // Filtra posts administrativos
+        .neq('type', 'INTERNAL') 
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -259,14 +255,14 @@ window.loadMural = async () => {
 
 window.openLessonById = (id) => { const l = flatLessons.find(x => x.id === id); if(l) openLesson(l); };
 
-// === ABRIR AULA (GERENCIADOR DE TIPOS) ===
+// === ABRIR AULA (CENTRAL) ===
 function openLesson(lesson) {
     currentLesson = lesson;
     forceSwitchToContent();
     
-    // UI Updates
     document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`lesson-${lesson.id}`)?.classList.add('active');
+    
     document.getElementById('lbl-title').textContent = lesson.title;
     document.getElementById('lbl-type').textContent = lesson.type;
     
@@ -278,7 +274,7 @@ function openLesson(lesson) {
     playerFrame.style.display = 'none'; 
     playerFrame.innerHTML = '';
 
-    // Lógica de Descrição: Oculta se for Tarefa ou Quiz
+    // Lógica para ocultar descrição se for Tarefa ou Quiz
     if (['TAREFA', 'QUIZ'].includes(lesson.type)) {
         descContainer.style.display = 'none'; 
     } else {
@@ -287,8 +283,6 @@ function openLesson(lesson) {
     }
 
     const url = getEmbedUrl(lesson.video_url || lesson.content_url);
-
-    // --- RENDERIZAÇÃO POR TIPO ---
 
     if (lesson.type === 'VIDEO_AULA' || lesson.type === 'VIDEO') {
         playerFrame.style.display = 'flex';
@@ -305,7 +299,7 @@ function openLesson(lesson) {
         activity.innerHTML = `<div class="p-4 bg-light rounded border">${lesson.description || 'Conteúdo não disponível.'}</div>`;
 
     } else if (lesson.type === 'TAREFA') {
-        // Renderização da Tarefa (com enunciado)
+        // Exibição da Tarefa com Enunciado
         activity.innerHTML = `
             <div class="card border-0 shadow-sm bg-light">
                 <div class="card-body p-4">
@@ -314,18 +308,17 @@ function openLesson(lesson) {
                     <hr>
                     <div class="d-flex align-items-center gap-3">
                          <i class='bx bx-info-circle fs-1 text-info'></i>
-                         <small class="text-muted">Para entregar, siga as instruções acima. Caso precise enviar arquivos, utilize os canais indicados pelo professor.</small>
+                         <small class="text-muted">Para entregar, siga as instruções acima. Utilize os canais oficiais da turma.</small>
                     </div>
                 </div>
             </div>`;
     
     } else if (lesson.type === 'QUIZ') {
-        // Verifica se já tem nota
-        const savedScore = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
+        const score = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
         const isCompleted = enrollment.grades.completed.includes(lesson.id);
 
-        if (isCompleted && savedScore !== undefined) {
-            renderQuizResult(savedScore, lesson.points || 100);
+        if (isCompleted && score !== undefined) {
+            renderQuizResult(score, lesson.points || 100);
         } else { 
             renderQuizIntro(lesson);
         }
@@ -342,7 +335,7 @@ window.renderQuizIntro = (lesson) => {
     let qCount = 0;
     let limit = 10;
     
-    // Tenta ler dados do JSONB ou string JSON
+    // Recupera dados
     let quizDataObj = null;
     if (lesson.quiz_data) {
         quizDataObj = lesson.quiz_data;
@@ -352,16 +345,16 @@ window.renderQuizIntro = (lesson) => {
 
     if (quizDataObj) {
         if (Array.isArray(quizDataObj)) {
-            // Formato legado (Array direto)
             qCount = quizDataObj.length;
             limit = qCount;
         } else {
-            // Formato novo (Objeto com settings e questions)
+            // Objeto com Settings
             qCount = quizDataObj.questions ? quizDataObj.questions.length : 0;
+            // Lê o DrawCount se estiver em modo 'bank'
             if (quizDataObj.settings && quizDataObj.settings.mode === 'bank') {
                 limit = quizDataObj.settings.drawCount || 5;
             } else {
-                limit = qCount; // Manual usa todas
+                limit = qCount;
             }
         }
     }
@@ -388,7 +381,7 @@ window.renderQuizIntro = (lesson) => {
                 </div>
 
                 <div class="alert alert-warning small text-start">
-                    <i class='bx bx-error-circle'></i> Atenção: Ao iniciar, você deverá responder todas as questões.
+                    <i class='bx bx-error-circle'></i> Atenção: Você tem apenas uma tentativa.
                 </div>
 
                 <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold mt-3" onclick="startQuiz()">
@@ -399,34 +392,39 @@ window.renderQuizIntro = (lesson) => {
     `;
 }
 
-// 2. Iniciar e Sortear
+// 2. Início do Quiz
 window.startQuiz = () => {
     const lesson = currentLesson;
     let allQuestions = [];
     let limit = 100;
 
-    // Carrega questões
-    if (lesson.quiz_data) {
-        if (Array.isArray(lesson.quiz_data)) {
-            allQuestions = lesson.quiz_data;
+    // Recupera dados
+    let quizDataObj = null;
+    if (lesson.quiz_data) quizDataObj = lesson.quiz_data;
+    else if (lesson.description && lesson.description.startsWith('{')) {
+        try { quizDataObj = JSON.parse(lesson.description); } catch(e){}
+    }
+
+    // Processa Array ou Objeto
+    if (quizDataObj) {
+        if (Array.isArray(quizDataObj)) {
+            allQuestions = quizDataObj;
             limit = allQuestions.length;
         } else {
-            allQuestions = lesson.quiz_data.questions || [];
-            if (lesson.quiz_data.settings && lesson.quiz_data.settings.mode === 'bank') {
-                limit = lesson.quiz_data.settings.drawCount || 5;
+            allQuestions = quizDataObj.questions || [];
+            if (quizDataObj.settings && quizDataObj.settings.mode === 'bank') {
+                limit = quizDataObj.settings.drawCount || 5;
             } else {
                 limit = allQuestions.length;
             }
         }
-    } else if (lesson.description && lesson.description.startsWith('{')) {
-        try { allQuestions = JSON.parse(lesson.description).questions; } catch(e){}
     }
 
     if (!allQuestions || allQuestions.length === 0) {
-        alert("Erro: Nenhuma questão encontrada para este quiz."); return;
+        alert("Erro: Nenhuma questão encontrada."); return;
     }
 
-    // Embaralha e Corta
+    // EMBARALHAR E CORTAR (Lógica do sorteio)
     const shuffled = allQuestions.sort(() => 0.5 - Math.random());
     const selectedQuestions = shuffled.slice(0, limit);
 
@@ -440,7 +438,6 @@ window.startQuiz = () => {
     renderQuizStep();
 }
 
-// 3. Renderizar Passo
 window.renderQuizStep = () => {
     const container = document.getElementById('activity-area');
     if(!quizState.questions) return;
@@ -527,18 +524,15 @@ window.finishQuiz = async () => {
         }
     });
 
-    // Regra de Três
     const finalScore = Math.round((correctCount / questions.length) * quizState.totalPoints);
     
     document.getElementById('activity-area').innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-3">Calculando nota...</p></div>`;
 
-    // Atualiza Local
     enrollment.grades.scores[currentLesson.id] = finalScore;
     if (!enrollment.grades.completed.includes(currentLesson.id)) {
         enrollment.grades.completed.push(currentLesson.id);
     }
 
-    // Salva no Supabase
     const { error } = await supabase
         .from('class_enrollments')
         .update({ grades: enrollment.grades })
@@ -554,7 +548,6 @@ window.finishQuiz = async () => {
     }
 };
 
-// 4. Resultado Final
 window.renderQuizResult = (score, total) => {
     const percent = total > 0 ? Math.round((score / total) * 100) : 0;
     const isPass = percent >= 70;
@@ -581,8 +574,6 @@ window.renderQuizResult = (score, total) => {
     `;
     updateFinishButton();
 }
-
-// === UTILITÁRIOS ===
 
 function getEmbedUrl(url) { 
     if(!url) return '';
@@ -654,7 +645,6 @@ function updateFinishButton() {
     const btn = document.getElementById('btn-finish');
     const isDone = enrollment.grades.completed.includes(currentLesson.id);
     
-    // Quiz se completa automaticamente
     if(currentLesson.type === 'QUIZ') {
         btn.disabled = true;
         btn.innerHTML = isDone ? "<i class='bx bx-trophy'></i> Quiz Concluído" : "Complete o Quiz";
@@ -671,5 +661,5 @@ function updateFinishButton() {
 window.loadGrades = () => { 
     document.getElementById('grades-list').innerHTML = '<div class="alert alert-info">Módulo de notas em desenvolvimento.</div>';
 };
-window.loadCalendar = () => { /* Placeholder */ };
-window.loadCertificate = () => { /* Placeholder */ };
+window.loadCalendar = () => { };
+window.loadCertificate = () => { };

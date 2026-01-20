@@ -42,15 +42,13 @@ async function loadLessonData() {
     
     lessonInfo = data;
     
-    // --- LÓGICA DE MIGRAÇÃO E CARREGAMENTO ---
-    // Verifica se é o formato antigo (Array) ou novo (Objeto)
+    // Recupera dados salvos
     if (data.quiz_data) {
+        // Se for array antigo, converte. Se for objeto novo, usa direto.
         if (Array.isArray(data.quiz_data)) {
-            // Formato antigo: converte para novo
             quizData.questions = data.quiz_data;
             quizData.settings = { mode: 'manual', drawCount: 5, shuffle: true };
         } else {
-            // Formato novo: usa direto
             quizData = data.quiz_data;
             // Garante que settings existe
             if(!quizData.settings) quizData.settings = { mode: 'manual', drawCount: 5, shuffle: true };
@@ -71,7 +69,8 @@ async function loadLessonData() {
         else window.history.back();
     };
 
-    // Preenche UI - Configurações
+    // Preenche Inputs de Configuração
+    // Aqui garantimos que os valores salvos voltem para os inputs
     document.getElementById('quiz-mode').value = quizData.settings?.mode || 'manual';
     document.getElementById('draw-count').value = quizData.settings?.drawCount || 5;
     document.getElementById('external-bank-source').value = quizData.settings?.externalSource || 'current';
@@ -81,7 +80,7 @@ async function loadLessonData() {
     updatePointsDisplay();
 }
 
-// --- LÓGICA UI & SETTINGS ---
+// --- LOGICA UI & SETTINGS ---
 
 window.updateSettings = function() {
     quizData.settings.mode = document.getElementById('quiz-mode').value;
@@ -93,6 +92,7 @@ window.updateSettings = function() {
 
 function updateSettingsUI() {
     const isBank = quizData.settings.mode === 'bank';
+    // Mostra/Oculta painel de configurações do banco
     document.getElementById('bank-settings').style.display = isBank ? 'flex' : 'none';
     document.getElementById('alert-bank').style.display = isBank ? 'block' : 'none';
     document.getElementById('alert-fixed').style.display = isBank ? 'none' : 'block';
@@ -107,11 +107,12 @@ window.updatePointsDisplay = function() {
     
     let applied = totalQuestions;
     
-    // Se for modo Banco, divide pelos itens sorteados. Se for manual, divide pelo total.
+    // Se for modo Banco, divide a nota pelos itens sorteados. 
+    // Se for manual, divide pelo total de questões cadastradas.
     if (quizData.settings.mode === 'bank') {
         applied = quizData.settings.drawCount;
-        // Evita divisão por zero ou lógica errada se applied > total disponível
-        // (No modo banco, o professor pode querer sortear 5 de 10)
+        // Segurança visual: não dizer que vai aplicar mais do que existe
+        if(applied > totalQuestions) applied = totalQuestions;
     }
 
     const val = applied > 0 ? (totalPoints / applied).toFixed(2) : 0;
@@ -131,15 +132,12 @@ window.renderQuestions = function() {
 
     quizData.questions.forEach((q, qIdx) => {
         const qClone = tplQ.content.cloneNode(true);
-        
         qClone.querySelector('.question-label').textContent = `#${qIdx + 1}`;
         
-        // Texto da Questão
         const txt = qClone.querySelector('.question-text');
         txt.value = q.text || '';
         txt.onchange = (e) => { quizData.questions[qIdx].text = e.target.value; };
 
-        // Feedback
         const feed = qClone.querySelector('.question-feedback');
         feed.value = q.feedback || '';
         feed.onchange = (e) => { quizData.questions[qIdx].feedback = e.target.value; };
@@ -149,7 +147,6 @@ window.renderQuestions = function() {
             feed.parentElement.previousElementSibling.innerHTML = '<i class="bx bx-message-detail"></i> Ocultar Feedback';
         }
 
-        // Delete Questão
         qClone.querySelector('.btn-delete').onclick = () => {
             if(confirm("Remover questão?")) {
                 quizData.questions.splice(qIdx, 1);
@@ -157,15 +154,14 @@ window.renderQuestions = function() {
             }
         };
 
-        // Opções
         const optsDiv = qClone.querySelector('.options-container');
         qClone.querySelector('.btn-add-opt').onclick = () => addOption(qIdx);
 
         q.options.forEach((opt, oIdx) => {
             const oClone = tplO.content.cloneNode(true);
-            
             const check = oClone.querySelector('.correct-indicator');
             if (opt.isCorrect) check.classList.add('active');
+            
             check.onclick = () => {
                 quizData.questions[qIdx].options.forEach((o, i) => o.isCorrect = (i === oIdx));
                 renderQuestions();
@@ -179,13 +175,10 @@ window.renderQuestions = function() {
                 quizData.questions[qIdx].options.splice(oIdx, 1);
                 renderQuestions();
             };
-
             optsDiv.appendChild(oClone);
         });
-
         container.appendChild(qClone);
     });
-
     updatePointsDisplay();
 };
 
@@ -199,7 +192,6 @@ window.addQuestion = function() {
         options: [{text:"", isCorrect:false}, {text:"", isCorrect:false}]
     });
     renderQuestions();
-    // Scroll para o fim
     setTimeout(() => window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'}), 200);
 };
 
@@ -208,7 +200,7 @@ window.addOption = function(qIdx) {
     renderQuestions();
 };
 
-// --- IMPORTADOR GIFT ---
+// --- IMPORTADORES ---
 
 window.modalImportGIFT = function() {
     new bootstrap.Modal(document.getElementById('modalGIFT')).show();
@@ -255,7 +247,7 @@ window.processGIFT = function() {
     renderQuestions();
 };
 
-// --- BANCO DE QUESTÕES (GLOBAL SEARCH) ---
+// --- BANCO DE QUESTÕES GLOBAL ---
 
 window.openQuestionBank = async function() {
     const modal = new bootstrap.Modal(document.getElementById('modalBank'));
@@ -264,7 +256,6 @@ window.openQuestionBank = async function() {
     const list = document.getElementById('bank-list');
     list.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p>Buscando...</p></div>';
 
-    // Busca todas as lições exceto a atual
     const { data: lessons, error } = await supabase
         .from('lessons')
         .select('id, title, quiz_data')
@@ -276,13 +267,11 @@ window.openQuestionBank = async function() {
         return;
     }
 
-    // Processa os dados
     globalQuestionsBank = [];
     const sources = new Set();
 
     lessons.forEach(l => {
         let qs = [];
-        // Lida com formatos antigo/novo no banco
         if (Array.isArray(l.quiz_data)) qs = l.quiz_data;
         else if (l.quiz_data?.questions) qs = l.quiz_data.questions;
 
@@ -297,7 +286,6 @@ window.openQuestionBank = async function() {
         }
     });
 
-    // Filtros
     const select = document.getElementById('bank-source-filter');
     select.innerHTML = '<option value="">Todas as Fontes</option>';
     sources.forEach(s => select.innerHTML += `<option value="${s}">${s}</option>`);
@@ -338,7 +326,6 @@ window.renderBankList = function(items) {
         list.appendChild(div);
     });
 
-    // Contador de selecionados
     document.querySelectorAll('.bank-chk').forEach(c => c.addEventListener('change', () => {
         document.getElementById('bank-selected-count').innerText = document.querySelectorAll('.bank-chk:checked').length;
     }));
@@ -362,7 +349,6 @@ window.importFromBank = function() {
     chks.forEach(c => {
         const item = globalQuestionsBank[c.value];
         if(item) {
-            // Clone profundo para não vincular referência
             const clone = JSON.parse(JSON.stringify(item.data));
             clone.id = Date.now() + Math.random();
             quizData.questions.push(clone);
@@ -375,24 +361,23 @@ window.importFromBank = function() {
         bootstrap.Modal.getInstance(document.getElementById('modalBank')).hide();
         renderQuestions();
     } else {
-        alert("Selecione pelo menos uma questão.");
+        alert("Selecione algo.");
     }
 };
 
-// --- SALVAR ---
+// --- SALVAR (CRÍTICO: CAPTURA OS VALORES REAIS ANTES DE SALVAR) ---
 
 window.saveQuiz = async function() {
     if(!quizData.questions.length) { alert("Adicione questões antes de salvar."); return; }
 
-    // --- CORREÇÃO IMPORTANTE ---
-    // Atualiza explicitamente os settings com o que está na tela antes de enviar
+    // ATUALIZAÇÃO FORÇADA: Pega o valor que está no input AGORA
     quizData.settings.mode = document.getElementById('quiz-mode').value;
     quizData.settings.drawCount = parseInt(document.getElementById('draw-count').value) || 5;
     quizData.settings.externalSource = document.getElementById('external-bank-source').value;
 
     const { error } = await supabase
         .from('lessons')
-        .update({ quiz_data: quizData }) // Envia o objeto completo (settings + questions)
+        .update({ quiz_data: quizData }) // Salva o objeto completo no banco
         .eq('id', lessonId);
 
     if(error) alert("Erro ao salvar: " + error.message);
