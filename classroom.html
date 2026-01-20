@@ -22,12 +22,16 @@
                 <a href="app.html" class="btn btn-light border btn-sm rounded-circle"><i class='bx bx-arrow-back'></i></a>
                 
                 <div class="header-info d-flex flex-column justify-content-center">
-                    <p id="header-class-name">...</p>   <h2 id="header-course-title">...</h2> </div>
+                    <p id="header-class-name">Carregando...</p>   
+                    <h2 id="header-course-title">...</h2> 
+                </div>
             </div>
             
             <div id="header-actions" class="d-flex align-items-center gap-3">
                 <div class="d-flex flex-column align-items-end me-3">
-                    <div class="progress" style="width: 100px; height: 6px;"><div class="progress-bar bg-success" id="overall-progress" style="width: 0%"></div></div>
+                    <div class="progress" style="width: 100px; height: 6px;">
+                        <div class="progress-bar bg-success" id="overall-progress" style="width: 0%"></div>
+                    </div>
                     <small class="fw-bold text-success" id="progress-text">0%</small>
                 </div>
                 <div class="vr opacity-25 mx-2"></div>
@@ -38,7 +42,7 @@
         <div class="classroom-body">
             <aside class="course-nav" id="course-nav">
                 <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-                    <span class="small fw-bold text-muted uppercase">Conteúdo</span>
+                    <span class="small fw-bold text-muted uppercase">Conteúdo do Curso</span>
                     <button class="btn-toggle" id="btn-close-menu"><i class='bx bx-chevron-left'></i></button>
                 </div>
                 <div id="modules-list" class="accordion accordion-flush" style="overflow-y: auto; flex: 1;"></div>
@@ -46,7 +50,7 @@
 
             <section class="content-area">
                 <div class="content-header">
-                    <button class="btn-toggle d-none" id="btn-open-menu"><i class='bx bx-menu'></i></button>
+                    <button class="btn-toggle d-none me-3" id="btn-open-menu"><i class='bx bx-menu'></i></button>
                     
                     <div class="nav-clean nav" role="tablist">
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-aula">Aula</button>
@@ -62,14 +66,23 @@
                 <div class="content-scrollable tab-content">
                     
                     <div class="tab-pane fade show active" id="tab-aula">
-                        <div id="player-frame" class="bg-black" style="display:none;"></div>
-                        <div class="lesson-main-card p-4 p-md-5 bg-white mx-auto shadow-sm">
+                        <div id="player-frame" class="bg-black mb-4" style="display:none; border-radius: 12px; overflow: hidden;"></div>
+                        
+                        <div class="lesson-main-card p-4 p-md-5 bg-white mx-auto shadow-sm" style="border-radius: 12px;">
                             <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
-                                <div><span class="badge bg-secondary mb-2" id="lbl-type">...</span><h3 class="fw-bold" id="lbl-title">Bem-vindo</h3></div>
-                                <button class="btn btn-outline-success rounded-pill fw-bold" id="btn-finish" onclick="finishLesson()" disabled><i class='bx bx-check'></i> Concluir</button>
+                                <div>
+                                    <span class="badge bg-secondary mb-2" id="lbl-type">...</span>
+                                    <h3 class="fw-bold" id="lbl-title">Carregando...</h3>
+                                </div>
+                                <button class="btn btn-outline-secondary rounded-pill fw-bold" id="btn-finish" disabled>
+                                    <i class='bx bx-check'></i> Concluir Aula
+                                </button>
                             </div>
+                            
                             <div id="lbl-desc" class="text-secondary lh-lg mb-5"></div>
+                            
                             <div id="activity-area"></div>
+                            
                             <div class="d-flex justify-content-between pt-5 mt-5 border-top">
                                 <button class="btn btn-light border px-4 rounded-pill" id="btn-prev" disabled>Anterior</button>
                                 <button class="btn btn-primary px-4 rounded-pill" id="btn-next" disabled>Próxima</button>
@@ -86,14 +99,14 @@
                     </div>
                     
                     <div class="tab-pane fade p-5" id="tab-calendario">
-                        <div id="calendar-feed" style="max-width: 100%;"></div>
+                        <div id="calendar-feed"></div>
                     </div>
 
                     <div class="tab-pane fade p-5" id="tab-certificado">
                         <div id="certificate-area" class="text-center p-5 bg-white rounded border shadow-sm">
                             <i class='bx bx-certification display-1 text-muted'></i>
                             <h3 class="mt-3">Certificado de Conclusão</h3>
-                            <p class="text-muted">Conclua todas as aulas para desbloquear seu certificado.</p>
+                            <p class="text-muted">Conclua todas as aulas para desbloquear.</p>
                             <button class="btn btn-secondary rounded-pill px-4" disabled>Baixar Certificado</button>
                         </div>
                     </div>
@@ -105,14 +118,26 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="./assets/js/chrome.js"></script>
+    
     <script type="module" src="./assets/js/classroom.js"></script>
+    
     <script>
         const nav = document.getElementById('course-nav');
         const btnClose = document.getElementById('btn-close-menu');
         const btnOpen = document.getElementById('btn-open-menu');
+        
+        // Lógica simples para abrir/fechar menu em telas pequenas
         if(nav && btnClose && btnOpen) {
-            btnClose.onclick = () => { nav.classList.add('closed'); btnClose.style.display = 'none'; btnOpen.classList.remove('d-none'); };
-            btnOpen.onclick = () => { nav.classList.remove('closed'); btnOpen.classList.add('d-none'); btnClose.style.display = 'flex'; };
+            btnClose.onclick = () => { 
+                nav.classList.add('closed'); 
+                btnClose.style.display = 'none'; 
+                btnOpen.classList.remove('d-none'); 
+            };
+            btnOpen.onclick = () => { 
+                nav.classList.remove('closed'); 
+                btnOpen.classList.add('d-none'); 
+                btnClose.style.display = 'flex'; 
+            };
         }
     </script>
 </body>

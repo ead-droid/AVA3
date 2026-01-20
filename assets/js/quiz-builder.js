@@ -70,7 +70,6 @@ async function loadLessonData() {
     };
 
     // Preenche Inputs de Configuração
-    // Aqui garantimos que os valores salvos voltem para os inputs
     document.getElementById('quiz-mode').value = quizData.settings?.mode || 'manual';
     document.getElementById('draw-count').value = quizData.settings?.drawCount || 5;
     document.getElementById('external-bank-source').value = quizData.settings?.externalSource || 'current';
@@ -108,10 +107,8 @@ window.updatePointsDisplay = function() {
     let applied = totalQuestions;
     
     // Se for modo Banco, divide a nota pelos itens sorteados. 
-    // Se for manual, divide pelo total de questões cadastradas.
     if (quizData.settings.mode === 'bank') {
         applied = quizData.settings.drawCount;
-        // Segurança visual: não dizer que vai aplicar mais do que existe
         if(applied > totalQuestions) applied = totalQuestions;
     }
 
@@ -200,7 +197,7 @@ window.addOption = function(qIdx) {
     renderQuestions();
 };
 
-// --- IMPORTADORES ---
+// --- IMPORTADOR GIFT ---
 
 window.modalImportGIFT = function() {
     new bootstrap.Modal(document.getElementById('modalGIFT')).show();
@@ -365,19 +362,19 @@ window.importFromBank = function() {
     }
 };
 
-// --- SALVAR (CRÍTICO: CAPTURA OS VALORES REAIS ANTES DE SALVAR) ---
+// --- SALVAR ---
 
 window.saveQuiz = async function() {
     if(!quizData.questions.length) { alert("Adicione questões antes de salvar."); return; }
 
-    // ATUALIZAÇÃO FORÇADA: Pega o valor que está no input AGORA
+    // CRÍTICO: Captura os valores dos inputs antes de enviar
     quizData.settings.mode = document.getElementById('quiz-mode').value;
     quizData.settings.drawCount = parseInt(document.getElementById('draw-count').value) || 5;
     quizData.settings.externalSource = document.getElementById('external-bank-source').value;
 
     const { error } = await supabase
         .from('lessons')
-        .update({ quiz_data: quizData }) // Salva o objeto completo no banco
+        .update({ quiz_data: quizData }) // Envia todo o objeto
         .eq('id', lessonId);
 
     if(error) alert("Erro ao salvar: " + error.message);
