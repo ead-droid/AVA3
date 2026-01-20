@@ -153,25 +153,24 @@ async function checkEditorAccess(courseId) {
 }
 
 // === FUNÇÃO DO MURAL ===
-// === FUNÇÃO DO MURAL (ATUALIZADA) ===
+// === FUNÇÃO DO MURAL (COM FILTRO DE PRIVACIDADE) ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
-    if (!container) return; // Segurança caso a tab não esteja ativa
+    if (!container) return; 
     
-    // Loader divertido
-    container.innerHTML = '<div class="text-center p-5 w-100"><i class="bx bx-loader-alt bx-spin fs-1 text-muted"></i><p class="mt-2 text-muted">Organizando os post-its...</p></div>';
+    container.innerHTML = '<div class="text-center p-5 w-100"><i class="bx bx-loader-alt bx-spin fs-1 text-muted"></i><p class="mt-2 text-muted">Carregando avisos...</p></div>';
     
-    // 1. SEGURANÇA: Garante que temos o ID da turma
     if (!classId) {
-        container.innerHTML = '<div class="alert alert-danger">Erro: Identificação da turma não encontrada.</div>';
+        container.innerHTML = '<div class="alert alert-danger">Erro: Turma não identificada.</div>';
         return;
     }
 
-    // 2. BUSCA: Filtra EXTRITAMENTE pelo class_id da URL
+    // --- AQUI ESTÁ A CORREÇÃO ---
     const { data: posts, error } = await supabase
         .from('class_posts')
         .select('*')
-        .eq('class_id', classId) // <--- O FILTRO IMPORTANTE
+        .eq('class_id', classId)
+        .neq('type', 'INTERNAL') // <--- ESTA LINHA BLOQUEIA OS POSTS INTERNOS
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -185,14 +184,14 @@ window.loadMural = async () => {
             <div class="text-center p-5 w-100 opacity-50">
                 <i class="bx bx-note display-1"></i>
                 <h4 class="mt-3">Mural Vazio</h4>
-                <p>O professor ainda não colou nenhum aviso aqui.</p>
+                <p>Nenhum aviso para você por enquanto.</p>
             </div>`;
         return;
     }
 
     const readPosts = getReadPosts();
 
-    // Mapeamento de Cores por Tipo
+    // Mapeamento de Cores
     const colorMap = {
         'AVISO': 'post-yellow',
         'MATERIAL': 'post-blue',
@@ -204,10 +203,12 @@ window.loadMural = async () => {
     container.innerHTML = posts.map(post => {
         const isRead = readPosts.includes(post.id);
         const date = new Date(post.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-        const type = post.type || 'AVISO';
-        const colorClass = colorMap[type.toUpperCase()] || colorMap['default'];
         
-        // Se não for lido, mostra o selo "NOVO"
+        // Proteção extra: se por algum motivo passar um INTERNAL (ex: escrito em minúsculo), força o tipo padrão
+        let type = post.type || 'AVISO';
+        if(type.toUpperCase() === 'INTERNAL') return ''; // Não renderiza se for interno
+
+        const colorClass = colorMap[type.toUpperCase()] || colorMap['default'];
         const newBadge = !isRead ? `<div class="new-indicator">NOVO!</div>` : '';
 
         return `
@@ -230,6 +231,7 @@ window.loadMural = async () => {
             </div>`;
     }).join('');
 };
+
 
 window.openLessonById = (id) => { const l = flatLessons.find(x => x.id === id); if(l) openLesson(l); };
 
