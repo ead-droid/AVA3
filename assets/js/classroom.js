@@ -237,35 +237,211 @@ window.openLessonById = (id) => { const l = flatLessons.find(x => x.id === id); 
 function openLesson(lesson) {
     currentLesson = lesson;
     forceSwitchToContent();
+    
+    // Atualiza a UI da lista lateral
     document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`lesson-${lesson.id}`)?.classList.add('active');
     
+    // Atualiza Cabeçalho
     document.getElementById('lbl-title').textContent = lesson.title;
     document.getElementById('lbl-type').textContent = lesson.type;
-    document.getElementById('lbl-desc').innerHTML = lesson.description || '';
+    
+    // Mostra descrição APENAS se não for Tarefa ou Quiz (pois eles usam layout próprio)
+    // Se for vídeo/texto, a descrição aparece no topo.
+    const descContainer = document.getElementById('lbl-desc');
+    if (['TAREFA', 'QUIZ'].includes(lesson.type)) {
+        descContainer.style.display = 'none'; 
+    } else {
+        descContainer.style.display = 'block';
+        descContainer.innerHTML = lesson.description || '';
+    }
     
     const activity = document.getElementById('activity-area');
     const playerFrame = document.getElementById('player-frame');
-    activity.innerHTML = ''; playerFrame.style.display = 'none'; playerFrame.innerHTML = '';
+    activity.innerHTML = ''; 
+    playerFrame.style.display = 'none'; 
+    playerFrame.innerHTML = '';
 
     const url = getEmbedUrl(lesson.video_url || lesson.content_url);
+
+    // --- LÓGICA DE RENDERIZAÇÃO POR TIPO ---
 
     if (lesson.type === 'VIDEO_AULA' || lesson.type === 'VIDEO') {
         playerFrame.style.display = 'flex';
         playerFrame.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+    
     } else if (lesson.type === 'AUDIO' || lesson.type === 'PODCAST') {
         activity.innerHTML = `<div class="audio-container"><i class='bx bx-headphone display-1 text-primary mb-3'></i><audio controls class="w-100"><source src="${url}" type="audio/mpeg"></audio></div>`;
+    
     } else if ((lesson.type === 'PDF' || lesson.type === 'MATERIAL') && url) {
         activity.innerHTML = `<iframe class="pdf-viewer" src="${url}"></iframe>`;
+    
+    } else if (lesson.type === 'TEXTO') {
+        // Para texto, usamos a descrição como conteúdo principal
+        descContainer.style.display = 'block';
+        activity.innerHTML = `<div class="p-4 bg-light rounded border">${lesson.description || 'Conteúdo não disponível.'}</div>`;
+
+    } else if (lesson.type === 'TAREFA') {
+        // --- AQUI ESTÁ A CORREÇÃO DA TAREFA ---
+        // Mostra o enunciado (description) que vem do banco
+        activity.innerHTML = `
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3"><i class='bx bx-notepad'></i> Enunciado da Tarefa</h5>
+                    <div class="fs-6 mb-4">${lesson.description || '<p class="text-muted">Sem instruções definidas pelo professor.</p>'}</div>
+                    <hr>
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class='bx bx-info-circle fs-4 me-2'></i>
+                        <div>Para entregar esta tarefa, siga as instruções acima ou envie o link/arquivo conforme combinado em aula.</div>
+                    </div>
+                </div>
+            </div>`;
+    
     } else if (lesson.type === 'QUIZ') {
         const score = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
+        // Se já fez e tem nota, mostra resultado. Se não, inicia o quiz.
         if (enrollment.grades.completed.includes(lesson.id) && score !== undefined) {
-            activity.innerHTML = `<div class="text-center p-5 bg-white border rounded"><h3 class="text-success">Concluído</h3><p>Nota: ${score} / ${lesson.points}</p></div>`;
-        } else { initQuiz(lesson); }
+            activity.innerHTML = `
+                <div class="text-center p-5 bg-white border rounded shadow-sm">
+                    <i class='bx bx-trophy display-1 text-warning mb-3'></i>
+                    <h3 class="fw-bold text-success">Quiz Concluído!</h3>
+                    <p class="fs-5">Sua nota: <strong>${score}</strong> / ${lesson.points}</p>
+                    <button class="btn btn-outline-secondary btn-sm mt-3" onclick="initQuiz(currentLesson)">Refazer Quiz</button>
+                </div>`;
+        } else { 
+            initQuiz(lesson); 
+        }
     }
+    
     updateFinishButton();
     if (window.innerWidth < 992) document.getElementById('course-nav').classList.add('closed');
 }
+function initQuiz(lesson) {
+    // Tenta pegar as perguntas de quiz_data (formato JSONB) ou da descrição se for JSON string
+    let questions = [];
+    
+    if (lesson.quiz_data && lesson.quiz_data.questions) {
+        questions = lesson.quiz_data.questions;
+    } 
+    // Fallback: Caso tenha salvo no 'content' ou 'description' como texto (depende do seu editor)
+    else if (lesson.description && lesson.description.startsWith('{')) {
+        try { questions = JSON.parse(lesson.description).questions; } catch(e){}
+    }
+
+    if (!questions || questions.length === 0) {
+        document.getElementById('activity-area').innerHTML = `<div class="alert alert-warning">Este quiz não possui perguntas configuradas.</div>`;
+        return;
+    }
+
+    quizState = { 
+        data: { questions: questions }, 
+        currentIndex: 0, 
+        answers: {}, 
+        isFinished: false 
+    };
+    renderQuizStep();
+}
+
+function renderQuizStep() {
+    const container = document.getElementById('activity-area');
+    const q = quizState.data.questions[quizState.currentIndex];
+    const total = quizState.data.questions.length;
+
+    // HTML das Opções
+    let optionsHtml = '';
+    if(q.options) {
+        q.options.forEach((opt, idx) => {
+            const isChecked = quizState.answers[quizState.currentIndex] === idx ? 'checked' : '';
+            optionsHtml += `
+                <label class="list-group-item d-flex align-items-center gap-3 p-3 border rounded mb-2 cursor-pointer" style="cursor:pointer;">
+                    <input class="form-check-input flex-shrink-0" type="radio" name="quiz_opt" value="${idx}" ${isChecked} onchange="selectQuizAnswer(${idx})">
+                    <span class="form-check-label w-100">${opt.text || opt}</span>
+                </label>`;
+        });
+    }
+
+    // HTML Principal do Quiz
+    container.innerHTML = `
+        <div class="quiz-container mx-auto" style="max-width: 800px;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <span class="badge bg-primary">Questão ${quizState.currentIndex + 1} de ${total}</span>
+                <span class="text-muted small">Valendo ${currentLesson.points} pontos</span>
+            </div>
+            
+            <h4 class="fw-bold mb-4">${q.text || q.title}</h4>
+            
+            <div class="list-group mb-4 gap-2 border-0">
+                ${optionsHtml}
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <button class="btn btn-outline-secondary" onclick="prevQuizStep()" ${quizState.currentIndex === 0 ? 'disabled' : ''}>Anterior</button>
+                ${quizState.currentIndex === total - 1 
+                    ? `<button class="btn btn-success fw-bold px-4" onclick="finishQuiz()">Finalizar e Enviar</button>`
+                    : `<button class="btn btn-primary px-4" onclick="nextQuizStep()">Próxima</button>`
+                }
+            </div>
+        </div>
+    `;
+}
+
+// Funções Auxiliares do Quiz (Adicione ao final do arquivo ou escopo global)
+window.selectQuizAnswer = (idx) => {
+    quizState.answers[quizState.currentIndex] = idx;
+};
+
+window.nextQuizStep = () => {
+    if (quizState.currentIndex < quizState.data.questions.length - 1) {
+        quizState.currentIndex++;
+        renderQuizStep();
+    }
+};
+
+window.prevQuizStep = () => {
+    if (quizState.currentIndex > 0) {
+        quizState.currentIndex--;
+        renderQuizStep();
+    }
+};
+
+window.finishQuiz = async () => {
+    // Calcula Nota
+    let correctCount = 0;
+    const questions = quizState.data.questions;
+    
+    questions.forEach((q, idx) => {
+        // Verifica se a resposta do aluno bate com a correta (assume que correctIndex está salvo no JSON)
+        if (quizState.answers[idx] !== undefined && quizState.answers[idx] == q.correctIndex) {
+            correctCount++;
+        }
+    });
+
+    const finalScore = Math.round((correctCount / questions.length) * (currentLesson.points || 100));
+    
+    // Salva no Supabase
+    if (!enrollment.grades.scores) enrollment.grades.scores = {};
+    enrollment.grades.scores[currentLesson.id] = finalScore;
+    
+    if (!enrollment.grades.completed.includes(currentLesson.id)) {
+        enrollment.grades.completed.push(currentLesson.id);
+    }
+
+    // Atualiza BD
+    const { error } = await supabase
+        .from('class_enrollments')
+        .update({ grades: enrollment.grades })
+        .eq('id', enrollment.id);
+
+    if (error) {
+        alert('Erro ao salvar nota: ' + error.message);
+    } else {
+        // Recarrega tela para mostrar resultado
+        loadEnrollment(enrollment.user_id).then(() => {
+            openLesson(currentLesson);
+            updateOverallProgress();
+        });
+    }
+};
 
 function getEmbedUrl(url) { 
     if(!url) return '';
