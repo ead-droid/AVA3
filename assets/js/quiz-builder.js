@@ -9,8 +9,7 @@ let quizData = {
         mode: 'manual', // 'manual' ou 'bank'
         drawCount: 5,
         externalSource: 'current',
-        shuffle: true,
-        deadline: null // Campo de data inicializado
+        shuffle: true
     },
     questions: []
 };
@@ -43,16 +42,23 @@ async function loadLessonData() {
     
     lessonInfo = data;
     
-    // Migra estrutura antiga (array) para nova (objeto) se necessário
-    if (Array.isArray(data.quiz_data)) {
-        quizData.questions = data.quiz_data;
-        quizData.settings = { mode: 'manual', drawCount: 5, deadline: null };
-    } else if (data.quiz_data) {
-        quizData = data.quiz_data;
-        if(!quizData.settings) quizData.settings = {};
+    // --- LÓGICA DE MIGRAÇÃO E CARREGAMENTO ---
+    // Verifica se é o formato antigo (Array) ou novo (Objeto)
+    if (data.quiz_data) {
+        if (Array.isArray(data.quiz_data)) {
+            // Formato antigo: converte para novo
+            quizData.questions = data.quiz_data;
+            quizData.settings = { mode: 'manual', drawCount: 5, shuffle: true };
+        } else {
+            // Formato novo: usa direto
+            quizData = data.quiz_data;
+            // Garante que settings existe
+            if(!quizData.settings) quizData.settings = { mode: 'manual', drawCount: 5, shuffle: true };
+            if(!quizData.questions) quizData.questions = [];
+        }
     }
 
-    // Preenche UI - Títulos e Navegação
+    // Preenche UI - Cabeçalho
     document.getElementById('quiz-title').textContent = data.title;
     document.getElementById('quiz-points').textContent = (data.points || 0) + ' pts';
     
@@ -65,18 +71,10 @@ async function loadLessonData() {
         else window.history.back();
     };
 
-    // --- CORREÇÃO PRINCIPAL: CARREGAR A DATA ---
-    const dateInput = document.getElementById('quiz_date');
-    if (dateInput && quizData.settings && quizData.settings.deadline) {
-        // Pega apenas a parte YYYY-MM-DD da string, ignorando horário se houver
-        dateInput.value = quizData.settings.deadline.substring(0, 10);
-    }
-    // -------------------------------------------
-
-    // UI Settings (Modo e Sorteio)
-    document.getElementById('quiz-mode').value = quizData.settings.mode || 'manual';
-    document.getElementById('draw-count').value = quizData.settings.drawCount || 5;
-    document.getElementById('external-bank-source').value = quizData.settings.externalSource || 'current';
+    // Preenche UI - Configurações
+    document.getElementById('quiz-mode').value = quizData.settings?.mode || 'manual';
+    document.getElementById('draw-count').value = quizData.settings?.drawCount || 5;
+    document.getElementById('external-bank-source').value = quizData.settings?.externalSource || 'current';
 
     updateSettingsUI();
     renderQuestions();
@@ -95,13 +93,9 @@ window.updateSettings = function() {
 
 function updateSettingsUI() {
     const isBank = quizData.settings.mode === 'bank';
-    const bankSettings = document.getElementById('bank-settings');
-    const alertBank = document.getElementById('alert-bank');
-    const alertFixed = document.getElementById('alert-fixed');
-
-    if(bankSettings) bankSettings.style.display = isBank ? 'flex' : 'none';
-    if(alertBank) alertBank.style.display = isBank ? 'block' : 'none';
-    if(alertFixed) alertFixed.style.display = isBank ? 'none' : 'block';
+    document.getElementById('bank-settings').style.display = isBank ? 'flex' : 'none';
+    document.getElementById('alert-bank').style.display = isBank ? 'block' : 'none';
+    document.getElementById('alert-fixed').style.display = isBank ? 'none' : 'block';
 }
 
 window.updatePointsDisplay = function() {
@@ -112,9 +106,12 @@ window.updatePointsDisplay = function() {
     const totalQuestions = quizData.questions.length;
     
     let applied = totalQuestions;
+    
+    // Se for modo Banco, divide pelos itens sorteados. Se for manual, divide pelo total.
     if (quizData.settings.mode === 'bank') {
         applied = quizData.settings.drawCount;
-        if(applied > totalQuestions) applied = totalQuestions;
+        // Evita divisão por zero ou lógica errada se applied > total disponível
+        // (No modo banco, o professor pode querer sortear 5 de 10)
     }
 
     const val = applied > 0 ? (totalPoints / applied).toFixed(2) : 0;
@@ -137,20 +134,19 @@ window.renderQuestions = function() {
         
         qClone.querySelector('.question-label').textContent = `#${qIdx + 1}`;
         
-        // Texto
+        // Texto da Questão
         const txt = qClone.querySelector('.question-text');
         txt.value = q.text || '';
-        txt.oninput = (e) => quizData.questions[qIdx].text = e.target.value;
+        txt.onchange = (e) => { quizData.questions[qIdx].text = e.target.value; };
 
         // Feedback
         const feed = qClone.querySelector('.question-feedback');
         feed.value = q.feedback || '';
-        feed.oninput = (e) => quizData.questions[qIdx].feedback = e.target.value;
+        feed.onchange = (e) => { quizData.questions[qIdx].feedback = e.target.value; };
+        
         if(q.feedback) {
             feed.parentElement.classList.add('show');
-            // Verifica se o elemento anterior existe antes de alterar innerHTML
-            const toggleBtn = feed.parentElement.previousElementSibling;
-            if(toggleBtn) toggleBtn.innerHTML = '<i class="bx bx-message-detail"></i> Ocultar Feedback';
+            feed.parentElement.previousElementSibling.innerHTML = '<i class="bx bx-message-detail"></i> Ocultar Feedback';
         }
 
         // Delete Questão
@@ -165,31 +161,27 @@ window.renderQuestions = function() {
         const optsDiv = qClone.querySelector('.options-container');
         qClone.querySelector('.btn-add-opt').onclick = () => addOption(qIdx);
 
-        if(q.options) {
-            q.options.forEach((opt, oIdx) => {
-                const oClone = tplO.content.cloneNode(true);
-                
-                const check = oClone.querySelector('.correct-indicator');
-                if (opt.isCorrect) check.classList.add('active');
-                
-                // Lógica de seleção (Radio behavior para correta)
-                check.onclick = () => {
-                    quizData.questions[qIdx].options.forEach((o, i) => o.isCorrect = (i === oIdx));
-                    renderQuestions();
-                };
+        q.options.forEach((opt, oIdx) => {
+            const oClone = tplO.content.cloneNode(true);
+            
+            const check = oClone.querySelector('.correct-indicator');
+            if (opt.isCorrect) check.classList.add('active');
+            check.onclick = () => {
+                quizData.questions[qIdx].options.forEach((o, i) => o.isCorrect = (i === oIdx));
+                renderQuestions();
+            };
 
-                const inp = oClone.querySelector('.option-input');
-                inp.value = opt.text || '';
-                inp.oninput = (e) => quizData.questions[qIdx].options[oIdx].text = e.target.value;
+            const inp = oClone.querySelector('.option-input');
+            inp.value = opt.text || '';
+            inp.onchange = (e) => { quizData.questions[qIdx].options[oIdx].text = e.target.value; };
 
-                oClone.querySelector('.btn-remove-opt').onclick = () => {
-                    quizData.questions[qIdx].options.splice(oIdx, 1);
-                    renderQuestions();
-                };
+            oClone.querySelector('.btn-remove-opt').onclick = () => {
+                quizData.questions[qIdx].options.splice(oIdx, 1);
+                renderQuestions();
+            };
 
-                optsDiv.appendChild(oClone);
-            });
-        }
+            optsDiv.appendChild(oClone);
+        });
 
         container.appendChild(qClone);
     });
@@ -207,11 +199,11 @@ window.addQuestion = function() {
         options: [{text:"", isCorrect:false}, {text:"", isCorrect:false}]
     });
     renderQuestions();
+    // Scroll para o fim
     setTimeout(() => window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'}), 200);
 };
 
 window.addOption = function(qIdx) {
-    if(!quizData.questions[qIdx].options) quizData.questions[qIdx].options = [];
     quizData.questions[qIdx].options.push({text:"", isCorrect:false});
     renderQuestions();
 };
@@ -266,8 +258,7 @@ window.processGIFT = function() {
 // --- BANCO DE QUESTÕES (GLOBAL SEARCH) ---
 
 window.openQuestionBank = async function() {
-    const modalEl = document.getElementById('modalBank');
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = new bootstrap.Modal(document.getElementById('modalBank'));
     modal.show();
 
     const list = document.getElementById('bank-list');
@@ -291,6 +282,7 @@ window.openQuestionBank = async function() {
 
     lessons.forEach(l => {
         let qs = [];
+        // Lida com formatos antigo/novo no banco
         if (Array.isArray(l.quiz_data)) qs = l.quiz_data;
         else if (l.quiz_data?.questions) qs = l.quiz_data.questions;
 
@@ -346,6 +338,7 @@ window.renderBankList = function(items) {
         list.appendChild(div);
     });
 
+    // Contador de selecionados
     document.querySelectorAll('.bank-chk').forEach(c => c.addEventListener('change', () => {
         document.getElementById('bank-selected-count').innerText = document.querySelectorAll('.bank-chk:checked').length;
     }));
@@ -382,35 +375,26 @@ window.importFromBank = function() {
         bootstrap.Modal.getInstance(document.getElementById('modalBank')).hide();
         renderQuestions();
     } else {
-        alert("Selecione algo.");
+        alert("Selecione pelo menos uma questão.");
     }
 };
 
 // --- SALVAR ---
 
 window.saveQuiz = async function() {
-    if(!quizData.questions.length && quizData.settings.mode === 'manual') { 
-        alert("Adicione questões."); return; 
-    }
+    if(!quizData.questions.length) { alert("Adicione questões antes de salvar."); return; }
 
-    const btn = document.querySelector('button[onclick="saveQuiz()"]');
-    if(btn) { btn.disabled = true; btn.innerHTML = "Salvando..."; }
-
-    // --- CORREÇÃO PRINCIPAL: CAPTURAR A DATA ---
-    const dateInput = document.getElementById('quiz_date');
-    if (dateInput) {
-        if(!quizData.settings) quizData.settings = {};
-        quizData.settings.deadline = dateInput.value; // Salva o valor YYYY-MM-DD
-    }
-    // -------------------------------------------
+    // --- CORREÇÃO IMPORTANTE ---
+    // Atualiza explicitamente os settings com o que está na tela antes de enviar
+    quizData.settings.mode = document.getElementById('quiz-mode').value;
+    quizData.settings.drawCount = parseInt(document.getElementById('draw-count').value) || 5;
+    quizData.settings.externalSource = document.getElementById('external-bank-source').value;
 
     const { error } = await supabase
         .from('lessons')
-        .update({ quiz_data: quizData })
+        .update({ quiz_data: quizData }) // Envia o objeto completo (settings + questions)
         .eq('id', lessonId);
 
-    if(btn) { btn.disabled = false; btn.innerHTML = "<i class='bx bx-save'></i> Salvar"; }
-
-    if(error) alert("Erro: " + error.message);
-    else alert("Salvo com sucesso!");
+    if(error) alert("Erro ao salvar: " + error.message);
+    else alert("Quiz salvo com sucesso!");
 };

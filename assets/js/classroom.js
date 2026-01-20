@@ -7,7 +7,6 @@ let enrollment = null;
 let flatLessons = [];
 let courseModules = []; 
 let currentLesson = null;
-// Estado inicial do Quiz
 let quizState = { data: null, currentIndex: -1, answers: {}, isFinished: false };
 
 const ICONS = { 
@@ -19,13 +18,14 @@ const ICONS = {
     'QUIZ': 'bx-trophy', 
     'TAREFA': 'bx-task',
     'MATERIAL': 'bx-link',
+    'TEXTO': 'bx-paragraph',
     'default': 'bx-file' 
 };
 
+// === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', async () => {
     if (!classId) { window.location.href = 'app.html'; return; }
     
-    // Verifica sessão
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.href = 'login.html';
 
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Abre a primeira aula não concluída
         if (flatLessons.length > 0) {
             const validIds = flatLessons.map(l => l.id);
-            // Limpa IDs de aulas que foram excluídas do curso
+            // Limpa IDs de aulas que foram excluídas do curso mas ainda constam na matrícula
             enrollment.grades.completed = enrollment.grades.completed.filter(id => validIds.includes(id));
             
             const next = flatLessons.find(l => !enrollment.grades.completed.includes(l.id)) || flatLessons[0];
@@ -51,16 +51,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadEnrollment(userId) {
-    const { data, error } = await supabase.from('class_enrollments').select('*').eq('class_id', classId).eq('user_id', userId).single();
+    const { data, error } = await supabase
+        .from('class_enrollments')
+        .select('*')
+        .eq('class_id', classId)
+        .eq('user_id', userId)
+        .single();
+
     if (error || !data) throw new Error("Sem matrícula ativa para este usuário.");
     enrollment = data;
+    
+    // Garante estrutura de notas
     if (!enrollment.grades) enrollment.grades = { completed: [], scores: {} };
     if (!enrollment.grades.scores) enrollment.grades.scores = {};
+    if (!enrollment.grades.completed) enrollment.grades.completed = [];
 }
 
 async function loadCourse() {
-    // Carrega dados da Turma e Nome do Curso
-    const { data: cls } = await supabase.from('classes').select('*, courses(title)').eq('id', classId).single();
+    // 1. Carrega dados da Turma
+    const { data: cls } = await supabase
+        .from('classes')
+        .select('*, courses(title)')
+        .eq('id', classId)
+        .single();
     
     if (cls) {
         document.getElementById('header-course-title').textContent = cls.courses?.title || 'Curso';
@@ -68,20 +81,16 @@ async function loadCourse() {
         checkEditorAccess(cls.course_id);
     }
 
-    // Busca Módulos, Seções e Aulas
-    // O select aninhado garante que pegamos toda a hierarquia
+    // 2. Carrega Módulos > Seções > Lições
     const { data: modules, error } = await supabase
         .from('modules')
         .select(`*, sections (*, lessons (*))`)
         .eq('course_id', cls.course_id)
         .order('ordem', { ascending: true });
 
-    if (error) {
-        console.error("Erro ao carregar módulos:", error);
-        return;
-    }
+    if (error) { console.error("Erro ao carregar módulos:", error); return; }
     
-    // Ordenação manual no Front-end para garantir a sequência correta
+    // Ordenação no Front-end
     if (modules) {
         modules.forEach(mod => {
             if (mod.sections) {
@@ -98,7 +107,7 @@ async function loadCourse() {
     container.innerHTML = ''; 
     flatLessons = [];
     
-    // Renderiza a lista lateral
+    // 3. Renderiza Menu Lateral
     modules.forEach((mod, index) => {
         const modId = `mod-${mod.id}`;
         let lessonsHtml = '';
@@ -108,7 +117,6 @@ async function loadCourse() {
             if (sec.title) lessonsHtml += `<div class="section-title">${sec.title}</div>`;
             if (sec.lessons) {
                 sec.lessons.forEach(l => {
-                    // Ignora aulas não publicadas
                     if (l.is_published === false) return;
                     
                     flatLessons.push(l);
@@ -125,7 +133,6 @@ async function loadCourse() {
             }
         });
 
-        // Calcula progresso do módulo
         const modTotal = modLessonIds.length;
         const modDone = modLessonIds.filter(id => enrollment.grades.completed.includes(id)).length;
         let pct = modTotal > 0 ? Math.round((modDone/modTotal)*100) : 0;
@@ -150,7 +157,7 @@ async function loadCourse() {
     });
 }
 
-// Verifica se usuário pode editar o curso (Admin/Professor)
+// Verifica permissão para botão "Editar Conteúdo"
 async function checkEditorAccess(courseId) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -174,7 +181,7 @@ async function checkEditorAccess(courseId) {
     }
 }
 
-// === LÓGICA DO MURAL ===
+// === MURAL (Com filtro de segurança) ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
     if (!container) return; 
@@ -190,7 +197,7 @@ window.loadMural = async () => {
         .from('class_posts')
         .select('*')
         .eq('class_id', classId)
-        .neq('type', 'INTERNAL') // Filtra posts internos
+        .neq('type', 'INTERNAL') // Filtra posts administrativos
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -252,20 +259,17 @@ window.loadMural = async () => {
 
 window.openLessonById = (id) => { const l = flatLessons.find(x => x.id === id); if(l) openLesson(l); };
 
-// === SUBSTITUIR A FUNÇÃO openLesson EXISTENTE POR ESTA ===
+// === ABRIR AULA (GERENCIADOR DE TIPOS) ===
 function openLesson(lesson) {
     currentLesson = lesson;
     forceSwitchToContent();
     
-    // Atualiza Menu Lateral
+    // UI Updates
     document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`lesson-${lesson.id}`)?.classList.add('active');
-    
-    // Header
     document.getElementById('lbl-title').textContent = lesson.title;
     document.getElementById('lbl-type').textContent = lesson.type;
     
-    // Limpa área de atividade
     const activity = document.getElementById('activity-area');
     const playerFrame = document.getElementById('player-frame');
     const descContainer = document.getElementById('lbl-desc');
@@ -274,9 +278,9 @@ function openLesson(lesson) {
     playerFrame.style.display = 'none'; 
     playerFrame.innerHTML = '';
 
-    // Oculta descrição padrão se for Quiz (tem tela própria)
-    if (lesson.type === 'QUIZ') {
-        descContainer.style.display = 'none';
+    // Lógica de Descrição: Oculta se for Tarefa ou Quiz
+    if (['TAREFA', 'QUIZ'].includes(lesson.type)) {
+        descContainer.style.display = 'none'; 
     } else {
         descContainer.style.display = 'block';
         descContainer.innerHTML = lesson.description || '';
@@ -285,6 +289,7 @@ function openLesson(lesson) {
     const url = getEmbedUrl(lesson.video_url || lesson.content_url);
 
     // --- RENDERIZAÇÃO POR TIPO ---
+
     if (lesson.type === 'VIDEO_AULA' || lesson.type === 'VIDEO') {
         playerFrame.style.display = 'flex';
         playerFrame.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
@@ -296,28 +301,32 @@ function openLesson(lesson) {
         activity.innerHTML = `<iframe class="pdf-viewer" src="${url}"></iframe>`;
     
     } else if (lesson.type === 'TEXTO') {
+        descContainer.style.display = 'block';
         activity.innerHTML = `<div class="p-4 bg-light rounded border">${lesson.description || 'Conteúdo não disponível.'}</div>`;
 
     } else if (lesson.type === 'TAREFA') {
+        // Renderização da Tarefa (com enunciado)
         activity.innerHTML = `
             <div class="card border-0 shadow-sm bg-light">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class='bx bx-notepad'></i> Enunciado da Tarefa</h5>
-                    <div class="fs-6 mb-4">${lesson.description || '<p class="text-muted">Sem instruções definidas.</p>'}</div>
+                    <h5 class="fw-bold mb-3 text-primary"><i class='bx bx-notepad'></i> Instruções da Tarefa</h5>
+                    <div class="fs-6 mb-4 text-dark">${lesson.description || '<p class="text-muted fst-italic">Sem instruções definidas pelo professor.</p>'}</div>
+                    <hr>
+                    <div class="d-flex align-items-center gap-3">
+                         <i class='bx bx-info-circle fs-1 text-info'></i>
+                         <small class="text-muted">Para entregar, siga as instruções acima. Caso precise enviar arquivos, utilize os canais indicados pelo professor.</small>
+                    </div>
                 </div>
             </div>`;
     
     } else if (lesson.type === 'QUIZ') {
-        // --- LÓGICA INTELIGENTE DO QUIZ ---
-        // Verifica se o aluno JÁ fez o quiz (tem nota salva)
+        // Verifica se já tem nota
         const savedScore = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
         const isCompleted = enrollment.grades.completed.includes(lesson.id);
 
         if (isCompleted && savedScore !== undefined) {
-            // Se já fez, mostra direto o resultado (Bloqueado)
             renderQuizResult(savedScore, lesson.points || 100);
         } else { 
-            // Se não fez, mostra a Capa (Intro)
             renderQuizIntro(lesson);
         }
     }
@@ -326,20 +335,38 @@ function openLesson(lesson) {
     if (window.innerWidth < 992) document.getElementById('course-nav').classList.add('closed');
 }
 
+// === LÓGICA DO QUIZ (ATUALIZADA) ===
 
-// === NOVAS FUNÇÕES DO QUIZ (COPIAR TUDO ABAIXO) ===
-
-// 1. TELA DE INTRODUÇÃO (CAPA)
+// 1. Capa do Quiz
 window.renderQuizIntro = (lesson) => {
     let qCount = 0;
-    // Tenta contar quantas questões existem no total
-    try {
-        const data = lesson.quiz_data || (lesson.description.startsWith('{') ? JSON.parse(lesson.description) : {});
-        if(data.questions) qCount = data.questions.length;
-    } catch(e) {}
+    let limit = 10;
+    
+    // Tenta ler dados do JSONB ou string JSON
+    let quizDataObj = null;
+    if (lesson.quiz_data) {
+        quizDataObj = lesson.quiz_data;
+    } else if (lesson.description && lesson.description.startsWith('{')) {
+        try { quizDataObj = JSON.parse(lesson.description); } catch(e){}
+    }
 
-    // Define quantas questões serão sorteadas (Padrão 10 ou o que tiver)
-    const questionsToAsk = 10; // Você pode mudar esse número ou puxar do JSON
+    if (quizDataObj) {
+        if (Array.isArray(quizDataObj)) {
+            // Formato legado (Array direto)
+            qCount = quizDataObj.length;
+            limit = qCount;
+        } else {
+            // Formato novo (Objeto com settings e questions)
+            qCount = quizDataObj.questions ? quizDataObj.questions.length : 0;
+            if (quizDataObj.settings && quizDataObj.settings.mode === 'bank') {
+                limit = quizDataObj.settings.drawCount || 5;
+            } else {
+                limit = qCount; // Manual usa todas
+            }
+        }
+    }
+
+    const questionsToAsk = Math.min(qCount, limit);
 
     const container = document.getElementById('activity-area');
     container.innerHTML = `
@@ -347,21 +374,21 @@ window.renderQuizIntro = (lesson) => {
             <div class="quiz-hero">
                 <div class="quiz-hero-icon start"><i class='bx bx-joystick'></i></div>
                 <h2 class="fw-bold mb-2">${lesson.title}</h2>
-                <p class="text-muted mb-4">Esta avaliação testará seus conhecimentos sobre este módulo.</p>
+                <p class="text-muted mb-4">Avaliação do Módulo</p>
                 
                 <div class="quiz-stat-grid">
                     <div class="quiz-stat-box">
-                        <span class="quiz-stat-val">${Math.min(qCount, questionsToAsk)}</span>
+                        <span class="quiz-stat-val">${questionsToAsk}</span>
                         <span class="quiz-stat-lbl">Questões</span>
                     </div>
                     <div class="quiz-stat-box">
-                        <span class="quiz-stat-val">${lesson.points || 100}</span>
+                        <span class="quiz-stat-val">${lesson.points || 0}</span>
                         <span class="quiz-stat-lbl">Pontos</span>
                     </div>
                 </div>
 
                 <div class="alert alert-warning small text-start">
-                    <i class='bx bx-error-circle'></i> <strong>Atenção:</strong> Você só tem uma tentativa. Após finalizar, sua nota será registrada automaticamente.
+                    <i class='bx bx-error-circle'></i> Atenção: Ao iniciar, você deverá responder todas as questões.
                 </div>
 
                 <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold mt-3" onclick="startQuiz()">
@@ -372,54 +399,59 @@ window.renderQuizIntro = (lesson) => {
     `;
 }
 
-// 2. INICIAR E SORTEAR QUESTÕES
+// 2. Iniciar e Sortear
 window.startQuiz = () => {
     const lesson = currentLesson;
     let allQuestions = [];
-    
+    let limit = 100;
+
     // Carrega questões
-    if (lesson.quiz_data && lesson.quiz_data.questions) {
-        allQuestions = lesson.quiz_data.questions;
+    if (lesson.quiz_data) {
+        if (Array.isArray(lesson.quiz_data)) {
+            allQuestions = lesson.quiz_data;
+            limit = allQuestions.length;
+        } else {
+            allQuestions = lesson.quiz_data.questions || [];
+            if (lesson.quiz_data.settings && lesson.quiz_data.settings.mode === 'bank') {
+                limit = lesson.quiz_data.settings.drawCount || 5;
+            } else {
+                limit = allQuestions.length;
+            }
+        }
     } else if (lesson.description && lesson.description.startsWith('{')) {
         try { allQuestions = JSON.parse(lesson.description).questions; } catch(e){}
     }
 
     if (!allQuestions || allQuestions.length === 0) {
-        alert("Erro: Nenhuma questão encontrada."); return;
+        alert("Erro: Nenhuma questão encontrada para este quiz."); return;
     }
 
-    // --- LÓGICA DE BANCO DE QUESTÕES (SHUFFLE) ---
-    // 1. Embaralha todas as questões
+    // Embaralha e Corta
     const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-    
-    // 2. Pega apenas as X primeiras (ex: 5 ou 10). 
-    // Se quiser configurar por aula, adicione "limit" no JSON do quiz. Por padrão, pega 10.
-    const limit = lesson.quiz_data?.limit || 10; 
     const selectedQuestions = shuffled.slice(0, limit);
 
-    // Inicia estado do Quiz
     quizState = { 
         questions: selectedQuestions, 
         currentIndex: 0, 
-        answers: {}, // Armazena índices das respostas
+        answers: {}, 
         totalPoints: lesson.points || 100
     };
     
     renderQuizStep();
 }
 
-// 3. RENDERIZAR QUESTÃO (VISUAL NOVO)
+// 3. Renderizar Passo
 window.renderQuizStep = () => {
     const container = document.getElementById('activity-area');
+    if(!quizState.questions) return;
+
     const q = quizState.questions[quizState.currentIndex];
     const total = quizState.questions.length;
     const progressPct = ((quizState.currentIndex) / total) * 100;
 
-    // Renderiza Opções
     let optionsHtml = '';
     if(q.options) {
         q.options.forEach((opt, idx) => {
-            // Verifica se está selecionado
             const isSelected = quizState.answers[quizState.currentIndex] === idx;
             const activeClass = isSelected ? 'selected' : '';
             
@@ -454,7 +486,7 @@ window.renderQuizStep = () => {
                     </button>
                     
                     ${quizState.currentIndex === total - 1 
-                        ? `<button class="btn btn-success fw-bold px-4" onclick="finishQuiz()">FINALIZAR PROVA</button>`
+                        ? `<button class="btn btn-success fw-bold px-4" onclick="finishQuiz()">FINALIZAR</button>`
                         : `<button class="btn btn-primary fw-bold px-4" onclick="nextQuizStep()">Próxima <i class='bx bx-right-arrow-alt'></i></button>`
                     }
                 </div>
@@ -463,64 +495,70 @@ window.renderQuizStep = () => {
     `;
 }
 
-// 4. SELEÇÃO DE RESPOSTA (ATUALIZA UI INSTANTANEAMENTE)
 window.selectQuizAnswer = (idx) => {
     quizState.answers[quizState.currentIndex] = idx;
-    renderQuizStep(); // Re-renderiza para mostrar a seleção visual
+    renderQuizStep();
 };
 
-// 5. FINALIZAR E SALVAR
+window.nextQuizStep = () => {
+    if (quizState.currentIndex < quizState.questions.length - 1) {
+        quizState.currentIndex++;
+        renderQuizStep();
+    }
+};
+
+window.prevQuizStep = () => {
+    if (quizState.currentIndex > 0) {
+        quizState.currentIndex--;
+        renderQuizStep();
+    }
+};
+
 window.finishQuiz = async () => {
-    if(!confirm("Tem certeza que deseja finalizar? Você não poderá alterar as respostas depois.")) return;
+    if(!confirm("Tem certeza que deseja finalizar?")) return;
 
-    const questions = quizState.questions;
     let correctCount = 0;
-
+    const questions = quizState.questions;
+    
     questions.forEach((q, idx) => {
-        // Compara resposta do aluno com o índice correto da questão
         const userAnswer = quizState.answers[idx];
         if (userAnswer !== undefined && String(userAnswer) === String(q.correctIndex)) {
             correctCount++;
         }
     });
 
-    // Regra de Três para calcular nota baseada no valor da aula
+    // Regra de Três
     const finalScore = Math.round((correctCount / questions.length) * quizState.totalPoints);
     
-    // Salva no Banco de Dados
-    if (!enrollment.grades.scores) enrollment.grades.scores = {};
+    document.getElementById('activity-area').innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-3">Calculando nota...</p></div>`;
+
+    // Atualiza Local
     enrollment.grades.scores[currentLesson.id] = finalScore;
-    
     if (!enrollment.grades.completed.includes(currentLesson.id)) {
         enrollment.grades.completed.push(currentLesson.id);
     }
 
-    // Feedback de carregamento
-    document.getElementById('activity-area').innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-3">Calculando nota e salvando...</p></div>`;
-
+    // Salva no Supabase
     const { error } = await supabase
         .from('class_enrollments')
         .update({ grades: enrollment.grades })
         .eq('id', enrollment.id);
 
     if (error) {
-        alert('Erro ao salvar: ' + error.message);
-        renderQuizStep(); // Volta para a prova se der erro
+        alert('Erro ao salvar nota: ' + error.message);
+        renderQuizStep();
     } else {
-        // Atualiza objeto local e mostra resultado
         renderQuizResult(finalScore, quizState.totalPoints);
         updateOverallProgress();
-        updateFinishButton(); // Atualiza botão lateral
+        updateFinishButton();
     }
 };
 
-// 6. TELA DE RESULTADO (BLOQUEADA PARA NOVAS TENTATIVAS)
+// 4. Resultado Final
 window.renderQuizResult = (score, total) => {
-    const percent = Math.round((score / total) * 100);
-    const isPass = percent >= 70; // 70% para aprovar (exemplo)
-    
-    // Cor do círculo
-    const color = isPass ? '#16a34a' : '#dc2626'; // Verde ou Vermelho
+    const percent = total > 0 ? Math.round((score / total) * 100) : 0;
+    const isPass = percent >= 70;
+    const color = isPass ? '#16a34a' : '#dc2626'; 
     
     const container = document.getElementById('activity-area');
     container.innerHTML = `
@@ -541,32 +579,11 @@ window.renderQuizResult = (score, total) => {
             </div>
         </div>
     `;
-    
-    // Garante que o botão de "Concluir" no topo fique verde e desabilitado
-    const btnFinish = document.getElementById('btn-finish');
-    if(btnFinish) {
-        btnFinish.disabled = true;
-        btnFinish.className = "btn btn-success rounded-pill fw-bold";
-        btnFinish.innerHTML = "<i class='bx bx-check-double'></i> Avaliado";
-    }
+    updateFinishButton();
 }
 
-// Mantive as funções de navegação simples
-window.nextQuizStep = () => {
-    if (quizState.currentIndex < quizState.questions.length - 1) {
-        quizState.currentIndex++;
-        renderQuizStep();
-    }
-};
-
-window.prevQuizStep = () => {
-    if (quizState.currentIndex > 0) {
-        quizState.currentIndex--;
-        renderQuizStep();
-    }
-};
-// === FIM DAS FUNÇÕES DO QUIZ ===
 // === UTILITÁRIOS ===
+
 function getEmbedUrl(url) { 
     if(!url) return '';
     if (url.includes('watch?v=')) return url.replace('watch?v=', 'embed/'); 
@@ -633,10 +650,11 @@ window.toggleLessonStatus = async () => {
 };
 
 function updateFinishButton() {
+    if(!currentLesson) return;
     const btn = document.getElementById('btn-finish');
     const isDone = enrollment.grades.completed.includes(currentLesson.id);
     
-    // Quiz se completa automaticamente ao finalizar a prova
+    // Quiz se completa automaticamente
     if(currentLesson.type === 'QUIZ') {
         btn.disabled = true;
         btn.innerHTML = isDone ? "<i class='bx bx-trophy'></i> Quiz Concluído" : "Complete o Quiz";
@@ -650,7 +668,8 @@ function updateFinishButton() {
     btn.className = isDone ? "btn btn-success rounded-pill fw-bold" : "btn btn-outline-success rounded-pill fw-bold";
 }
 
-// Função placeholder para notas (implemente conforme necessário)
 window.loadGrades = () => { 
     document.getElementById('grades-list').innerHTML = '<div class="alert alert-info">Módulo de notas em desenvolvimento.</div>';
 };
+window.loadCalendar = () => { /* Placeholder */ };
+window.loadCertificate = () => { /* Placeholder */ };
