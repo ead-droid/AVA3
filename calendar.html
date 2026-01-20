@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVA3 • Calendário Acadêmico</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="./assets/css/chrome.css">
+    <link rel="stylesheet" href="./assets/css/site.css">
+
+    <style>
+        .event-card {
+            transition: transform 0.2s;
+            border-left: 5px solid #0d6efd;
+        }
+        .event-card:hover {
+            transform: scale(1.01);
+        }
+        .date-badge {
+            min-width: 65px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        .line-height-1 { line-height: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="site-header"></div>
+    <div id="site-sidebar"></div>
+
+    <main class="container mt-4">
+        <div class="section-header mb-4">
+            <div class="section-title">
+                <h2><i class='bx bx-calendar-event text-primary'></i> Calendário de Eventos</h2>
+                <p class="text-muted">Acompanhe datas de provas, aulas e prazos das suas turmas.</p>
+            </div>
+        </div>
+
+        <div id="calendar-content">
+            <div id="calendar-loader" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Buscando seus compromissos...</p>
+            </div>
+
+            <div id="events-container" class="d-flex flex-column gap-3"></div>
+        </div>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./assets/js/chrome.js"></script>
+    <script type="module" src="./assets/js/calendar.js"></script>
+</body>
+</html>
