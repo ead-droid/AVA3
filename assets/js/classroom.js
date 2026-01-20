@@ -7,6 +7,7 @@ let enrollment = null;
 let flatLessons = [];
 let courseModules = []; 
 let currentLesson = null;
+// Estado inicial do Quiz
 let quizState = { data: null, currentIndex: -1, answers: {}, isFinished: false };
 
 const ICONS = { 
@@ -23,6 +24,8 @@ const ICONS = {
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!classId) { window.location.href = 'app.html'; return; }
+    
+    // Verifica sessão
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.href = 'login.html';
 
@@ -30,38 +33,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadEnrollment(session.user.id);
         await loadCourse();
         
+        // Abre a primeira aula não concluída
         if (flatLessons.length > 0) {
             const validIds = flatLessons.map(l => l.id);
+            // Limpa IDs de aulas que foram excluídas do curso
             enrollment.grades.completed = enrollment.grades.completed.filter(id => validIds.includes(id));
+            
             const next = flatLessons.find(l => !enrollment.grades.completed.includes(l.id)) || flatLessons[0];
             openLesson(next);
         }
         
         updateOverallProgress();
         checkUnreadMural(); 
-    } catch (error) { console.error("Erro:", error); }
+    } catch (error) { 
+        console.error("Erro crítico ao iniciar sala de aula:", error); 
+    }
 });
 
 async function loadEnrollment(userId) {
     const { data, error } = await supabase.from('class_enrollments').select('*').eq('class_id', classId).eq('user_id', userId).single();
-    if (error || !data) throw new Error("Sem matrícula");
+    if (error || !data) throw new Error("Sem matrícula ativa para este usuário.");
     enrollment = data;
     if (!enrollment.grades) enrollment.grades = { completed: [], scores: {} };
     if (!enrollment.grades.scores) enrollment.grades.scores = {};
 }
 
 async function loadCourse() {
+    // Carrega dados da Turma e Nome do Curso
     const { data: cls } = await supabase.from('classes').select('*, courses(title)').eq('id', classId).single();
+    
     if (cls) {
         document.getElementById('header-course-title').textContent = cls.courses?.title || 'Curso';
         document.getElementById('header-class-name').textContent = cls.name;
-        
-        // --- NOVA CHAMADA: Verifica se pode editar ---
         checkEditorAccess(cls.course_id);
     }
 
-    const { data: modules } = await supabase.from('modules').select(`*, sections (*, lessons (*))`).eq('course_id', cls.course_id).order('ordem', { ascending: true });
+    // Busca Módulos, Seções e Aulas
+    // O select aninhado garante que pegamos toda a hierarquia
+    const { data: modules, error } = await supabase
+        .from('modules')
+        .select(`*, sections (*, lessons (*))`)
+        .eq('course_id', cls.course_id)
+        .order('ordem', { ascending: true });
+
+    if (error) {
+        console.error("Erro ao carregar módulos:", error);
+        return;
+    }
     
+    // Ordenação manual no Front-end para garantir a sequência correta
     if (modules) {
         modules.forEach(mod => {
             if (mod.sections) {
@@ -75,8 +95,10 @@ async function loadCourse() {
 
     courseModules = modules; 
     const container = document.getElementById('modules-list');
-    container.innerHTML = ''; flatLessons = [];
+    container.innerHTML = ''; 
+    flatLessons = [];
     
+    // Renderiza a lista lateral
     modules.forEach((mod, index) => {
         const modId = `mod-${mod.id}`;
         let lessonsHtml = '';
@@ -86,9 +108,12 @@ async function loadCourse() {
             if (sec.title) lessonsHtml += `<div class="section-title">${sec.title}</div>`;
             if (sec.lessons) {
                 sec.lessons.forEach(l => {
+                    // Ignora aulas não publicadas
                     if (l.is_published === false) return;
+                    
                     flatLessons.push(l);
                     modLessonIds.push(l.id);
+                    
                     const isDone = enrollment.grades.completed.includes(l.id);
                     lessonsHtml += `
                         <div class="lesson-item ${isDone?'completed':''}" id="lesson-${l.id}" onclick="window.openLessonById(${l.id})">
@@ -100,6 +125,7 @@ async function loadCourse() {
             }
         });
 
+        // Calcula progresso do módulo
         const modTotal = modLessonIds.length;
         const modDone = modLessonIds.filter(id => enrollment.grades.completed.includes(id)).length;
         let pct = modTotal > 0 ? Math.round((modDone/modTotal)*100) : 0;
@@ -124,35 +150,31 @@ async function loadCourse() {
     });
 }
 
-// --- FUNÇÃO NOVA: VERIFICA PERMISSÃO E CRIA BOTÃO EDITAR ---
+// Verifica se usuário pode editar o curso (Admin/Professor)
 async function checkEditorAccess(courseId) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    // Busca perfil do usuário
     const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single();
 
-    // Se for admin ou professor, cria o botão
     if (profile && (profile.role === 'admin' || profile.role === 'professor')) {
         const headerActions = document.getElementById('header-actions');
         if (headerActions) {
             const editBtn = document.createElement('a');
-            editBtn.href = `course-editor.html?id=${courseId}`; // Link para o ID do curso pai
+            editBtn.href = `course-editor.html?id=${courseId}`; 
             editBtn.className = 'btn btn-sm btn-dark border-0 fw-bold shadow-sm';
             editBtn.innerHTML = `<i class='bx bx-edit-alt'></i> Editar Conteúdo`;
             editBtn.style.marginRight = '10px';
-            
-            // Insere antes do botão de Sair (que é o último)
             headerActions.insertBefore(editBtn, headerActions.lastElementChild);
         }
     }
 }
 
-// === FUNÇÃO DO MURAL ===
+// === LÓGICA DO MURAL ===
 window.loadMural = async () => {
     const container = document.getElementById('wall-container');
     if (!container) return; 
@@ -164,12 +186,11 @@ window.loadMural = async () => {
         return;
     }
 
-    // --- AQUI ESTÁ A CORREÇÃO ---
     const { data: posts, error } = await supabase
         .from('class_posts')
         .select('*')
         .eq('class_id', classId)
-        .neq('type', 'INTERNAL') // <--- ESTA LINHA BLOQUEIA OS POSTS INTERNOS
+        .neq('type', 'INTERNAL') // Filtra posts internos
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -190,7 +211,6 @@ window.loadMural = async () => {
 
     const readPosts = getReadPosts();
 
-    // Mapeamento de Cores
     const colorMap = {
         'AVISO': 'post-yellow',
         'MATERIAL': 'post-blue',
@@ -203,9 +223,8 @@ window.loadMural = async () => {
         const isRead = readPosts.includes(post.id);
         const date = new Date(post.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
         
-        // Proteção extra: se por algum motivo passar um INTERNAL (ex: escrito em minúsculo), força o tipo padrão
         let type = post.type || 'AVISO';
-        if(type.toUpperCase() === 'INTERNAL') return ''; // Não renderiza se for interno
+        if(type.toUpperCase() === 'INTERNAL') return ''; 
 
         const colorClass = colorMap[type.toUpperCase()] || colorMap['default'];
         const newBadge = !isRead ? `<div class="new-indicator">NOVO!</div>` : '';
@@ -231,41 +250,41 @@ window.loadMural = async () => {
     }).join('');
 };
 
-
 window.openLessonById = (id) => { const l = flatLessons.find(x => x.id === id); if(l) openLesson(l); };
 
+// === SUBSTITUIR A FUNÇÃO openLesson EXISTENTE POR ESTA ===
 function openLesson(lesson) {
     currentLesson = lesson;
     forceSwitchToContent();
     
-    // Atualiza a UI da lista lateral
+    // Atualiza Menu Lateral
     document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`lesson-${lesson.id}`)?.classList.add('active');
     
-    // Atualiza Cabeçalho
+    // Header
     document.getElementById('lbl-title').textContent = lesson.title;
     document.getElementById('lbl-type').textContent = lesson.type;
     
-    // Mostra descrição APENAS se não for Tarefa ou Quiz (pois eles usam layout próprio)
-    // Se for vídeo/texto, a descrição aparece no topo.
-    const descContainer = document.getElementById('lbl-desc');
-    if (['TAREFA', 'QUIZ'].includes(lesson.type)) {
-        descContainer.style.display = 'none'; 
-    } else {
-        descContainer.style.display = 'block';
-        descContainer.innerHTML = lesson.description || '';
-    }
-    
+    // Limpa área de atividade
     const activity = document.getElementById('activity-area');
     const playerFrame = document.getElementById('player-frame');
+    const descContainer = document.getElementById('lbl-desc');
+    
     activity.innerHTML = ''; 
     playerFrame.style.display = 'none'; 
     playerFrame.innerHTML = '';
 
+    // Oculta descrição padrão se for Quiz (tem tela própria)
+    if (lesson.type === 'QUIZ') {
+        descContainer.style.display = 'none';
+    } else {
+        descContainer.style.display = 'block';
+        descContainer.innerHTML = lesson.description || '';
+    }
+
     const url = getEmbedUrl(lesson.video_url || lesson.content_url);
 
-    // --- LÓGICA DE RENDERIZAÇÃO POR TIPO ---
-
+    // --- RENDERIZAÇÃO POR TIPO ---
     if (lesson.type === 'VIDEO_AULA' || lesson.type === 'VIDEO') {
         playerFrame.style.display = 'flex';
         playerFrame.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
@@ -277,121 +296,264 @@ function openLesson(lesson) {
         activity.innerHTML = `<iframe class="pdf-viewer" src="${url}"></iframe>`;
     
     } else if (lesson.type === 'TEXTO') {
-        // Para texto, usamos a descrição como conteúdo principal
-        descContainer.style.display = 'block';
         activity.innerHTML = `<div class="p-4 bg-light rounded border">${lesson.description || 'Conteúdo não disponível.'}</div>`;
 
     } else if (lesson.type === 'TAREFA') {
-        // --- AQUI ESTÁ A CORREÇÃO DA TAREFA ---
-        // Mostra o enunciado (description) que vem do banco
         activity.innerHTML = `
             <div class="card border-0 shadow-sm bg-light">
                 <div class="card-body p-4">
                     <h5 class="fw-bold mb-3"><i class='bx bx-notepad'></i> Enunciado da Tarefa</h5>
-                    <div class="fs-6 mb-4">${lesson.description || '<p class="text-muted">Sem instruções definidas pelo professor.</p>'}</div>
-                    <hr>
-                    <div class="alert alert-info d-flex align-items-center">
-                        <i class='bx bx-info-circle fs-4 me-2'></i>
-                        <div>Para entregar esta tarefa, siga as instruções acima ou envie o link/arquivo conforme combinado em aula.</div>
-                    </div>
+                    <div class="fs-6 mb-4">${lesson.description || '<p class="text-muted">Sem instruções definidas.</p>'}</div>
                 </div>
             </div>`;
     
     } else if (lesson.type === 'QUIZ') {
-        const score = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
-        // Se já fez e tem nota, mostra resultado. Se não, inicia o quiz.
-        if (enrollment.grades.completed.includes(lesson.id) && score !== undefined) {
-            activity.innerHTML = `
-                <div class="text-center p-5 bg-white border rounded shadow-sm">
-                    <i class='bx bx-trophy display-1 text-warning mb-3'></i>
-                    <h3 class="fw-bold text-success">Quiz Concluído!</h3>
-                    <p class="fs-5">Sua nota: <strong>${score}</strong> / ${lesson.points}</p>
-                    <button class="btn btn-outline-secondary btn-sm mt-3" onclick="initQuiz(currentLesson)">Refazer Quiz</button>
-                </div>`;
+        // --- LÓGICA INTELIGENTE DO QUIZ ---
+        // Verifica se o aluno JÁ fez o quiz (tem nota salva)
+        const savedScore = enrollment.grades.scores ? enrollment.grades.scores[lesson.id] : undefined;
+        const isCompleted = enrollment.grades.completed.includes(lesson.id);
+
+        if (isCompleted && savedScore !== undefined) {
+            // Se já fez, mostra direto o resultado (Bloqueado)
+            renderQuizResult(savedScore, lesson.points || 100);
         } else { 
-            initQuiz(lesson); 
+            // Se não fez, mostra a Capa (Intro)
+            renderQuizIntro(lesson);
         }
     }
     
     updateFinishButton();
     if (window.innerWidth < 992) document.getElementById('course-nav').classList.add('closed');
 }
-function initQuiz(lesson) {
-    // Tenta pegar as perguntas de quiz_data (formato JSONB) ou da descrição se for JSON string
-    let questions = [];
-    
-    if (lesson.quiz_data && lesson.quiz_data.questions) {
-        questions = lesson.quiz_data.questions;
-    } 
-    // Fallback: Caso tenha salvo no 'content' ou 'description' como texto (depende do seu editor)
-    else if (lesson.description && lesson.description.startsWith('{')) {
-        try { questions = JSON.parse(lesson.description).questions; } catch(e){}
-    }
 
-    if (!questions || questions.length === 0) {
-        document.getElementById('activity-area').innerHTML = `<div class="alert alert-warning">Este quiz não possui perguntas configuradas.</div>`;
-        return;
-    }
 
-    quizState = { 
-        data: { questions: questions }, 
-        currentIndex: 0, 
-        answers: {}, 
-        isFinished: false 
-    };
-    renderQuizStep();
-}
+// === NOVAS FUNÇÕES DO QUIZ (COPIAR TUDO ABAIXO) ===
 
-function renderQuizStep() {
+// 1. TELA DE INTRODUÇÃO (CAPA)
+window.renderQuizIntro = (lesson) => {
+    let qCount = 0;
+    // Tenta contar quantas questões existem no total
+    try {
+        const data = lesson.quiz_data || (lesson.description.startsWith('{') ? JSON.parse(lesson.description) : {});
+        if(data.questions) qCount = data.questions.length;
+    } catch(e) {}
+
+    // Define quantas questões serão sorteadas (Padrão 10 ou o que tiver)
+    const questionsToAsk = 10; // Você pode mudar esse número ou puxar do JSON
+
     const container = document.getElementById('activity-area');
-    const q = quizState.data.questions[quizState.currentIndex];
-    const total = quizState.data.questions.length;
-
-    // HTML das Opções
-    let optionsHtml = '';
-    if(q.options) {
-        q.options.forEach((opt, idx) => {
-            const isChecked = quizState.answers[quizState.currentIndex] === idx ? 'checked' : '';
-            optionsHtml += `
-                <label class="list-group-item d-flex align-items-center gap-3 p-3 border rounded mb-2 cursor-pointer" style="cursor:pointer;">
-                    <input class="form-check-input flex-shrink-0" type="radio" name="quiz_opt" value="${idx}" ${isChecked} onchange="selectQuizAnswer(${idx})">
-                    <span class="form-check-label w-100">${opt.text || opt}</span>
-                </label>`;
-        });
-    }
-
-    // HTML Principal do Quiz
     container.innerHTML = `
-        <div class="quiz-container mx-auto" style="max-width: 800px;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <span class="badge bg-primary">Questão ${quizState.currentIndex + 1} de ${total}</span>
-                <span class="text-muted small">Valendo ${currentLesson.points} pontos</span>
-            </div>
-            
-            <h4 class="fw-bold mb-4">${q.text || q.title}</h4>
-            
-            <div class="list-group mb-4 gap-2 border-0">
-                ${optionsHtml}
-            </div>
+        <div class="quiz-wrapper">
+            <div class="quiz-hero">
+                <div class="quiz-hero-icon start"><i class='bx bx-joystick'></i></div>
+                <h2 class="fw-bold mb-2">${lesson.title}</h2>
+                <p class="text-muted mb-4">Esta avaliação testará seus conhecimentos sobre este módulo.</p>
+                
+                <div class="quiz-stat-grid">
+                    <div class="quiz-stat-box">
+                        <span class="quiz-stat-val">${Math.min(qCount, questionsToAsk)}</span>
+                        <span class="quiz-stat-lbl">Questões</span>
+                    </div>
+                    <div class="quiz-stat-box">
+                        <span class="quiz-stat-val">${lesson.points || 100}</span>
+                        <span class="quiz-stat-lbl">Pontos</span>
+                    </div>
+                </div>
 
-            <div class="d-flex justify-content-between mt-4">
-                <button class="btn btn-outline-secondary" onclick="prevQuizStep()" ${quizState.currentIndex === 0 ? 'disabled' : ''}>Anterior</button>
-                ${quizState.currentIndex === total - 1 
-                    ? `<button class="btn btn-success fw-bold px-4" onclick="finishQuiz()">Finalizar e Enviar</button>`
-                    : `<button class="btn btn-primary px-4" onclick="nextQuizStep()">Próxima</button>`
-                }
+                <div class="alert alert-warning small text-start">
+                    <i class='bx bx-error-circle'></i> <strong>Atenção:</strong> Você só tem uma tentativa. Após finalizar, sua nota será registrada automaticamente.
+                </div>
+
+                <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold mt-3" onclick="startQuiz()">
+                    INICIAR AVALIAÇÃO
+                </button>
             </div>
         </div>
     `;
 }
 
-// Funções Auxiliares do Quiz (Adicione ao final do arquivo ou escopo global)
+// 2. INICIAR E SORTEAR QUESTÕES
+window.startQuiz = () => {
+    const lesson = currentLesson;
+    let allQuestions = [];
+    
+    // Carrega questões
+    if (lesson.quiz_data && lesson.quiz_data.questions) {
+        allQuestions = lesson.quiz_data.questions;
+    } else if (lesson.description && lesson.description.startsWith('{')) {
+        try { allQuestions = JSON.parse(lesson.description).questions; } catch(e){}
+    }
+
+    if (!allQuestions || allQuestions.length === 0) {
+        alert("Erro: Nenhuma questão encontrada."); return;
+    }
+
+    // --- LÓGICA DE BANCO DE QUESTÕES (SHUFFLE) ---
+    // 1. Embaralha todas as questões
+    const shuffled = allQuestions.sort(() => 0.5 - Math.random());
+    
+    // 2. Pega apenas as X primeiras (ex: 5 ou 10). 
+    // Se quiser configurar por aula, adicione "limit" no JSON do quiz. Por padrão, pega 10.
+    const limit = lesson.quiz_data?.limit || 10; 
+    const selectedQuestions = shuffled.slice(0, limit);
+
+    // Inicia estado do Quiz
+    quizState = { 
+        questions: selectedQuestions, 
+        currentIndex: 0, 
+        answers: {}, // Armazena índices das respostas
+        totalPoints: lesson.points || 100
+    };
+    
+    renderQuizStep();
+}
+
+// 3. RENDERIZAR QUESTÃO (VISUAL NOVO)
+window.renderQuizStep = () => {
+    const container = document.getElementById('activity-area');
+    const q = quizState.questions[quizState.currentIndex];
+    const total = quizState.questions.length;
+    const progressPct = ((quizState.currentIndex) / total) * 100;
+
+    // Renderiza Opções
+    let optionsHtml = '';
+    if(q.options) {
+        q.options.forEach((opt, idx) => {
+            // Verifica se está selecionado
+            const isSelected = quizState.answers[quizState.currentIndex] === idx;
+            const activeClass = isSelected ? 'selected' : '';
+            
+            optionsHtml += `
+                <div class="quiz-option-label ${activeClass}" onclick="selectQuizAnswer(${idx})">
+                    <div class="quiz-radio"></div>
+                    <span class="fw-medium">${opt.text || opt}</span>
+                </div>`;
+        });
+    }
+
+    container.innerHTML = `
+        <div class="quiz-wrapper text-start">
+            <div class="quiz-progress-container">
+                <div class="quiz-progress-fill" style="width: ${progressPct}%"></div>
+            </div>
+            <div class="quiz-body">
+                <div class="d-flex justify-content-between mb-3 text-muted small fw-bold uppercase">
+                    <span>Questão ${quizState.currentIndex + 1} de ${total}</span>
+                    <span>Valendo nota</span>
+                </div>
+
+                <h4 class="quiz-question-text">${q.text || q.title}</h4>
+                
+                <div class="mb-4">
+                    ${optionsHtml}
+                </div>
+
+                <div class="d-flex justify-content-between pt-3 border-top">
+                    <button class="btn btn-light text-muted fw-bold" onclick="prevQuizStep()" ${quizState.currentIndex === 0 ? 'disabled' : ''}>
+                        Anterior
+                    </button>
+                    
+                    ${quizState.currentIndex === total - 1 
+                        ? `<button class="btn btn-success fw-bold px-4" onclick="finishQuiz()">FINALIZAR PROVA</button>`
+                        : `<button class="btn btn-primary fw-bold px-4" onclick="nextQuizStep()">Próxima <i class='bx bx-right-arrow-alt'></i></button>`
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 4. SELEÇÃO DE RESPOSTA (ATUALIZA UI INSTANTANEAMENTE)
 window.selectQuizAnswer = (idx) => {
     quizState.answers[quizState.currentIndex] = idx;
+    renderQuizStep(); // Re-renderiza para mostrar a seleção visual
 };
 
+// 5. FINALIZAR E SALVAR
+window.finishQuiz = async () => {
+    if(!confirm("Tem certeza que deseja finalizar? Você não poderá alterar as respostas depois.")) return;
+
+    const questions = quizState.questions;
+    let correctCount = 0;
+
+    questions.forEach((q, idx) => {
+        // Compara resposta do aluno com o índice correto da questão
+        const userAnswer = quizState.answers[idx];
+        if (userAnswer !== undefined && String(userAnswer) === String(q.correctIndex)) {
+            correctCount++;
+        }
+    });
+
+    // Regra de Três para calcular nota baseada no valor da aula
+    const finalScore = Math.round((correctCount / questions.length) * quizState.totalPoints);
+    
+    // Salva no Banco de Dados
+    if (!enrollment.grades.scores) enrollment.grades.scores = {};
+    enrollment.grades.scores[currentLesson.id] = finalScore;
+    
+    if (!enrollment.grades.completed.includes(currentLesson.id)) {
+        enrollment.grades.completed.push(currentLesson.id);
+    }
+
+    // Feedback de carregamento
+    document.getElementById('activity-area').innerHTML = `<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-3">Calculando nota e salvando...</p></div>`;
+
+    const { error } = await supabase
+        .from('class_enrollments')
+        .update({ grades: enrollment.grades })
+        .eq('id', enrollment.id);
+
+    if (error) {
+        alert('Erro ao salvar: ' + error.message);
+        renderQuizStep(); // Volta para a prova se der erro
+    } else {
+        // Atualiza objeto local e mostra resultado
+        renderQuizResult(finalScore, quizState.totalPoints);
+        updateOverallProgress();
+        updateFinishButton(); // Atualiza botão lateral
+    }
+};
+
+// 6. TELA DE RESULTADO (BLOQUEADA PARA NOVAS TENTATIVAS)
+window.renderQuizResult = (score, total) => {
+    const percent = Math.round((score / total) * 100);
+    const isPass = percent >= 70; // 70% para aprovar (exemplo)
+    
+    // Cor do círculo
+    const color = isPass ? '#16a34a' : '#dc2626'; // Verde ou Vermelho
+    
+    const container = document.getElementById('activity-area');
+    container.innerHTML = `
+        <div class="quiz-wrapper">
+            <div class="quiz-hero">
+                <div class="score-circle" style="--pct: ${percent}%; background: conic-gradient(${color} ${percent}%, #e2e8f0 0);" data-score="${score}"></div>
+                
+                <h2 class="fw-bold text-dark mb-1">${isPass ? 'Parabéns!' : 'Avaliação Concluída'}</h2>
+                <p class="text-muted mb-4">Sua nota final foi registrada.</p>
+
+                <div class="alert ${isPass ? 'alert-success' : 'alert-danger'} d-inline-block px-4 py-2 rounded-pill fw-bold mb-4">
+                    ${isPass ? 'APROVADO' : 'ABAIXO DA MÉDIA'}
+                </div>
+                
+                <div class="mt-2">
+                    <button class="btn btn-outline-secondary px-4" onclick="document.getElementById('btn-next').click()">Continuar Curso</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Garante que o botão de "Concluir" no topo fique verde e desabilitado
+    const btnFinish = document.getElementById('btn-finish');
+    if(btnFinish) {
+        btnFinish.disabled = true;
+        btnFinish.className = "btn btn-success rounded-pill fw-bold";
+        btnFinish.innerHTML = "<i class='bx bx-check-double'></i> Avaliado";
+    }
+}
+
+// Mantive as funções de navegação simples
 window.nextQuizStep = () => {
-    if (quizState.currentIndex < quizState.data.questions.length - 1) {
+    if (quizState.currentIndex < quizState.questions.length - 1) {
         quizState.currentIndex++;
         renderQuizStep();
     }
@@ -403,46 +565,8 @@ window.prevQuizStep = () => {
         renderQuizStep();
     }
 };
-
-window.finishQuiz = async () => {
-    // Calcula Nota
-    let correctCount = 0;
-    const questions = quizState.data.questions;
-    
-    questions.forEach((q, idx) => {
-        // Verifica se a resposta do aluno bate com a correta (assume que correctIndex está salvo no JSON)
-        if (quizState.answers[idx] !== undefined && quizState.answers[idx] == q.correctIndex) {
-            correctCount++;
-        }
-    });
-
-    const finalScore = Math.round((correctCount / questions.length) * (currentLesson.points || 100));
-    
-    // Salva no Supabase
-    if (!enrollment.grades.scores) enrollment.grades.scores = {};
-    enrollment.grades.scores[currentLesson.id] = finalScore;
-    
-    if (!enrollment.grades.completed.includes(currentLesson.id)) {
-        enrollment.grades.completed.push(currentLesson.id);
-    }
-
-    // Atualiza BD
-    const { error } = await supabase
-        .from('class_enrollments')
-        .update({ grades: enrollment.grades })
-        .eq('id', enrollment.id);
-
-    if (error) {
-        alert('Erro ao salvar nota: ' + error.message);
-    } else {
-        // Recarrega tela para mostrar resultado
-        loadEnrollment(enrollment.user_id).then(() => {
-            openLesson(currentLesson);
-            updateOverallProgress();
-        });
-    }
-};
-
+// === FIM DAS FUNÇÕES DO QUIZ ===
+// === UTILITÁRIOS ===
 function getEmbedUrl(url) { 
     if(!url) return '';
     if (url.includes('watch?v=')) return url.replace('watch?v=', 'embed/'); 
@@ -459,7 +583,10 @@ function updateOverallProgress() {
     document.getElementById('progress-text').textContent = `${pct}%`;
 }
 
-function getReadPosts() { const key = `ava3_read_posts_${enrollment.id}`; return JSON.parse(localStorage.getItem(key) || '[]'); }
+function getReadPosts() { 
+    const key = `ava3_read_posts_${enrollment.id}`; 
+    return JSON.parse(localStorage.getItem(key) || '[]'); 
+}
 
 window.markPostRead = (postId, btn) => {
     const key = `ava3_read_posts_${enrollment.id}`;
@@ -473,18 +600,15 @@ window.markPostRead = (postId, btn) => {
 };
 
 async function checkUnreadMural() {
-    // Adicionei o .neq('type', 'INTERNAL') aqui também
     const { data: posts } = await supabase
         .from('class_posts')
         .select('id')
         .eq('class_id', classId)
-        .neq('type', 'INTERNAL'); // <--- O FILTRO QUE FALTAVA
+        .neq('type', 'INTERNAL'); 
 
     if (!posts) return;
 
-    // Conta apenas os que não foram lidos E não são internos
     const unreadCount = posts.filter(p => !getReadPosts().includes(p.id)).length;
-    
     const badge = document.getElementById('mural-badge');
     if (badge) {
         badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
@@ -511,12 +635,22 @@ window.toggleLessonStatus = async () => {
 function updateFinishButton() {
     const btn = document.getElementById('btn-finish');
     const isDone = enrollment.grades.completed.includes(currentLesson.id);
-    btn.disabled = currentLesson.type === 'QUIZ';
+    
+    // Quiz se completa automaticamente ao finalizar a prova
+    if(currentLesson.type === 'QUIZ') {
+        btn.disabled = true;
+        btn.innerHTML = isDone ? "<i class='bx bx-trophy'></i> Quiz Concluído" : "Complete o Quiz";
+        btn.className = isDone ? "btn btn-success rounded-pill fw-bold" : "btn btn-outline-secondary rounded-pill fw-bold";
+        return;
+    }
+
+    btn.disabled = false;
     btn.onclick = window.toggleLessonStatus;
     btn.innerHTML = isDone ? "<i class='bx bx-check'></i> Concluído" : "Concluir Aula";
     btn.className = isDone ? "btn btn-success rounded-pill fw-bold" : "btn btn-outline-success rounded-pill fw-bold";
 }
 
-function initQuiz(lesson) { quizState = { data: { questions: lesson.quiz_data?.questions || [] }, currentIndex: -1, answers: {}, isFinished: false }; renderQuizStep(); }
-function renderQuizStep() { /* Lógica de renderização do quiz */ }
-window.loadGrades = () => { /* Lógica de carregamento de notas */ };
+// Função placeholder para notas (implemente conforme necessário)
+window.loadGrades = () => { 
+    document.getElementById('grades-list').innerHTML = '<div class="alert alert-info">Módulo de notas em desenvolvimento.</div>';
+};
