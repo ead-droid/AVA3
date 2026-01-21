@@ -41,22 +41,3 @@ html.is-booting .sidebar-overlay {
   background: var(--sidebar-bg, #0b1f3a);
   z-index: 1030;
 }
-/* ===== AVA3: anti-flicker do chrome ===== */
-
-/* Durante o boot, desliga transições para não dar efeito "sai e volta" */
-html.chrome-booting *,
-html.chrome-booting *::before,
-html.chrome-booting *::after {
-  transition: none !important;
-  animation: none !important;
-}
-
-/* Se o sidebar ainda estiver vazio, não deixa "piscar" conteúdo parcial */
-#site-sidebar:empty {
-  visibility: hidden;
-}
-
-/* (Opcional) Se quiser evitar qualquer “pulo” visual, reserve altura mínima */
-#site-sidebar {
-  min-height: 100vh;
-}

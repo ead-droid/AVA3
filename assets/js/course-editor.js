@@ -1,315 +1,369 @@
 import { supabase } from './supabaseClient.js';
 
+// === CONFIGURAÇÃO E UTILITÁRIOS ===
 const params = new URLSearchParams(window.location.search);
-const courseId = params.get('id');
+const courseId = params.get('id') || params.get('courseId');
 
-let dadosCurso = { id: null, titulo: "", modulos: [] };
+// Globais para Modais
+let modalModule = null;
+let modalSection = null;
+let modalLesson = null;
 
+// === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!courseId) { alert("ID não fornecido."); window.location.href = 'admin.html'; return; }
-    await checkAuth();
-    await loadCourseData(); 
-    loadLinkedClasses(); 
-});
-
-async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.href = 'login.html';
-}
-
-async function loadCourseData() {
-    const { data: course } = await supabase.from('courses').select('*').eq('id', courseId).single();
-    dadosCurso.id = course.id;
-    dadosCurso.titulo = course.title || course.titulo;
-    
-    document.getElementById('header-title').innerText = dadosCurso.titulo;
-    document.getElementById('course-id-badge').innerText = `ID: ${course.id}`;
-    document.getElementById('edit_title').value = dadosCurso.titulo;
-    document.getElementById('edit_status').value = course.status || 'draft';
-    document.getElementById('edit_desc').value = course.description || '';
-
-    // Busca com Ordenação
-    const { data: modules } = await supabase.from('modules').select(`*, sections (*, lessons (*))`).eq('course_id', courseId).order('ordem', { ascending: true });
-
-    if (modules) {
-        modules.forEach(mod => {
-            if (mod.sections) {
-                mod.sections.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-                mod.sections.forEach(sec => {
-                    if (sec.lessons) sec.lessons.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-                });
-            }
-        });
-        dadosCurso.modulos = modules;
-    }
-    renderizarGrade();
-}
-
-// === CARREGAR TURMAS (ATUALIZADO) ===
-async function loadLinkedClasses() {
-    const tbody = document.getElementById('linked-classes-list');
-    if(!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
-
-    // Busca turmas vinculadas e contagem de alunos
-    const { data: classes, error } = await supabase
-        .from('classes')
-        .select(`*, class_enrollments (count)`)
-        .eq('course_id', courseId)
-        .order('created_at', { ascending: false });
-
-    tbody.innerHTML = '';
-
-    if (error || !classes || classes.length === 0) {
-        document.getElementById('classes-empty').style.display = 'block';
+    if (!courseId) {
+        alert("ID do curso não encontrado.");
+        window.location.href = 'admin.html';
         return;
     }
-    document.getElementById('classes-empty').style.display = 'none';
+
+    // Inicializa Modais (Bootstrap 5)
+    if (window.bootstrap) {
+        const getM = (id) => document.getElementById(id) ? new window.bootstrap.Modal(document.getElementById(id)) : null;
+        modalModule = getM('modalModule');
+        modalSection = getM('modalSection');
+        modalLesson = getM('modalLesson');
+    }
+
+    try {
+        await loadCourseData();   
+        await loadModules();      
+        await loadLinkedClasses();
+        setupFormListeners();     
+    } catch (error) {
+        console.error("Erro fatal ao iniciar editor:", error);
+    }
+});
+
+// =========================================================
+// 1. CARREGAR DADOS DO CURSO
+// =========================================================
+async function loadCourseData() {
+    const { data: course, error } = await supabase.from('courses').select('*').eq('id', courseId).single();
+
+    if (error) {
+        console.error("Erro ao buscar curso:", error);
+        document.getElementById('header-title').textContent = "Erro ao carregar";
+        return;
+    }
+
+    document.getElementById('header-title').textContent = course.title;
+    document.getElementById('course-id-badge').textContent = `ID: ${course.id}`;
+
+    const titleInput = document.getElementById('edit_title');
+    if (titleInput) titleInput.value = course.title;
+
+    const descInput = document.getElementById('edit_desc');
+    if (descInput) descInput.value = course.description || '';
+
+    const statusSelect = document.getElementById('edit_status');
+    if (statusSelect) {
+        const st = (course.status || '').toUpperCase();
+        statusSelect.value = (st === 'PUBLISHED' || st === 'CONCLUIDO') ? 'published' : 'draft';
+    }
+}
+
+// =========================================================
+// 2. GRADE CURRICULAR
+// =========================================================
+async function loadModules() {
+    const container = document.getElementById('modules-list');
+    const emptyMsg = document.getElementById('modules-empty');
+    
+    if (!container) return;
+    container.innerHTML = ''; 
+
+    const { data: modules, error } = await supabase
+        .from('modules')
+        .select(`*, sections (*, lessons (*))`)
+        .eq('course_id', courseId)
+        .order('ordem', { ascending: true });
+
+    if (error) { console.error(error); return; }
+
+    if (!modules || modules.length === 0) {
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    modules.forEach(mod => {
+        if (mod.sections) {
+            mod.sections.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+            mod.sections.forEach(sec => {
+                if (sec.lessons) sec.lessons.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+            });
+        }
+        renderModuleItem(mod, container);
+    });
+}
+
+function renderModuleItem(mod, container) {
+    const tpl = document.getElementById('tpl-module');
+    if (!tpl) return;
+    
+    const clone = tpl.content.cloneNode(true);
+    
+    clone.querySelector('.mod-badge').textContent = mod.ordem;
+    clone.querySelector('.mod-title').textContent = mod.title;
+    
+    clone.querySelector('.btn-edit').onclick = () => openModuleModal(mod);
+    clone.querySelector('.btn-del').onclick = () => deleteItem('modules', mod.id);
+    clone.querySelector('.btn-add-sec').onclick = () => openSectionModal(mod.id);
+
+    const secContainer = clone.querySelector('.sections-container');
+    
+    if (mod.sections && mod.sections.length > 0) {
+        mod.sections.forEach(sec => renderSectionItem(sec, secContainer, mod.id));
+    } else {
+        secContainer.innerHTML = `<div class="p-4 text-center text-muted border-top bg-light small">Nenhuma seção neste módulo.</div>`;
+    }
+
+    container.appendChild(clone);
+}
+
+function renderSectionItem(sec, container, modId) {
+    const tpl = document.getElementById('tpl-section');
+    if (!tpl) return;
+
+    const clone = tpl.content.cloneNode(true);
+
+    clone.querySelector('.sec-badge').textContent = sec.ordem;
+    clone.querySelector('.sec-title').textContent = sec.title;
+
+    clone.querySelector('.btn-add-content').onclick = () => openLessonModal(modId, sec.id);
+    clone.querySelector('.btn-edit').onclick = () => openSectionModal(modId, sec);
+    clone.querySelector('.btn-del').onclick = () => deleteItem('sections', sec.id);
+
+    const contentContainer = clone.querySelector('.content-container');
+
+    if (sec.lessons && sec.lessons.length > 0) {
+        sec.lessons.forEach(les => renderLessonItem(les, contentContainer, modId, sec.id));
+    } else {
+        contentContainer.innerHTML = `<div class="p-2 text-center text-muted small fst-italic">Sem conteúdo cadastrado.</div>`;
+    }
+
+    container.appendChild(clone);
+}
+
+function renderLessonItem(les, container, modId, secId) {
+    const tpl = document.getElementById('tpl-lesson');
+    if (!tpl) return;
+
+    const clone = tpl.content.cloneNode(true);
+
+    // Dados Básicos
+    clone.querySelector('.lesson-order').textContent = les.ordem;
+    clone.querySelector('.lesson-title').textContent = les.title;
+    
+    const iconEl = clone.querySelector('.icon-circle i');
+    const typeLabel = clone.querySelector('.lesson-type');
+    
+    let iconClass = 'bx-file';
+    let typeName = 'Conteúdo';
+
+    switch (les.type) {
+        case 'VIDEO_AULA': iconClass = 'bx-video'; typeName = 'Vídeo'; break;
+        case 'QUIZ': iconClass = 'bx-trophy'; typeName = 'Quiz'; break;
+        case 'TAREFA': iconClass = 'bx-task'; typeName = 'Tarefa'; break;
+        case 'PDF': iconClass = 'bx-file-pdf'; typeName = 'PDF'; break;
+        case 'TEXTO': iconClass = 'bx-text'; typeName = 'Texto'; break;
+        case 'MATERIAL': iconClass = 'bx-link'; typeName = 'Link'; break;
+        case 'AVISO': iconClass = 'bx-bell'; typeName = 'Aviso'; break;
+    }
+    
+    iconEl.className = `bx ${iconClass}`;
+    typeLabel.textContent = typeName;
+
+    if (les.points > 0) {
+        const badge = clone.querySelector('.lesson-points');
+        badge.style.display = 'inline-block';
+        badge.textContent = `${les.points} pts`;
+        badge.className = 'badge bg-success ms-2';
+    }
+
+    // --- RESTAURAÇÃO: BOTÕES ESPECÍFICOS DE CONFIGURAÇÃO ---
+    const actionsArea = clone.querySelector('.actions-area');
+    
+    if (les.type === 'QUIZ') {
+        const tplBtn = document.getElementById('tpl-btn-quiz');
+        if (tplBtn) {
+            const btn = tplBtn.content.cloneNode(true).querySelector('a');
+            btn.href = `quiz-builder.html?id=${les.id}`; 
+            actionsArea.prepend(btn);
+        }
+    } else if (les.type === 'TAREFA') {
+        const tplBtn = document.getElementById('tpl-btn-task');
+        if (tplBtn) {
+            const btn = tplBtn.content.cloneNode(true).querySelector('a');
+            btn.href = `task-builder.html?id=${les.id}`;
+            actionsArea.prepend(btn);
+        }
+    } else if (les.type === 'TEXTO') {
+        const tplBtn = document.getElementById('tpl-btn-text');
+        if (tplBtn) {
+            const btn = tplBtn.content.cloneNode(true).querySelector('a');
+            btn.href = `text-builder.html?id=${les.id}`;
+            actionsArea.prepend(btn);
+        }
+    }
+
+    // Ações Padrão
+    clone.querySelector('.btn-edit').onclick = () => openLessonModal(modId, secId, les);
+    clone.querySelector('.btn-del').onclick = () => deleteItem('lessons', les.id);
+    clone.querySelector('.btn-preview').onclick = () => window.open(`classroom.html?id=${courseId}`, '_blank');
+
+    container.appendChild(clone);
+}
+
+// =========================================================
+// 3. TURMAS E MODAIS
+// =========================================================
+async function loadLinkedClasses() {
+    const tbody = document.getElementById('linked-classes-list');
+    const emptyDiv = document.getElementById('classes-empty');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    const { data: classes } = await supabase.from('classes').select('*, class_enrollments(count)').eq('course_id', courseId);
+
+    if (!classes || classes.length === 0) {
+        if (emptyDiv) emptyDiv.style.display = 'block';
+        return;
+    }
+    if (emptyDiv) emptyDiv.style.display = 'none';
 
     classes.forEach(cls => {
-        const count = cls.class_enrollments?.[0]?.count || 0;
-        const start = cls.start_date ? new Date(cls.start_date).toLocaleDateString() : 'A definir';
-        
-        // Exibição do Código: Se nulo, mostra "Automático"
-        const displayCode = cls.code ? cls.code : '<span class="badge bg-secondary bg-opacity-25 text-secondary border font-monospace small">Automático</span>';
-
+        const count = cls.class_enrollments ? cls.class_enrollments[0].count : 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="ps-4">
-                <div class="fw-bold text-dark">${cls.name}</div>
-            </td>
-            <td>
-                <span class="fw-bold text-dark">${displayCode}</span>
-            </td>
-            <td><i class='bx bx-user'></i> ${count}</td>
-            <td class="text-muted small">${start}</td>
-            <td class="text-end pe-4">
-                <div class="btn-group">
-                    <a href="classroom.html?id=${cls.id}" class="btn btn-sm btn-outline-secondary fw-bold" title="Entrar na Sala">
-                        <i class='bx bx-chalkboard'></i> Sala
-                    </a>
-                    <a href="class-dashboard.html?id=${cls.id}" class="btn btn-sm btn-primary fw-bold" title="Painel da Turma">
-                        Gerenciar
-                    </a>
-                </div>
-            </td>
+            <td class="ps-4 fw-bold">${cls.name}</td>
+            <td><code>${cls.access_code || '-'}</code></td>
+            <td><span class="badge bg-secondary">${count} alunos</span></td>
+            <td>${cls.start_date ? new Date(cls.start_date).toLocaleDateString() : 'Indefinido'}</td>
+            <td class="text-end pe-4"><a href="class-manager.html" class="btn btn-sm btn-outline-primary fw-bold">Gerenciar</a></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function renderizarGrade() {
-    const container = document.getElementById('modules-list');
-    container.innerHTML = '';
-    
-    if (!dadosCurso.modulos.length) {
-        document.getElementById('modules-empty').style.display = 'block';
-        return;
+// Modais
+window.openModuleModal = (mod = null) => {
+    document.getElementById('formModule').reset();
+    document.getElementById('mod_id').value = mod ? mod.id : '';
+    if (mod) {
+        document.getElementById('mod_title').value = mod.title;
+        document.getElementById('mod_order').value = mod.ordem;
+        document.getElementById('mod_hours').value = mod.carga_horaria || '';
+    } else {
+        document.getElementById('mod_order').value = document.querySelectorAll('.module-card').length + 1;
     }
-    document.getElementById('modules-empty').style.display = 'none';
+    if (modalModule) modalModule.show();
+};
 
-    const tplModule = document.getElementById('tpl-module');
-    const tplSection = document.getElementById('tpl-section');
-    const tplLesson = document.getElementById('tpl-lesson');
+window.openSectionModal = (modId, sec = null) => {
+    document.getElementById('formSection').reset();
+    document.getElementById('sec_module_id').value = modId;
+    document.getElementById('sec_id').value = sec ? sec.id : '';
+    if (sec) {
+        document.getElementById('sec_title').value = sec.title;
+        document.getElementById('sec_order').value = sec.ordem;
+    }
+    if (modalSection) modalSection.show();
+};
 
-    dadosCurso.modulos.forEach(mod => {
-        const modClone = tplModule.content.cloneNode(true);
-        modClone.querySelector('.mod-badge').innerText = `#${mod.ordem}`;
-        modClone.querySelector('.mod-title').innerText = mod.title;
-        const collapseId = `collapse-mod-${mod.id}`;
-        modClone.querySelector('.module-header').setAttribute('data-bs-target', `#${collapseId}`);
-        modClone.querySelector('.mod-collapse').id = collapseId;
+window.openLessonModal = (modId, secId, les = null) => {
+    document.getElementById('formLesson').reset();
+    document.getElementById('les_module_id').value = modId;
+    document.getElementById('les_section_id').value = secId;
+    document.getElementById('les_id').value = les ? les.id : '';
 
-        modClone.querySelector('.btn-edit').onclick = (e) => { e.stopPropagation(); editarModulo(mod); };
-        modClone.querySelector('.btn-del').onclick = (e) => { e.stopPropagation(); excluirGenerico('modules', mod.id); };
-        modClone.querySelector('.btn-add-sec').onclick = (e) => { abrirModalSecao(mod.id, (mod.sections?.length||0)+1, e); };
+    if (les) {
+        document.getElementById('les_title').value = les.title;
+        document.getElementById('les_type').value = les.type;
+        document.getElementById('les_order').value = les.ordem;
+        document.getElementById('les_url').value = les.video_url || les.content_url || '';
+        document.getElementById('les_desc').value = les.description || '';
+        document.getElementById('les_points').value = les.points || 0;
+        document.getElementById('les_published').checked = les.is_published !== false;
+    }
+    if (modalLesson) modalLesson.show();
+};
 
-        const secoesContainer = modClone.querySelector('.sections-container');
+// =========================================================
+// 4. SALVAR E EXCLUIR
+// =========================================================
+function setupFormListeners() {
+    
+    // Configurações do Curso
+    const formCourse = document.getElementById('formEditCourse');
+    if (formCourse) {
+        formCourse.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = {
+                title: document.getElementById('edit_title').value,
+                description: document.getElementById('edit_desc').value,
+                status: document.getElementById('edit_status').value === 'published' ? 'CONCLUIDO' : 'EM_CONSTRUCAO'
+            };
+            const { error } = await supabase.from('courses').update(updates).eq('id', courseId);
+            if (error) alert("Erro: " + error.message);
+            else { alert("Atualizado!"); loadCourseData(); }
+        });
+    }
 
-        if (mod.sections) {
-            mod.sections.forEach(sec => {
-                const secClone = tplSection.content.cloneNode(true);
-                secClone.querySelector('.sec-title').innerText = sec.title;
-                secClone.querySelector('.sec-badge').innerText = sec.ordem;
-                secClone.querySelector('.btn-add-content').onclick = () => abrirModalConteudo(mod.id, sec.id, (sec.lessons?.length||0)+1);
-                secClone.querySelector('.btn-edit').onclick = () => editarSecao(sec);
-                secClone.querySelector('.btn-del').onclick = () => excluirGenerico('sections', sec.id);
+    // Módulo
+    document.getElementById('formModule').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('mod_id').value;
+        const payload = {
+            course_id: courseId,
+            title: document.getElementById('mod_title').value,
+            ordem: document.getElementById('mod_order').value,
+            carga_horaria: document.getElementById('mod_hours').value || null
+        };
+        const op = id ? supabase.from('modules').update(payload).eq('id', id) : supabase.from('modules').insert(payload);
+        const { error } = await op;
+        if(error) alert("Erro: " + error.message); else { modalModule.hide(); loadModules(); }
+    });
 
-                const contentContainer = secClone.querySelector('.content-container');
+    // Seção
+    document.getElementById('formSection').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('sec_id').value;
+        const payload = {
+            module_id: document.getElementById('sec_module_id').value,
+            title: document.getElementById('sec_title').value,
+            ordem: document.getElementById('sec_order').value
+        };
+        const op = id ? supabase.from('sections').update(payload).eq('id', id) : supabase.from('sections').insert(payload);
+        const { error } = await op;
+        if(error) alert("Erro: " + error.message); else { modalSection.hide(); loadModules(); }
+    });
 
-                if (sec.lessons) {
-                    sec.lessons.forEach(cont => {
-                        const lessonClone = tplLesson.content.cloneNode(true);
-                        const tipo = (cont.type || 'TEXTO').toUpperCase();
-                        
-                        let iconClass = 'ic-doc', iconName = 'bx-file';
-                        if (tipo === 'VIDEO_AULA') { iconClass = 'ic-video'; iconName = 'bx-play'; }
-                        else if (tipo === 'QUIZ') { iconClass = 'ic-quiz'; iconName = 'bx-trophy'; }
-                        else if (tipo === 'TAREFA') { iconClass = 'ic-task'; iconName = 'bx-task'; }
-                        else if (tipo === 'TEXTO') { iconClass = 'ic-text'; iconName = 'bx-paragraph'; }
-                        
-                        lessonClone.querySelector('.icon-circle').className = `icon-circle ${iconClass}`;
-                        lessonClone.querySelector('.icon-circle').innerHTML = `<i class='bx ${iconName}'></i>`;
-                        lessonClone.querySelector('.lesson-title').innerText = cont.title;
-                        lessonClone.querySelector('.lesson-type').innerText = tipo;
-                        lessonClone.querySelector('.lesson-order').innerText = cont.ordem;
-
-                        // Preview
-                        lessonClone.querySelector('.lesson-click-area').onclick = () => verPreview(cont);
-                        lessonClone.querySelector('.btn-preview').onclick = () => verPreview(cont);
-
-                        // BOTÕES ESPECÍFICOS NA LISTA
-                        const actionArea = lessonClone.querySelector('.actions-area');
-                        
-                        if (tipo === 'QUIZ') {
-                            const btn = document.getElementById('tpl-btn-quiz').content.cloneNode(true);
-                            btn.querySelector('a').href = `quiz-builder.html?id=${cont.id}`;
-                            actionArea.prepend(btn);
-                        } else if (tipo === 'TAREFA') {
-                            const btn = document.getElementById('tpl-btn-task').content.cloneNode(true);
-                            btn.querySelector('a').href = `task-builder.html?id=${cont.id}`;
-                            actionArea.prepend(btn);
-                        } else if (tipo === 'TEXTO') {
-                            const btn = document.getElementById('tpl-btn-text').content.cloneNode(true);
-                            btn.querySelector('a').href = `text-builder.html?id=${cont.id}`;
-                            actionArea.prepend(btn);
-                        }
-
-                        lessonClone.querySelector('.btn-edit').onclick = () => editarConteudo(cont, mod.id, sec.id);
-                        lessonClone.querySelector('.btn-del').onclick = () => excluirGenerico('lessons', cont.id);
-                        contentContainer.appendChild(lessonClone);
-                    });
-                }
-                secoesContainer.appendChild(secClone);
-            });
-        }
-        container.appendChild(modClone);
+    // Conteúdo (Aula)
+    document.getElementById('formLesson').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('les_id').value;
+        const type = document.getElementById('les_type').value;
+        const payload = {
+            section_id: document.getElementById('les_section_id').value,
+            title: document.getElementById('les_title').value,
+            type: type,
+            ordem: document.getElementById('les_order').value,
+            video_url: ['VIDEO_AULA','VIDEO'].includes(type) ? document.getElementById('les_url').value : null,
+            content_url: !['VIDEO_AULA','VIDEO','QUIZ','TAREFA','TEXTO'].includes(type) ? document.getElementById('les_url').value : null,
+            description: document.getElementById('les_desc').value,
+            points: document.getElementById('les_points').value || 0,
+            is_published: document.getElementById('les_published').checked
+        };
+        const op = id ? supabase.from('lessons').update(payload).eq('id', id) : supabase.from('lessons').insert(payload);
+        const { error } = await op;
+        if(error) alert("Erro: " + error.message); else { modalLesson.hide(); loadModules(); }
     });
 }
 
-window.verPreview = function(item) {
-    if (!item) return;
-    const tipo = (item.type || 'TEXTO').toUpperCase();
-    
-    document.getElementById('previewHeader').innerText = item.title;
-    document.getElementById('previewType').innerText = tipo;
-    const previewContent = document.getElementById('previewContent');
-    const actionsDiv = document.getElementById('preview-actions');
-    actionsDiv.innerHTML = ''; 
-
-    if (tipo === 'TEXTO') {
-        previewContent.innerHTML = `<div class="bg-white p-4 w-100 h-100 overflow-auto text-start" style="border-radius:8px;">${item.description || '<p class="text-muted">Sem conteúdo escrito.</p>'}</div>`;
-        actionsDiv.innerHTML = `<a href="text-builder.html?id=${item.id}" target="_blank" class="btn btn-sm btn-info text-white fw-bold"><i class='bx bx-edit-alt'></i> Editar Artigo</a>`;
-    }
-    else if (tipo === 'QUIZ') {
-        previewContent.innerHTML = `<div class="text-center p-5"><i class='bx bx-trophy fs-1 text-warning'></i><h5>Quiz</h5><p class="text-muted">Visualização de perguntas no botão acima.</p></div>`;
-        actionsDiv.innerHTML = `<a href="quiz-builder.html?id=${item.id}" target="_blank" class="btn btn-sm btn-warning fw-bold"><i class='bx bx-wrench'></i> Configurar</a>`;
-    }
-    else if (tipo === 'TAREFA') {
-        previewContent.innerHTML = `<div class="text-center p-5"><i class='bx bx-task fs-1 text-success'></i><h5>Tarefa</h5><p class="text-muted">Configure o enunciado no botão acima.</p></div>`;
-        actionsDiv.innerHTML = `<a href="task-builder.html?id=${item.id}" target="_blank" class="btn btn-sm btn-success fw-bold text-white"><i class='bx bx-edit'></i> Configurar</a>`;
-    }
-    else if (item.content_url) {
-        let url = item.content_url;
-        if(url.includes('youtube.com/watch')) url = url.replace('watch?v=', 'embed/');
-        else if(url.includes('youtu.be/')) url = url.replace('youtu.be/', 'youtube.com/embed/');
-        if(url.includes('drive.google.com')) url = url.replace(/\/view.*/, '/preview').replace(/\/edit.*/, '/preview');
-
-        previewContent.innerHTML = `<iframe src="${url}" width="100%" height="100%" style="min-height:600px; border:0; width:100%; border-radius:8px;" allowfullscreen></iframe>`;
-        actionsDiv.innerHTML = `<a href="${item.content_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class='bx bx-link-external'></i> Abrir Externo</a>`;
-    } else {
-        previewContent.innerHTML = `<div class="text-center text-muted p-5">Sem conteúdo vinculado.</div>`;
-    }
-
-    new bootstrap.Offcanvas(document.getElementById('drawerPreview')).show();
-};
-
-window.openModuleModal = () => { document.getElementById('formModule').reset(); document.getElementById('mod_id').value = ''; document.getElementById('mod_order').value = (dadosCurso.modulos.length + 1); new bootstrap.Modal(document.getElementById('modalModule')).show(); };
-window.editarModulo = (mod) => { document.getElementById('mod_id').value = mod.id; document.getElementById('mod_title').value = mod.title; document.getElementById('mod_order').value = mod.ordem; new bootstrap.Modal(document.getElementById('modalModule')).show(); };
-document.getElementById('formModule').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('mod_id').value; const data = { course_id: parseInt(courseId), title: document.getElementById('mod_title').value, ordem: parseInt(document.getElementById('mod_order').value)||1 }; let error; if(id) ({error} = await supabase.from('modules').update(data).eq('id',id)); else ({error} = await supabase.from('modules').insert(data)); if(error) alert(error.message); else { bootstrap.Modal.getInstance(document.getElementById('modalModule')).hide(); loadCourseData(); }});
-
-window.abrirModalSecao = (mId, next, e) => { if(e) e.stopPropagation(); document.getElementById('formSection').reset(); document.getElementById('sec_id').value = ''; document.getElementById('sec_module_id').value = mId; document.getElementById('sec_order').value = next; new bootstrap.Modal(document.getElementById('modalSection')).show(); };
-window.editarSecao = (sec) => { document.getElementById('sec_id').value = sec.id; document.getElementById('sec_module_id').value = sec.module_id; document.getElementById('sec_title').value = sec.title; document.getElementById('sec_order').value = sec.ordem; new bootstrap.Modal(document.getElementById('modalSection')).show(); };
-document.getElementById('formSection').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('sec_id').value; const data = { module_id: parseInt(document.getElementById('sec_module_id').value), title: document.getElementById('sec_title').value, ordem: parseInt(document.getElementById('sec_order').value)||1 }; let error; if(id) ({error} = await supabase.from('sections').update(data).eq('id',id)); else ({error} = await supabase.from('sections').insert(data)); if(error) alert(error.message); else { bootstrap.Modal.getInstance(document.getElementById('modalSection')).hide(); loadCourseData(); }});
-
-window.abrirModalConteudo = (mId, sId, next) => { 
-    document.getElementById('formLesson').reset(); 
-    document.getElementById('les_id').value = ''; 
-    document.getElementById('les_module_id').value = mId; 
-    document.getElementById('les_section_id').value = sId; 
-    document.getElementById('les_order').value = next; 
-    document.getElementById('les_published').checked = true; 
-    document.getElementById('les_required').checked = true; 
-    // --- LINHAS ADICIONADAS PARA LIMPAR DATAS ---
-    document.getElementById('les_start').value = ''; 
-    document.getElementById('les_end').value = ''; 
-    // --------------------------------------------
-    new bootstrap.Modal(document.getElementById('modalLesson')).show(); 
-};
-window.editarConteudo = (item, mId, sId) => { 
-    document.getElementById('les_id').value = item.id; 
-    document.getElementById('les_module_id').value = mId; 
-    document.getElementById('les_section_id').value = sId; 
-    document.getElementById('les_title').value = item.title; 
-    document.getElementById('les_type').value = item.type; 
-    document.getElementById('les_url').value = item.content_url||''; 
-    document.getElementById('les_points').value = item.points||0; 
-    document.getElementById('les_order').value = item.ordem; 
-    document.getElementById('les_desc').value = item.description||''; 
-    document.getElementById('les_published').checked = item.is_published!==false; 
-    document.getElementById('les_required').checked = item.is_required!==false; 
-    
-    // --- CORREÇÃO DE NOMES DE COLUNA ---
-    const formatData = (isoStr) => {
-        if(!isoStr) return '';
-        const d = new Date(isoStr);
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().slice(0, 16);
-    };
-
-    // Aqui mapeamos as colunas da sua imagem para os inputs do formulário
-    document.getElementById('les_start').value = formatData(item.available_from);
-    document.getElementById('les_end').value = formatData(item.available_until);
-    // -----------------------------------
-
-    new bootstrap.Modal(document.getElementById('modalLesson')).show(); 
-};
-
-document.getElementById('formLesson').addEventListener('submit', async (e) => { 
-    e.preventDefault(); 
-    const id = document.getElementById('les_id').value; 
-    
-    // Pega os valores do formulário
-    const startVal = document.getElementById('les_start').value;
-    const endVal = document.getElementById('les_end').value;
-
-    const data = { 
-        module_id: parseInt(document.getElementById('les_module_id').value), 
-        section_id: parseInt(document.getElementById('les_section_id').value), 
-        title: document.getElementById('les_title').value, 
-        type: document.getElementById('les_type').value, 
-        content_url: document.getElementById('les_url').value||null, 
-        points: parseFloat(document.getElementById('les_points').value)||0, 
-        description: document.getElementById('les_desc').value||null, 
-        ordem: parseInt(document.getElementById('les_order').value)||1, 
-        is_published: document.getElementById('les_published').checked, 
-        is_required: document.getElementById('les_required').checked,
-        
-        // --- CORREÇÃO DE NOMES DE COLUNA ---
-        // Envia para available_from e available_until conforme sua tabela
-        available_from: startVal ? new Date(startVal).toISOString() : null,
-        available_until: endVal ? new Date(endVal).toISOString() : null
-        // -----------------------------------
-    }; 
-    
-    let error; 
-    if(id) ({error} = await supabase.from('lessons').update(data).eq('id',id)); 
-    else ({error} = await supabase.from('lessons').insert(data)); 
-    
-    if(error) alert(error.message); 
-    else { 
-        bootstrap.Modal.getInstance(document.getElementById('modalLesson')).hide(); 
-        loadCourseData(); 
-    }
-});
-window.excluirGenerico = async (table, id) => { if(!confirm('Excluir?')) return; const { error } = await supabase.from(table).delete().eq('id', id); if(error) alert(error.message); else loadCourseData(); };
+async function deleteItem(table, id) {
+    if (!confirm("Excluir item?")) return;
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) alert("Erro: " + error.message); else loadModules();
+}

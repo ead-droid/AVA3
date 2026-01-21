@@ -1,156 +1,166 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <script src="./assets/js/boot.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVA3 • Sala de Aula</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <link rel="stylesheet" href="./assets/css/chrome.css">
-    <link rel="stylesheet" href="./assets/css/chrome-uxfix.css">
-    <link rel="stylesheet" href="./assets/css/classroom-styles.css">
-    <link rel="stylesheet" href="./assets/css/classroom-activities.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVA3 • Sala de Aula</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/chrome.css">
+  <link rel="stylesheet" href="./assets/css/classroom-styles.css">
 </head>
 
 <body class="sidebar-collapsed">
 
-    <div id="site-header"></div>
-    <div id="site-sidebar"></div>
+  <div id="site-header"></div>
+  <div id="site-sidebar"></div>
 
-    <div class="classroom-layout">
-        <header class="classroom-header">
-            <div class="d-flex align-items-center gap-3">
-                <a href="app.html" class="btn btn-light border btn-sm rounded-circle"><i class='bx bx-arrow-back'></i></a>
-                
-                <div class="header-info d-flex flex-column justify-content-center">
-                    <p id="header-class-name">Carregando...</p>   
-                    <h2 id="header-course-title">...</h2> 
-                </div>
-            </div>
-            
-            <div id="header-actions" class="d-flex align-items-center gap-3">
-                <div class="d-flex flex-column align-items-end me-3">
-                    <div class="progress" style="width: 100px; height: 6px;">
-                        <div class="progress-bar bg-success" id="overall-progress" style="width: 0%"></div>
-                    </div>
-                    <small class="fw-bold text-success" id="progress-text">0%</small>
-                </div>
-                <div class="vr opacity-25 mx-2"></div>
-                <a href="app.html" class="btn btn-sm btn-outline-danger border-0 fw-bold"><i class='bx bx-log-out-circle'></i> Sair</a>
-            </div>
-        </header>
-
-        <div class="classroom-body">
-            <aside class="course-nav" id="course-nav">
-                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-                    <span class="small fw-bold text-muted uppercase">Conteúdo do Curso</span>
-                    <button class="btn-toggle" id="btn-close-menu"><i class='bx bx-chevron-left'></i></button>
-                </div>
-                <div id="modules-list" class="accordion accordion-flush" style="overflow-y: auto; flex: 1;"></div>
-            </aside>
-
-            <section class="content-area">
-                <div class="content-header">
-                    <button class="btn-toggle d-none me-3" id="btn-open-menu"><i class='bx bx-menu'></i></button>
-                    
-                    <div class="nav-clean nav" role="tablist">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-aula">Aula</button>
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mural" onclick="loadMural()">
-                            Mural <span id="mural-badge" class="notification-badge">0</span>
-                        </button>
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notas" onclick="loadGrades()">Notas</button>
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-calendario" onclick="loadCalendar()">Calendário</button>
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-certificado" onclick="loadCertificate()">Certificado</button>
-                    </div>
-                </div>
-
-                <div class="content-scrollable tab-content">
-                    
-                    <div class="tab-pane fade show active" id="tab-aula">
-                        <div id="player-frame" class="bg-black mb-4" style="display:none; border-radius: 12px; overflow: hidden;"></div>
-                        
-                        <div class="lesson-main-card p-4 p-md-5 bg-white mx-auto shadow-sm" style="border-radius: 12px;">
-                            <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
-                                <div>
-                                    <span class="badge bg-secondary mb-2" id="lbl-type">...</span>
-                                    <h3 class="fw-bold" id="lbl-title">Carregando...</h3>
-                                </div>
-                                <button class="btn btn-outline-secondary rounded-pill fw-bold" id="btn-finish" disabled>
-                                    <i class='bx bx-check'></i> Concluir Aula
-                                </button>
-                            </div>
-                            
-                            <div id="lbl-desc" class="text-secondary lh-lg mb-5"></div>
-                            
-                            <div id="activity-area"></div>
-                            
-                            <div class="d-flex justify-content-between pt-5 mt-5 border-top">
-                                <button class="btn btn-light border px-4 rounded-pill" id="btn-prev" disabled>Anterior</button>
-                                <button class="btn btn-primary px-4 rounded-pill" id="btn-next" disabled>Próxima</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-pane fade p-5" id="tab-mural">
-                        <div id="wall-container" style="max-width: 100%; margin: 0 auto;"></div>
-                    </div>
-                    
-                    <div class="tab-pane fade p-5" id="tab-notas">
-                        <div id="grades-list" style="max-width: 100%;"></div>
-                    </div>
-                    
-                    <div class="tab-pane fade p-5" id="tab-calendario">
-                        <div id="calendar-feed"></div>
-                    </div>
-
-                    <div class="tab-pane fade p-5" id="tab-certificado">
-                        <div id="certificate-area" class="text-center p-5 bg-white rounded border shadow-sm">
-                            <i class='bx bx-certification display-1 text-muted'></i>
-                            <h3 class="mt-3">Certificado de Conclusão</h3>
-                            <p class="text-muted">Conclua todas as aulas para desbloquear.</p>
-                            <button class="btn btn-secondary rounded-pill px-4" disabled>Baixar Certificado</button>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
+  <div class="classroom-layout">
+    <header class="classroom-header">
+      <div class="d-flex align-items-center gap-3">
+        <a href="app.html" class="btn btn-light border btn-sm">
+          <i class='bx bx-arrow-back'></i>
+        </a>
+        <div>
+          <div class="text-muted small" id="header-class-name">Turma</div>
+          <h1 class="h4 m-0 fw-bold" id="header-course-title">Curso</h1>
         </div>
-    </div>
+      </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="./assets/js/chrome.js"></script>
-    
-    <script type="module" src="./assets/js/classroom.js"></script>
-    
-    <script>
-        const nav = document.getElementById('course-nav');
-        const btnClose = document.getElementById('btn-close-menu');
-        const btnOpen = document.getElementById('btn-open-menu');
-        
-        // Lógica simples para abrir/fechar menu em telas pequenas
-        if(nav && btnClose && btnOpen) {
-            btnClose.onclick = () => { 
-                nav.classList.add('closed'); 
-                btnClose.style.display = 'none'; 
-                btnOpen.classList.remove('d-none'); 
-            };
-            btnOpen.onclick = () => { 
-                nav.classList.remove('closed'); 
-                btnOpen.classList.add('d-none'); 
-                btnClose.style.display = 'flex'; 
-            };
-        }
-    </script>
-    <div id="quiz-drawer" class="quiz-drawer">
+      <div class="d-flex align-items-center gap-2" id="header-actions">
+        <div class="progress-bar-wrapper">
+          <div class="progress">
+            <div class="progress-bar bg-primary" id="overall-progress" style="width:0%"></div>
+          </div>
+          <div class="small fw-bold text-muted" id="progress-text">0%</div>
+        </div>
+
+        <button class="btn btn-outline-success rounded-pill fw-bold" id="btn-finish">
+          <i class='bx bx-check'></i> Concluir Aula
+        </button>
+      </div>
+    </header>
+
+    <aside class="course-nav" id="course-nav">
+      <div class="course-nav-header">
+        <div class="fw-bold">Conteúdo do Curso</div>
+        <button class="btn btn-sm btn-outline-secondary" id="btn-toggle-nav" type="button" aria-label="Recolher/Expandir">
+          <i class='bx bx-chevron-left'></i>
+        </button>
+      </div>
+
+      <div class="accordion accordion-flush" id="modules-list"></div>
+    </aside>
+
+    <main class="classroom-main">
+
+      <ul class="nav nav-tabs classroom-tabs" id="classTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-aula-btn" data-bs-toggle="tab" data-bs-target="#tab-aula" type="button" role="tab">
+            Aula
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-mural-btn" data-bs-toggle="tab" data-bs-target="#tab-mural" type="button" role="tab">
+            Mural <span class="badge bg-danger ms-1" id="mural-badge" style="display:none;">0</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-notas-btn" data-bs-toggle="tab" data-bs-target="#tab-notas" type="button" role="tab">
+            Notas
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-cal-btn" data-bs-toggle="tab" data-bs-target="#tab-cal" type="button" role="tab">
+            Calendário
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-cert-btn" data-bs-toggle="tab" data-bs-target="#tab-cert" type="button" role="tab">
+            Certificado
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content pt-3">
+        <!-- AULA -->
+        <div class="tab-pane fade show active" id="tab-aula" role="tabpanel">
+          <div class="lesson-header">
+            <div>
+              <span class="badge bg-secondary" id="lbl-type">AULA</span>
+              <h2 class="lesson-title" id="lbl-title">Selecione uma aula</h2>
+            </div>
+          </div>
+
+          <div class="lesson-desc" id="lbl-desc" style="display:none;"></div>
+
+          <div class="player-frame" id="player-frame" style="display:none;"></div>
+
+          <div class="activity-area" id="activity-area">
+            <div class="empty-state">
+              <i class='bx bx-pointer'></i>
+              <div class="fw-bold">Selecione uma aula no menu à esquerda</div>
+              <div class="text-muted small">Ao clicar, o conteúdo aparece aqui automaticamente.</div>
+            </div>
+          </div>
+
+          <div class="lesson-nav">
+            <button class="btn btn-light border rounded-pill px-4" id="btn-prev" disabled>Anterior</button>
+            <button class="btn btn-primary rounded-pill px-4" id="btn-next" disabled>Próxima</button>
+          </div>
+        </div>
+
+        <!-- MURAL -->
+        <div class="tab-pane fade" id="tab-mural" role="tabpanel">
+          <div class="board-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class='bx bx-pin'></i>
+              <div class="fw-bold">Mural da Turma</div>
+            </div>
+            <div class="small text-muted">Arraste os post-its para organizar</div>
+          </div>
+          <div id="wall-container" class="postit-board"></div>
+        </div>
+
+        <!-- NOTAS -->
+        <div class="tab-pane fade" id="tab-notas" role="tabpanel">
+          <div id="grades-list"></div>
+        </div>
+
+        <!-- CALENDÁRIO -->
+        <div class="tab-pane fade" id="tab-cal" role="tabpanel">
+          <div id="calendar-list"></div>
+        </div>
+
+        <!-- CERTIFICADO -->
+        <div class="tab-pane fade" id="tab-cert" role="tabpanel">
+          <div class="alert alert-info m-0">
+            Certificado em desenvolvimento.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- GAVETA ÚNICA (QUIZ + TAREFA) -->
+  <div id="activity-backdrop" class="quiz-backdrop"></div>
+
+  <aside id="activity-drawer" class="quiz-drawer" aria-hidden="true">
     <div class="quiz-drawer-header">
-        <h5 class="mb-0 text-white"><i class='bx bx-joystick'></i> Avaliação</h5>
-        <button class="btn-close btn-close-white" onclick="window.closeQuizDrawer()"></button>
+      <div class="d-flex flex-column">
+        <div class="fw-bold" id="drawer-title">Atividade</div>
+        <div class="small opacity-75" id="drawer-subtitle"></div>
+      </div>
+      <button class="btn btn-sm btn-light" id="drawer-close" type="button">
+        <i class='bx bx-x'></i>
+      </button>
     </div>
-    <div id="quiz-drawer-content" class="quiz-drawer-body">
-        </div>
-</div>
-<script type="module" src="./assets/js/classroom.js"></script>
+    <div class="quiz-drawer-body" id="drawer-body"></div>
+  </aside>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="./assets/js/chrome.js"></script>
+  <script type="module" src="./assets/js/classroom.js"></script>
 </body>
 </html>

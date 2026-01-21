@@ -1,220 +1,162 @@
 // assets/js/chrome.js
 import { supabase } from './supabaseClient.js';
 
-// Arquivo layout (o seu chrome.html)
-const LAYOUT_URL = './assets/chrome.html';
+// Caminho robusto: chrome.js está em /assets/js/ -> ../chrome.html = /assets/chrome.html
+const LAYOUT_URL = new URL('../chrome.html', import.meta.url).toString();
 
-// Versão do cache
-const CHROME_CACHE_VER = 'v1';
-const HEADER_KEY  = `ava3.chrome.header.${CHROME_CACHE_VER}`;
-const SIDEBAR_KEY = `ava3.chrome.sidebar.${CHROME_CACHE_VER}`;
-const FOOTER_KEY  = `ava3.chrome.footer.${CHROME_CACHE_VER}`;
+// Cache de slots (PRECISA bater com o boot.js)
+const VER = 'v1';
+const CACHE_KEYS = {
+  header: `ava3.chrome.${VER}.header`,
+  sidebar: `ava3.chrome.${VER}.sidebar`,
+  footer: `ava3.chrome.${VER}.footer`,
+};
 
 const SIDEBAR_STATE_KEY = 'ava3.sidebarCollapsed';
 
-let eventsWired = false;
-let authListenerWired = false;
+let wiredNavCache = false;
+let wiredAuth = false;
 
-function ensureSlotsExist() {
-  // Só garante se existir no HTML da página. Se faltar, cria (mas SEM bagunçar layout).
-  // Ideal: todas páginas com menu já terem os 3 <div id="site-..."></div>.
-  if (!document.getElementById('site-header')) {
-    const div = document.createElement('div');
-    div.id = 'site-header';
-    document.body.insertBefore(div, document.body.firstChild);
-  }
-  if (!document.getElementById('site-sidebar')) {
-    const div = document.createElement('div');
-    div.id = 'site-sidebar';
-    document.body.insertBefore(div, document.body.firstChild.nextSibling);
-  }
-  if (!document.getElementById('site-footer')) {
-    const div = document.createElement('div');
-    div.id = 'site-footer';
-    document.body.appendChild(div);
-  }
-}
+async function initChrome() {
+  ensureSlot('site-header');
+  ensureSlot('site-sidebar');
+  ensureSlot('site-footer');
 
-function getCache() {
-  const fromBoot = window.__AVA3_CHROME_CACHE__ || {};
-  return {
-    header: fromBoot.header || sessionStorage.getItem(HEADER_KEY) || '',
-    sidebar: fromBoot.sidebar || sessionStorage.getItem(SIDEBAR_KEY) || '',
-    footer: fromBoot.footer || sessionStorage.getItem(FOOTER_KEY) || ''
-  };
-}
+  // garante classe no body conforme estado salvo
+  applySavedSidebarState();
 
-function saveCache({ header, sidebar, footer }) {
+  // Liga cache antes de navegação (para não perder cache)
+  wireCacheBeforeNavigation();
+  // Fallback forte: garante cache mesmo se navegação não for por <a>
+  window.addEventListener('beforeunload', cacheCurrentChromeDOM, { capture: true });
+
+  // UI básica (pode já existir via boot.js)
+  document.body.classList.add('has-sidebar');
+
+  // Reaplica handlers (se o boot.js já hidratou HTML, agora ativamos botões)
+  setupSidebarToggle();
+  highlightActiveLink();
+  applyCachedRole();
+  await checkAuth();
+  wireAuthStateChange();
+  wireLogoutButton();
+
+  // Atualiza o layout “de verdade” (rede) em background
   try {
-    if (header) sessionStorage.setItem(HEADER_KEY, header);
-    if (sidebar) sessionStorage.setItem(SIDEBAR_KEY, sidebar);
-    if (footer) sessionStorage.setItem(FOOTER_KEY, footer);
-  } catch {}
+    const res = await fetch(LAYOUT_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Não foi possível carregar: ${LAYOUT_URL} (${res.status})`);
 
-  window.__AVA3_CHROME_CACHE__ = { header, sidebar, footer };
-}
+    const text = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
 
-function injectIfDifferent(id, html) {
-  const el = document.getElementById(id);
-  if (!el || !html) return false;
-  if (el.innerHTML === html) return false;
-  el.innerHTML = html;
-  return true;
-}
+    inject('site-header', doc, 'header');
+    inject('site-sidebar', doc, 'sidebar');
+    inject('site-footer', doc, 'footer');
 
-function injectFromCacheFast() {
-  const cache = getCache();
+    document.body.classList.add('has-sidebar');
+    applySavedSidebarState();
 
-  // Mantém estado recolhido/aberto
-  const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+    setupSidebarToggle();
+    highlightActiveLink();
 
-  let changed = false;
-  if (cache.header)  changed = injectIfDifferent('site-header', cache.header)  || changed;
-  if (cache.sidebar) changed = injectIfDifferent('site-sidebar', cache.sidebar) || changed;
-  if (cache.footer)  changed = injectIfDifferent('site-footer', cache.footer)  || changed;
+    // MUITO IMPORTANTE: salvar cache para a próxima página abrir instantâneo
+    cacheCurrentChromeDOM();
 
-  // Reaplica estado depois de injetar
-  setSidebarCollapsed(collapsed);
+    // Revalida auth/role depois de reinjetar (garante ids existirem)
+    await checkAuth();
+    wireLogoutButton();
 
-  return changed;
-}
+  } catch (err) {
+    console.error('Erro ao inicializar interface (Chrome):', err);
 
-async function fetchLayout() {
-  const res = await fetch(LAYOUT_URL, { cache: 'force-cache' });
-  if (!res.ok) throw new Error(`Não foi possível carregar: ${LAYOUT_URL} (${res.status})`);
-  return await res.text();
-}
-
-function parseSlots(htmlText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlText, 'text/html');
-
-  const header = doc.querySelector('[data-slot="header"]')?.innerHTML || '';
-  const sidebar = doc.querySelector('[data-slot="sidebar"]')?.innerHTML || '';
-  const footer = doc.querySelector('[data-slot="footer"]')?.innerHTML || '';
-
-  return { header, sidebar, footer };
-}
-
-async function refreshFromNetwork() {
-  try {
-    const text = await fetchLayout();
-    const { header, sidebar, footer } = parseSlots(text);
-
-    // Salva no cache
-    saveCache({ header, sidebar, footer });
-
-    // Só reinjeta se realmente mudou (evita flicker)
-    const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
-
-    let changed = false;
-    if (header)  changed = injectIfDifferent('site-header', header)  || changed;
-    if (sidebar) changed = injectIfDifferent('site-sidebar', sidebar) || changed;
-    if (footer)  changed = injectIfDifferent('site-footer', footer)  || changed;
-
-    setSidebarCollapsed(collapsed);
-
-    // Reaplica detalhes de UI após possível reinjeção
+    // Se a rede falhar, pelo menos tenta garantir que existe cache (se tiver)
+    injectFromCacheFallback();
+    setupSidebarToggle();
     highlightActiveLink();
     applyCachedRole();
-
-    return changed;
-  } catch (err) {
-    console.error('Erro ao atualizar chrome (network):', err);
-    return false;
   }
 }
 
-function setSidebarCollapsed(isCollapsed) {
-  const html = document.documentElement;
-  const body = document.body;
+// ----------------------
+// Cache / Hydration
+// ----------------------
+function cacheCurrentChromeDOM() {
+  const headerEl = document.getElementById('site-header');
+  const sidebarEl = document.getElementById('site-sidebar');
+  const footerEl = document.getElementById('site-footer');
 
-  html.classList.toggle('sidebar-collapsed', isCollapsed);
-  if (body) body.classList.toggle('sidebar-collapsed', isCollapsed);
-
-  try {
-    localStorage.setItem(SIDEBAR_STATE_KEY, isCollapsed ? '1' : '0');
-  } catch {}
+  if (headerEl && headerEl.innerHTML.trim()) sessionStorage.setItem(CACHE_KEYS.header, headerEl.innerHTML);
+  if (sidebarEl && sidebarEl.innerHTML.trim()) sessionStorage.setItem(CACHE_KEYS.sidebar, sidebarEl.innerHTML);
+  if (footerEl && footerEl.innerHTML.trim()) sessionStorage.setItem(CACHE_KEYS.footer, footerEl.innerHTML);
 }
 
-function restoreSidebarState() {
-  try {
-    const collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
-    setSidebarCollapsed(collapsed);
-  } catch {}
+function injectFromCacheFallback() {
+  const headerEl = document.getElementById('site-header');
+  const sidebarEl = document.getElementById('site-sidebar');
+  const footerEl = document.getElementById('site-footer');
+
+  const headerHTML = sessionStorage.getItem(CACHE_KEYS.header) || '';
+  const sidebarHTML = sessionStorage.getItem(CACHE_KEYS.sidebar) || '';
+  const footerHTML = sessionStorage.getItem(CACHE_KEYS.footer) || '';
+
+  if (headerEl && headerHTML && headerEl.innerHTML.trim() === '') headerEl.innerHTML = headerHTML;
+  if (sidebarEl && sidebarHTML && sidebarEl.innerHTML.trim() === '') sidebarEl.innerHTML = sidebarHTML;
+  if (footerEl && footerHTML && footerEl.innerHTML.trim() === '') footerEl.innerHTML = footerHTML;
 }
 
-function wireEventsOnce() {
-  if (eventsWired) return;
-  eventsWired = true;
+function wireCacheBeforeNavigation() {
+  if (wiredNavCache) return;
+  wiredNavCache = true;
 
-  // A) Antes de navegar, salva o chrome atual no cache (para a próxima página nascer com menu pronto)
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a');
     if (!a) return;
 
     const href = a.getAttribute('href') || '';
-    const isInternal =
-      href &&
-      !href.startsWith('http') &&
-      !href.startsWith('mailto:') &&
-      !href.startsWith('tel:') &&
-      !href.startsWith('#') &&
-      !href.startsWith('javascript:');
+    if (!href) return;
 
-    if (isInternal) {
-      const header = document.getElementById('site-header')?.innerHTML || '';
-      const sidebar = document.getElementById('site-sidebar')?.innerHTML || '';
-      const footer = document.getElementById('site-footer')?.innerHTML || '';
-      if (header || sidebar || footer) saveCache({ header, sidebar, footer });
-    }
+    // ignora âncoras e links externos
+    if (
+      href.startsWith('#') ||
+      href.startsWith('javascript:') ||
+      href.startsWith('mailto:') ||
+      href.startsWith('tel:') ||
+      /^(https?:)?\/\//i.test(href)
+    ) return;
+
+    // ignora nova aba
+    const target = (a.getAttribute('target') || '').toLowerCase();
+    if (target === '_blank') return;
+
+    // salva cache antes de navegar
+    cacheCurrentChromeDOM();
   }, { capture: true });
-
-  // B) Toggle sidebar (desktop recolhe / mobile abre overlay)
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#sidebar-toggle, [data-toggle="sidebar"], [data-sidebar-toggle]');
-    if (!btn) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (window.innerWidth <= 900) {
-      document.body.classList.toggle('sidebar-open');
-      let overlay = document.getElementById('sidebar-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'sidebar-overlay';
-        overlay.className = 'sidebar-overlay';
-        overlay.onclick = () => document.body.classList.remove('sidebar-open');
-        document.body.appendChild(overlay);
-      }
-    } else {
-      const nowCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
-      setSidebarCollapsed(!nowCollapsed);
-    }
-  });
-
-  // C) Logout
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('#side-logout, [data-action="logout"], .js-logout');
-    if (!btn) return;
-
-    e.preventDefault();
-    if (!confirm('Deseja sair?')) return;
-
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      localStorage.removeItem('ava3_role');
-      window.location.href = 'login.html';
-    }
-  });
 }
 
-// Marca o link ativo no menu lateral
+// ----------------------
+// Sidebar state
+// ----------------------
+function applySavedSidebarState() {
+  const collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
+  document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+}
+
+function saveSidebarState() {
+  const collapsed =
+    document.body.classList.contains('sidebar-collapsed') ||
+    document.documentElement.classList.contains('sidebar-collapsed');
+
+  localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? '1' : '0');
+}
+
+// ----------------------
+// UI functions (suas)
+// ----------------------
 function highlightActiveLink() {
   const path = window.location.pathname;
-  const page = path.split('/').pop();
+  const page = path.split("/").pop();
 
   const links = document.querySelectorAll('.side-item, .navlink');
   links.forEach(link => {
@@ -227,12 +169,41 @@ function highlightActiveLink() {
   });
 }
 
+function setupSidebarToggle() {
+  const btn = document.getElementById('sidebar-toggle');
+  if (!btn) return;
+
+  btn.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (window.innerWidth <= 900) {
+      document.body.classList.toggle('sidebar-open');
+
+      let overlay = document.getElementById('sidebar-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'sidebar-overlay';
+        overlay.className = 'sidebar-overlay';
+        overlay.onclick = () => document.body.classList.remove('sidebar-open');
+        document.body.appendChild(overlay);
+      }
+    } else {
+      document.body.classList.toggle('sidebar-collapsed');
+      document.documentElement.classList.toggle('sidebar-collapsed', document.body.classList.contains('sidebar-collapsed'));
+      saveSidebarState();
+    }
+  };
+}
+
+// ----------------------
+// Auth / Role (seus)
+// ----------------------
 async function checkAuth() {
   const { data: { session } } = await supabase.auth.getSession();
   updateUI(session);
 }
 
-// Atualiza UI básica
 function updateUI(session) {
   const userPill = document.getElementById('user-pill');
   const authActions = document.getElementById('auth-actions');
@@ -258,14 +229,17 @@ function updateUI(session) {
   }
 }
 
-// Role com cache primeiro (para não piscar)
 async function checkRole(uid) {
   const cachedRole = localStorage.getItem('ava3_role');
   if (cachedRole) applyRoleUI(cachedRole);
 
-  const { data } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+  if (error) {
+    console.warn('Erro ao buscar role:', error.message);
+    return;
+  }
   if (data) {
-    const role = (data.role || 'aluno').toLowerCase();
+    const role = data.role || 'aluno';
     localStorage.setItem('ava3_role', role);
     applyRoleUI(role);
   }
@@ -289,9 +263,9 @@ function applyCachedRole() {
   if (cachedRole) applyRoleUI(cachedRole);
 }
 
-function wireAuthListenerOnce() {
-  if (authListenerWired) return;
-  authListenerWired = true;
+function wireAuthStateChange() {
+  if (wiredAuth) return;
+  wiredAuth = true;
 
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') {
@@ -303,32 +277,34 @@ function wireAuthListenerOnce() {
   });
 }
 
-async function initChrome() {
-  ensureSlotsExist();
+function wireLogoutButton() {
+  const btnLogout = document.getElementById('side-logout');
+  if (!btnLogout) return;
 
-  // Deixa layout estável (evita shift)
-  document.body.classList.add('has-sidebar');
-
-  // 1) injeta cache rápido (se existir)
-  injectFromCacheFast();
-
-  // 2) wire eventos (delegação, funciona mesmo após reinjeção)
-  wireEventsOnce();
-
-  // 3) UI "visual" imediata
-  restoreSidebarState();
-  highlightActiveLink();
-  applyCachedRole();
-
-  // 4) auth em paralelo (não segura o menu)
-  checkAuth();
-  wireAuthListenerOnce();
-
-  // 5) refresh do layout em background (atualiza cache)
-  await refreshFromNetwork();
-
-  // 6) sinaliza para o boot.js liberar transições
-  document.dispatchEvent(new CustomEvent('ava3:chrome-ready'));
+  btnLogout.onclick = async () => {
+    if (confirm("Deseja sair?")) {
+      await supabase.auth.signOut();
+    }
+  };
 }
 
+// ----------------------
+// Slots/inject (seus)
+// ----------------------
+function ensureSlot(id) {
+  if (!document.getElementById(id)) {
+    const div = document.createElement('div');
+    div.id = id;
+    if (id === 'site-footer') document.body.appendChild(div);
+    else document.body.insertBefore(div, document.body.firstChild);
+  }
+}
+
+function inject(id, doc, slotName) {
+  const container = document.getElementById(id);
+  const source = doc.querySelector(`[data-slot="${slotName}"]`);
+  if (container && source) container.innerHTML = source.innerHTML;
+}
+
+// Inicia
 initChrome();
