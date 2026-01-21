@@ -1,0 +1,43 @@
+/* assets/css/chrome-uxfix.css */
+
+/* 1) Durante o boot: remove transições/animações para não ter efeito de sumir/voltar */
+html.is-booting *, html.is-booting *::before, html.is-booting *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* 2) Compatibilidade: se seu projeto usa .sidebar-collapsed no body,
+      este seletor garante que a classe no <html> também funcione */
+html.sidebar-collapsed body {
+  /* não força nada aqui, só garante compatibilidade caso seus CSS usem body.sidebar-collapsed */
+}
+
+/* 3) Se o sidebar ainda não foi injetado, mantém uma “casca” fixa para não dar flash branco */
+#site-sidebar:empty {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width, 280px);
+  height: 100vh;
+  background: var(--sidebar-bg, #0b1f3a);
+  z-index: 1030;
+}
+
+/* 4) Evita layout shift do conteúdo central enquanto o chrome carrega */
+#site-header:empty {
+  min-height: var(--header-height, 64px);
+}
+
+/* 5) Dica extra: se existir overlay/colapso mobile, evita “piscada” */
+html.is-booting .sidebar-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+/* Mantém uma “casca” do sidebar caso ainda esteja vazio (primeira carga / cache vazio) */
+#site-sidebar:empty {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width, 280px);
+  height: 100vh;
+  background: var(--sidebar-bg, #0b1f3a);
+  z-index: 1030;
+}

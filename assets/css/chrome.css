@@ -163,3 +163,16 @@ body.sidebar-collapsed .side-item i { margin: 0 !important; }
 /* FOOTER */
 #site-footer { margin-top: auto !important; width: 100%; position: relative; z-index: 10; }
 .site-footer { padding: 20px; border-top: 1px solid #e2e8f0; background: #fff; text-align: center; font-size: 12px; color: #64748b; }
+/* ===== UX FIX: evita flash branco enquanto o chrome ainda não foi injetado ===== */
+#site-sidebar:empty {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width, 280px);
+  height: 100vh;
+  background: var(--sidebar-bg, #0b1f3a);
+  z-index: 1030;
+}
+
+#site-header:empty {
+  min-height: var(--header-height, 64px);
+}
