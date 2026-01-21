@@ -74,3 +74,83 @@ body.sidebar-collapsed .classroom-layout { left: 70px !important; }
 .nav-clean .nav-link.active { color: var(--brand); border-bottom-color: var(--brand); }
 .notification-badge { background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; margin-left: 6px; display: none; }
 
+/* Efeito Gaveta (Overlay) - 50% da tela no desktop */
+.quiz-drawer{
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50vw;            /* <-- 50% */
+  max-width: none;        /* <-- remove limite antigo */
+  min-width: 420px;       /* <-- evita ficar estreito demais */
+  height: 100%;
+  background: #fff;
+  z-index: 2000;
+  transform: translateX(110%); /* escondido */
+  transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: -5px 0 25px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+}
+.quiz-drawer.open{ transform: translateX(0); }
+
+@media (max-width: 992px){
+  .quiz-drawer{
+    width: 100vw;
+    min-width: 0;
+  }
+}
+
+.quiz-drawer-header{
+  padding: 15px 25px;
+  background: #2563eb;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.quiz-drawer-body{
+  flex: 1;
+  overflow-y: auto;
+  padding: 25px;
+  background-color: #f8fafc;
+}
+
+/* Backdrop */
+.quiz-backdrop{
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1999;
+  display: none;
+}
+.quiz-backdrop.show{ display: block; }
+
+/* Cards informacionais (datas/tentativas) */
+.activity-info-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.activity-info-card{
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.activity-info-label{
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+.activity-info-value{
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.92rem;
+}
