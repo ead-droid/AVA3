@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await Promise.all([
             loadCourseData(),
-            loadModules(),
+            loadModules(), // Agora carrega e ativa o Drag & Drop
             loadLinkedClasses()
         ]);
         setupFormListeners();     
@@ -37,19 +37,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // === UX: Controle das Abas ===
-// AGORA NÃO ESCONDE MAIS A ABA, APENAS OPÇÕES ESPECÍFICAS
 window.toggleGradingTab = () => {
     const typeEl = document.getElementById('les_type');
     if(!typeEl) return;
     
     const type = typeEl.value;
     const quizOpts = document.getElementById('quiz-options-area');
-
-    // Sempre exibe a aba de avaliação
     const tabBtn = document.getElementById('btn-tab-grading');
     if(tabBtn) tabBtn.style.display = 'block'; 
     
-    // Opções de tentativas só aparecem para Quiz
     if(quizOpts) {
         quizOpts.style.display = (type === 'QUIZ') ? 'block' : 'none';
     }
@@ -70,11 +66,7 @@ async function loadCourseData() {
         document.getElementById('edit_hours').value = course.carga_horaria_horas || course.total_hours || '';
         document.getElementById('edit_img').value = course.image_url || '';
         
-        // Campo de Nota do Curso
-        if(document.getElementById('edit_passing')) {
-            document.getElementById('edit_passing').value = course.passing_grade || '';
-        }
-        
+        if(document.getElementById('edit_passing')) document.getElementById('edit_passing').value = course.passing_grade || '';
         if(document.getElementById('edit_status')) document.getElementById('edit_status').value = (course.status === 'published') ? 'published' : 'draft';
         if(document.getElementById('edit_type')) document.getElementById('edit_type').value = course.tipo || 'OUTRO';
         if(document.getElementById('edit_enroll')) document.getElementById('edit_enroll').value = course.status_inscricao || 'FECHADO';
@@ -100,6 +92,7 @@ async function loadModules() {
     }
     document.getElementById('modules-empty').style.display = 'none';
 
+    // Renderiza e Ordena na memória antes de exibir
     modules.forEach(mod => {
         if (mod.sections) {
             mod.sections.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -109,15 +102,22 @@ async function loadModules() {
         }
         renderModuleItem(mod, container);
     });
+
+    // --- REINSERIDO: INICIALIZA O DRAG & DROP APÓS RENDERIZAR ---
+    initSortable();
 }
 
 // =========================================================
-// 2. RENDERIZAÇÃO
+// 2. RENDERIZAÇÃO (Com atributos data-id para Drag & Drop)
 // =========================================================
 function renderModuleItem(mod, container) {
     const tpl = document.getElementById('tpl-module');
     const clone = tpl.content.cloneNode(true);
     
+    // Configura o ID no elemento pai para o Drag & Drop funcionar
+    const card = clone.querySelector('.module-card'); // Certifique-se que seu HTML tem essa classe no div principal
+    if(card) card.setAttribute('data-id', mod.id);
+
     clone.querySelector('.mod-badge').textContent = mod.ordem;
     clone.querySelector('.mod-title').textContent = mod.title;
     
@@ -132,18 +132,17 @@ function renderModuleItem(mod, container) {
 
     btnEdit.onclick = (e) => { e.stopPropagation(); openModuleModal(mod); };
     btnDel.onclick = (e) => { e.stopPropagation(); deleteItem('modules', mod.id); };
-    
-    btnAddSec.onclick = (e) => { 
-        e.stopPropagation(); 
-        e.preventDefault(); 
-        openSectionModal(mod.id); 
-    };
+    btnAddSec.onclick = (e) => { e.stopPropagation(); e.preventDefault(); openSectionModal(mod.id); };
 
     const secContainer = clone.querySelector('.sections-container');
+    // Adiciona ID para saber de qual módulo é a seção
+    secContainer.setAttribute('data-module-id', mod.id); 
+
     if (mod.sections && mod.sections.length > 0) {
         mod.sections.forEach(sec => renderSectionItem(sec, secContainer, mod.id));
     } else {
-        secContainer.innerHTML = `<div class="p-4 text-center text-muted border-top bg-light small">Nenhuma seção.</div>`;
+        // Remove mensagem de vazio se quiser permitir drop em área vazia, ou mantenha
+        secContainer.innerHTML = `<div class="p-4 text-center text-muted border-top bg-light small empty-placeholder">Nenhuma seção.</div>`;
     }
     container.appendChild(clone);
 }
@@ -151,6 +150,9 @@ function renderModuleItem(mod, container) {
 function renderSectionItem(sec, container, modId) {
     const tpl = document.getElementById('tpl-section');
     const clone = tpl.content.cloneNode(true);
+
+    const sectionBox = clone.querySelector('.section-box'); // Certifique-se que seu HTML tem essa classe
+    if(sectionBox) sectionBox.setAttribute('data-id', sec.id);
 
     clone.querySelector('.sec-badge').textContent = sec.ordem;
     clone.querySelector('.sec-title').textContent = sec.title;
@@ -165,10 +167,12 @@ function renderSectionItem(sec, container, modId) {
     clone.querySelector('.btn-del').onclick = () => deleteItem('sections', sec.id);
 
     const contentContainer = clone.querySelector('.content-container');
+    contentContainer.setAttribute('data-section-id', sec.id); // Para saber onde a aula caiu
+
     if (sec.lessons && sec.lessons.length > 0) {
         sec.lessons.forEach(les => renderLessonItem(les, contentContainer, modId, sec.id));
     } else {
-        contentContainer.innerHTML = `<div class="p-2 text-center text-muted small fst-italic">Vazio.</div>`;
+        contentContainer.innerHTML = `<div class="p-2 text-center text-muted small fst-italic empty-placeholder">Arraste aulas para cá.</div>`;
     }
     container.appendChild(clone);
 }
@@ -177,24 +181,37 @@ function renderLessonItem(les, container, modId, secId) {
     const tpl = document.getElementById('tpl-lesson');
     const clone = tpl.content.cloneNode(true);
     
+    const lessonItem = clone.querySelector('.lesson-item');
+    if(lessonItem) lessonItem.setAttribute('data-id', les.id);
+
     clone.querySelector('.lesson-order').textContent = les.ordem;
     clone.querySelector('.lesson-title').textContent = les.title;
     
     const iconMap = { 
-        'VIDEO_AULA': 'bx-video', 'QUIZ': 'bx-trophy', 
-        'TAREFA': 'bx-task', 'PDF': 'bx-file-pdf', 
-        'TEXTO': 'bx-text', 'MATERIAL': 'bx-link', 'AVISO': 'bx-bell'
+        'VIDEO_AULA': 'bx-video', 'VIDEO': 'bx-video', 
+        'QUIZ': 'bx-trophy', 'TAREFA': 'bx-task', 
+        'PDF': 'bx-file-pdf', 'TEXTO': 'bx-text', 
+        'MATERIAL': 'bx-link', 'AVISO': 'bx-bell'
     };
     clone.querySelector('.icon-circle i').className = `bx ${iconMap[les.type] || 'bx-file'}`;
     clone.querySelector('.lesson-type').textContent = les.type;
 
+    // --- REINSERIDO: BOTÃO DE VISUALIZAR ---
+    // Procura se já existe botão de view, se não cria (dependendo do template)
+    // Assumindo que o TPL tem um lugar para botões
+    const btnEdit = clone.querySelector('.btn-edit');
+    if(btnEdit) {
+        const btnView = document.createElement('button');
+        btnView.className = 'btn btn-sm btn-icon text-primary me-1';
+        btnView.title = 'Visualizar';
+        btnView.innerHTML = `<i class='bx bx-show'></i>`;
+        btnView.onclick = (e) => { e.stopPropagation(); openPreview(les); };
+        btnEdit.parentNode.insertBefore(btnView, btnEdit);
+    }
+
     const st = les.settings || {};
-    
-    if (st.availability?.available_from || les.unlock_at) 
-        clone.querySelector('.condition-date-badge').style.display = 'inline-flex';
-    
-    if (st.prerequisites?.ids?.length || les.prerequisite_ids?.length) 
-        clone.querySelector('.condition-lock-badge').style.display = 'inline-flex';
+    if (st.availability?.available_from || les.unlock_at) clone.querySelector('.condition-date-badge').style.display = 'inline-flex';
+    if (st.prerequisites?.ids?.length || les.prerequisite_ids?.length) clone.querySelector('.condition-lock-badge').style.display = 'inline-flex';
     
     const pts = st.grading?.points_max ?? (les.points || 0);
     if (pts > 0) {
@@ -224,7 +241,116 @@ function addBtn(tplId, href, container) {
 }
 
 // =========================================================
-// 3. MODAIS
+// 3. LOGICA DE ARRASTAR E SOLTAR (SortableJS) - REINSERIDA
+// =========================================================
+function initSortable() {
+    if (typeof Sortable === 'undefined') return;
+
+    // 1. Módulos
+    const modulesList = document.getElementById('modules-list');
+    if (modulesList) {
+        new Sortable(modulesList, {
+            animation: 150,
+            handle: '.mod-handle', // Adicione classe .mod-handle no seu HTML do modulo ou remova para arrastar pelo card todo
+            ghostClass: 'bg-light',
+            onEnd: (evt) => saveOrder('modules', evt.from)
+        });
+    }
+
+    // 2. Seções (dentro de módulos)
+    document.querySelectorAll('.sections-container').forEach(el => {
+        new Sortable(el, {
+            group: 'sections',
+            animation: 150,
+            ghostClass: 'bg-light',
+            onEnd: (evt) => {
+                const modId = evt.to.getAttribute('data-module-id');
+                saveOrder('sections', evt.to, modId);
+            }
+        });
+    });
+
+    // 3. Aulas (dentro de seções)
+    document.querySelectorAll('.content-container').forEach(el => {
+        new Sortable(el, {
+            group: 'lessons',
+            animation: 150,
+            ghostClass: 'bg-light',
+            onEnd: (evt) => {
+                const secId = evt.to.getAttribute('data-section-id');
+                saveOrder('lessons', evt.to, secId);
+            }
+        });
+    });
+}
+
+async function saveOrder(type, container, parentId = null) {
+    // Remove os placeholders "Vazio" antes de contar
+    const items = [...container.children].filter(c => !c.classList.contains('empty-placeholder'));
+    
+    const updates = items.map((item, index) => {
+        const id = item.getAttribute('data-id');
+        if(!id) return null;
+
+        const payload = { ordem: index + 1 };
+        
+        if (type === 'sections' && parentId) payload.module_id = parentId;
+        if (type === 'lessons' && parentId) payload.section_id = parentId;
+
+        return supabase.from(type).update(payload).eq('id', id);
+    }).filter(p => p !== null);
+
+    await Promise.all(updates);
+    // Opcional: Recarregar para garantir numeração visual correta
+    // loadModules(); 
+}
+
+// =========================================================
+// 4. FUNÇÃO DE PREVIEW (VISUALIZAR) - REINSERIDA
+// =========================================================
+window.openPreview = async (lesson) => {
+    // Requer um Modal HTML com id="modalPreviewLesson"
+    const modalEl = document.getElementById('modalPreviewLesson');
+    if(!modalEl) { alert("Aula: " + lesson.title); return; }
+    
+    const modal = new bootstrap.Modal(modalEl);
+    const contentDiv = document.getElementById('previewContent'); // ID do body do modal
+    const titleDiv = document.getElementById('previewTitle'); // ID do titulo do modal
+    
+    if(titleDiv) titleDiv.textContent = lesson.title;
+    if(contentDiv) {
+        contentDiv.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+        modal.show();
+
+        // Se o conteúdo já estiver no objeto lesson (depende do select inicial)
+        // Se não tiver, faz fetch:
+        let fullLesson = lesson;
+        if(lesson.type === 'TEXTO' && !lesson.content) {
+             const { data } = await supabase.from('lessons').select('*').eq('id', lesson.id).single();
+             fullLesson = data;
+        }
+
+        let html = '';
+        if (fullLesson.type === 'VIDEO_AULA' || fullLesson.type === 'VIDEO') {
+            const url = fullLesson.video_url || '';
+            let embedUrl = url;
+            if (url.includes('youtu')) {
+                const vidId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+                embedUrl = `https://www.youtube.com/embed/${vidId}`;
+            }
+            html = `<div class="ratio ratio-16x9"><iframe src="${embedUrl}" allowfullscreen></iframe></div>`;
+        } else if (fullLesson.type === 'TEXTO') {
+            html = `<div class="p-3 bg-white border rounded">${fullLesson.content || 'Sem conteúdo.'}</div>`;
+        } else {
+            html = `<div class="alert alert-info">Pré-visualização simplificada indisponível para ${fullLesson.type}. <br><a href="${fullLesson.content_url}" target="_blank">Abrir Link</a></div>`;
+        }
+        
+        contentDiv.innerHTML = html;
+    }
+};
+
+// =========================================================
+// 5. MODAIS (Formulários)
 // =========================================================
 
 window.openModuleModal = (mod = null) => {
@@ -244,11 +370,8 @@ window.openModuleModal = (mod = null) => {
         document.getElementById('mod_title').value = mod.title;
         document.getElementById('mod_order').value = mod.ordem;
         document.getElementById('mod_hours').value = mod.carga_horaria || '';
-        
         const s = mod.settings || {};
-        // Carrega média do módulo
         document.getElementById('mod_passing').value = s.passing_grade || '';
-
         if(s.availability) {
             document.getElementById('mod_avail_from').value = fmtDate(s.availability.available_from || mod.unlock_at);
             document.getElementById('mod_avail_until').value = fmtDate(s.availability.available_until);
@@ -325,18 +448,16 @@ window.openLessonModal = (modId, secId, les = null) => {
         document.getElementById('logic_and').checked = true;
     }
     
-    // Força a atualização visual das abas
     window.toggleGradingTab();
     if (modalLesson) modalLesson.show();
 };
 
 // =========================================================
-// 4. LISTENERS (SUBMITS)
+// 6. LISTENERS (SUBMITS)
 // =========================================================
 
 function setupFormListeners() {
     
-    // Salvar Configurações Gerais do Curso (INCLUINDO NOTA)
     const formSettings = document.getElementById('formEditCourse');
     if(formSettings) {
         formSettings.addEventListener('submit', async (e) => {
@@ -351,10 +472,7 @@ function setupFormListeners() {
                 status: document.getElementById('edit_status').value,
                 carga_horaria_horas: parseFloat(document.getElementById('edit_hours').value) || null,
                 total_hours: parseFloat(document.getElementById('edit_hours').value) || null,
-                
-                // Salva a Nota de Aprovação do Curso
                 passing_grade: parseFloat(document.getElementById('edit_passing').value) || null,
-                
                 tipo: document.getElementById('edit_type').value,
                 status_inscricao: document.getElementById('edit_enroll').value,
                 image_url: document.getElementById('edit_img').value
@@ -434,7 +552,6 @@ function setupFormListeners() {
         const settings = {
             availability: { available_from: availFrom, available_until: document.getElementById('mod_avail_until').value || null },
             prerequisite_ids: preIds,
-            // SALVA A MÉDIA DO MÓDULO AQUI
             passing_grade: parseFloat(document.getElementById('mod_passing').value) || null
         };
         const payload = {

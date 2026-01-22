@@ -85,6 +85,8 @@
       border:1px solid rgba(13,110,253,.18);
       font-weight:800;
     }
+    
+    /* Legenda com cores corrigidas */
     .legend{
       display:flex; flex-wrap:wrap; gap:10px;
       align-items:center;
@@ -93,9 +95,6 @@
       font-size:.85rem;
     }
     .legend span{ display:inline-flex; align-items:center; gap:6px; }
-    .dot-activity{ background:#0d6efd; }
-    .dot-mural{ background:#ffc107; }
-    .dot-course{ background:#198754; }
 
     /* ====== CARDS (AGENDA) ====== */
     .event-card{ border-left:5px solid #0d6efd; border-radius:14px; }
@@ -124,7 +123,6 @@
         <h2 class="mb-1"><i class='bx bx-calendar-event text-primary'></i> Calendário Acadêmico</h2>
         <p class="text-muted mb-3">Veja atividades com data, eventos do mural e datas da turma em um calendário de mês (e agenda).</p>
 
-        <!-- filtros -->
         <div class="d-flex flex-wrap gap-2">
           <label class="chip-filter rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-2">
             <input id="filter-activities" class="form-check-input m-0" type="checkbox" checked>
@@ -148,17 +146,16 @@
     </div>
 
     <div id="calendar-root" style="display:none;">
-      <!-- Shell -->
       <div class="cal-shell">
-        <!-- toolbar -->
         <div class="cal-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
             <div class="cal-title h5 mb-0" id="cal-month-label">—</div>
             <div class="cal-sub" id="cal-month-sub">Clique em um dia para ver a agenda.</div>
+            
             <div class="legend">
-              <span><i class='bx bxs-circle cal-dot dot-activity'></i> Atividades</span>
-              <span><i class='bx bxs-circle cal-dot dot-mural'></i> Mural</span>
-              <span><i class='bx bxs-circle cal-dot dot-course'></i> Datas da turma</span>
+              <span><i class='bx bxs-circle' style="color: #0d6efd;"></i> Atividades</span>
+              <span><i class='bx bxs-circle' style="color: #ffc107;"></i> Mural</span>
+              <span><i class='bx bxs-circle' style="color: #198754;"></i> Datas da turma</span>
             </div>
           </div>
 
@@ -170,22 +167,19 @@
             </div>
 
             <div class="btn-group" role="group" aria-label="Visão">
-              <button id="btn-view-month" class="btn btn-primary btn-sm"><i class='bx bx-grid-alt'></i> Mês</button>
-              <button id="btn-view-agenda" class="btn btn-outline-primary btn-sm"><i class='bx bx-list-ul'></i> Agenda</button>
+              <button id="btn-view-month" class="btn btn-outline-primary btn-sm"><i class='bx bx-grid-alt'></i> Mês</button>
+              <button id="btn-view-agenda" class="btn btn-primary btn-sm"><i class='bx bx-list-ul'></i> Agenda</button>
             </div>
           </div>
         </div>
 
-        <!-- weekdays -->
         <div class="cal-weekdays">
           <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
         </div>
 
-        <!-- month grid -->
         <div id="calendar-grid" class="cal-grid"></div>
       </div>
 
-      <!-- Agenda (lista) -->
       <div id="agenda-wrap" class="mt-4" style="display:none;">
         <div class="d-flex align-items-center justify-content-between mb-2">
           <h5 class="mb-0"><i class='bx bx-list-ul'></i> Próximos itens</h5>
@@ -196,7 +190,6 @@
     </div>
   </main>
 
-  <!-- Offcanvas do dia -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="dayOffcanvas" aria-labelledby="dayOffcanvasLabel">
     <div class="offcanvas-header">
       <div>
