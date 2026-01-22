@@ -9,6 +9,16 @@
     <link rel="stylesheet" href="./assets/css/chrome.css">
     <link rel="stylesheet" href="./assets/css/admin.css">
     <link rel="stylesheet" href="./assets/css/editor-styles.css">
+    <style>
+        /* Ajustes para a Toolbar Compacta do Card */
+        .rich-toolbar { flex-wrap: wrap; gap: 4px; padding: 6px; }
+        .rich-btn { font-size: 0.9rem; padding: 2px 6px; }
+        .vr-sep { width: 1px; background: #dee2e6; height: 18px; margin: 0 4px; }
+        
+        /* Input de Cor discreto */
+        .color-picker-wrapper { position: relative; overflow: hidden; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .color-picker-wrapper input { position: absolute; left: -50%; top: -50%; width: 200%; height: 200%; cursor: pointer; opacity: 0; }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -31,8 +41,8 @@
                         <small class="text-muted d-block fw-bold" style="font-size: 0.7rem;">TOTAL</small>
                         <span class="text-primary fw-bold fs-5" id="total-points-display">0</span> <span class="small text-muted">pts</span>
                     </div>
-                    <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveTask()" id="btn-save">
-                        <i class='bx bx-save me-1'></i> Salvar Atividade
+                    <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveTask()" id="btn-save-top">
+                        <i class='bx bx-save me-1'></i> Salvar
                     </button>
                 </div>
             </div>
@@ -42,7 +52,7 @@
                     
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white py-3 border-bottom">
-                            <h6 class="fw-bold mb-0 text-dark"><i class='bx bx-info-circle me-2'></i> Instruções Gerais da Atividade</h6>
+                            <h6 class="fw-bold mb-0 text-dark"><i class='bx bx-info-circle me-2'></i> Instruções Gerais</h6>
                         </div>
                         <div class="card-body p-3">
                             <textarea id="task-instructions" class="form-control" rows="3" placeholder="Descreva o objetivo geral desta tarefa..."></textarea>
@@ -50,17 +60,17 @@
                     </div>
 
                     <h6 class="text-muted fw-bold text-uppercase small mb-3 ps-1 d-flex justify-content-between align-items-center">
-                        <span>Questões & Itens de Resposta</span>
+                        <span>Questões & Itens</span>
                         <span class="badge bg-light text-dark border" id="items-count">0 itens</span>
                     </h6>
                     
-                    <div id="task-list" class="d-flex flex-column gap-3 mb-5"></div>
+                    <div id="task-list" class="d-flex flex-column gap-3 mb-4"></div>
 
                     <div class="card border-2 border-dashed bg-transparent text-center p-4">
                         <p class="text-muted small fw-bold mb-3 text-uppercase">Adicionar Nova Questão</p>
                         <div class="row g-3 justify-content-center">
                             <div class="col-md-5">
-                                <button class="btn btn-white border shadow-sm w-100 py-3 d-flex align-items-center justify-content-center gap-2 hover-shadow" onclick="window.addTaskItem('text')">
+                                <button class="btn btn-white border shadow-sm w-100 py-3 d-flex align-items-center justify-content-center gap-2 hover-shadow" onclick="addTaskItem('text')">
                                     <i class='bx bx-paragraph fs-3 text-primary'></i>
                                     <div class="text-start">
                                         <div class="fw-bold text-dark">Dissertativa</div>
@@ -69,14 +79,26 @@
                                 </button>
                             </div>
                             <div class="col-md-5">
-                                <button class="btn btn-white border shadow-sm w-100 py-3 d-flex align-items-center justify-content-center gap-2 hover-shadow" onclick="window.addTaskItem('link')">
-                                    <i class='bx bx-cloud-upload fs-3 text-success'></i>
+                                <button class="btn btn-white border shadow-sm w-100 py-3 d-flex align-items-center justify-content-center gap-2 hover-shadow" onclick="addTaskItem('link')">
+                                    <i class='bx bx-link fs-3 text-info'></i>
                                     <div class="text-start">
-                                        <div class="fw-bold text-dark">Envio de Arquivo</div>
-                                        <small class="text-muted" style="font-size: 0.7rem;">Aluno envia link/anexo</small>
+                                        <div class="fw-bold text-dark">Envio de Link</div>
+                                        <small class="text-muted" style="font-size: 0.7rem;">Drive, Docs, Canva...</small>
                                     </div>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm mt-4 bg-white border-top border-5 border-warning mb-5">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0"><i class='bx bx-error-circle text-warning fs-5 align-middle'></i> Alterações Pendentes</h6>
+                                <small class="text-muted">Salve antes de sair.</small>
+                            </div>
+                            <button class="btn btn-success fw-bold px-4 py-2 shadow-sm" onclick="saveTask()" id="btn-save-bottom">
+                                <i class='bx bx-save me-1'></i> SALVAR TUDO
+                            </button>
                         </div>
                     </div>
 
@@ -84,12 +106,11 @@
                 
                 <div class="col-lg-4">
                     <div class="alert alert-info border-0 shadow-sm small">
-                        <h6 class="fw-bold"><i class='bx bx-bulb'></i> Dicas de Edição</h6>
+                        <h6 class="fw-bold"><i class='bx bx-bulb'></i> Dicas</h6>
                         <ul class="mb-0 ps-3">
-                            <li>Use os botões <strong><i class='bx bx-chevron-up'></i></strong> e <strong><i class='bx bx-chevron-down'></i></strong> para reordenar as questões.</li>
-                            <li>Defina a <strong>pontuação</strong> de cada item. O sistema calcula o total automaticamente.</li>
-                            <li>Você pode <strong>colorir textos</strong> importantes no enunciado.</li>
-                            <li>Adicione links de materiais de apoio direto na pergunta.</li>
+                            <li><strong>Dissertativa:</strong> O aluno digita a resposta direto na plataforma.</li>
+                            <li><strong>Envio de Link:</strong> O aluno cola um link (Google Drive, YouTube, Site) como resposta.</li>
+                            <li>Use o editor para formatar o enunciado e destacar pontos importantes.</li>
                         </ul>
                     </div>
                 </div>
@@ -101,51 +122,64 @@
     <template id="tpl-task-item">
         <div class="card task-item-card shadow-sm mb-3">
             <div class="card-header bg-white py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
-                
                 <div class="d-flex align-items-center gap-2">
                     <div class="order-actions me-2">
-                        <button class="btn btn-move btn-move-up" title="Mover para cima"><i class='bx bx-chevron-up'></i></button>
-                        <button class="btn btn-move btn-move-down" title="Mover para baixo"><i class='bx bx-chevron-down'></i></button>
+                        <button class="btn btn-move btn-move-up" title="Subir"><i class='bx bx-chevron-up'></i></button>
+                        <button class="btn btn-move btn-move-down" title="Descer"><i class='bx bx-chevron-down'></i></button>
                     </div>
                     <span class="badge bg-dark item-number">#1</span>
-                    <span class="fw-bold text-uppercase small text-muted item-type-label">Dissertativa</span>
+                    <span class="fw-bold text-uppercase small text-muted item-type-label">TIPO</span>
                 </div>
-
                 <div class="d-flex align-items-center gap-3">
                     <div class="input-group input-group-sm points-input-group">
                         <span class="input-group-text bg-light fw-bold text-muted">Pts</span>
                         <input type="number" class="form-control text-center fw-bold text-primary item-points" value="0" min="0" step="0.5">
                     </div>
-                    <button class="btn btn-sm btn-outline-danger border-0 btn-delete" title="Remover Questão"><i class='bx bx-trash fs-5'></i></button>
+                    <button class="btn btn-sm btn-outline-danger border-0 btn-delete" title="Remover"><i class='bx bx-trash fs-5'></i></button>
                 </div>
             </div>
 
             <div class="card-body p-3">
-                
                 <div class="mb-3">
-                    <label class="form-label fw-bold small text-muted">ENUNCIADO DA QUESTÃO</label>
+                    <label class="form-label fw-bold small text-muted">ENUNCIADO</label>
                     <div class="rich-editor-container">
                         <div class="rich-toolbar">
                             <button type="button" class="rich-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
                             <button type="button" class="rich-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
                             <button type="button" class="rich-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
-                            <div class="vr mx-1"></div>
-                            <input type="color" class="form-control form-control-color p-0 border-0 rich-color" style="width:25px; height:25px;" title="Cor do Texto">
-                            <div class="vr mx-1"></div>
-                            <button type="button" class="rich-btn" data-cmd="createLink" title="Inserir Link"><i class='bx bx-link'></i></button>
-                            <button type="button" class="rich-btn" data-cmd="removeFormat" title="Limpar Formatação"><i class='bx bx-eraser'></i></button>
+                            <div class="vr-sep"></div>
+                            
+                            <label class="color-picker-wrapper rich-btn" title="Cor do Texto">
+                                <i class='bx bx-font-color' style="color:#d63384"></i>
+                                <input type="color" data-cmd="foreColor">
+                            </label>
+                            <label class="color-picker-wrapper rich-btn" title="Marca-texto">
+                                <i class='bx bx-highlight' style="background:#fff3cd; color:#000;"></i>
+                                <input type="color" data-cmd="hiliteColor">
+                            </label>
+                            <div class="vr-sep"></div>
+
+                            <button type="button" class="rich-btn" data-cmd="justifyLeft"><i class='bx bx-align-left'></i></button>
+                            <button type="button" class="rich-btn" data-cmd="justifyCenter"><i class='bx bx-align-middle'></i></button>
+                            <div class="vr-sep"></div>
+
+                            <button type="button" class="rich-btn" data-cmd="insertUnorderedList"><i class='bx bx-list-ul'></i></button>
+                            <button type="button" class="rich-btn" data-cmd="createLink" title="Inserir Link no Enunciado"><i class='bx bx-link'></i></button>
+                            
+                            <div class="ms-auto">
+                                <button type="button" class="rich-btn text-danger" data-cmd="removeFormat"><i class='bx bx-eraser'></i></button>
+                            </div>
                         </div>
-                        <div class="rich-content" contenteditable="true" placeholder="Digite a pergunta aqui..."></div>
+                        <div class="rich-content" contenteditable="true" placeholder="Digite a pergunta..."></div>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold small text-muted"><i class='bx bx-paperclip'></i> MATERIAL DE APOIO (OPCIONAL)</label>
-                    <input type="url" class="form-control form-control-sm item-resource" placeholder="Cole um link de PDF, Imagem ou Drive para auxiliar o aluno...">
+                    <label class="form-label fw-bold small text-muted"><i class='bx bx-link'></i> MATERIAL DE APOIO (LINK)</label>
+                    <input type="url" class="form-control form-control-sm item-resource" placeholder="Cole um link de referência (YouTube, Drive, Site)...">
                 </div>
 
-                <div class="p-3 bg-light rounded border border-dashed opacity-75 preview-area">
-                    </div>
+                <div class="p-3 bg-light rounded border border-dashed opacity-75 preview-area"></div>
             </div>
         </div>
     </template>

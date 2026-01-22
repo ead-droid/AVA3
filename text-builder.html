@@ -3,12 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVA3 • Editor de Texto</title>
+    <title>AVA3 • Editor de Artigo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="./assets/css/chrome.css">
     <link rel="stylesheet" href="./assets/css/admin.css">
     <link rel="stylesheet" href="./assets/css/editor-styles.css">
+    <style>
+        /* Estilos Extras para o Editor Avançado */
+        .rich-toolbar {
+            position: sticky; top: 0; z-index: 100;
+            background: #f8f9fa; border-bottom: 1px solid #dee2e6;
+            padding: 8px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+        }
+        .vr-sep { width: 1px; background: #ccc; height: 24px; margin: 0 5px; }
+        
+        /* Área de Código (Escuro) */
+        #code-area {
+            display: none; width: 100%; min-height: 500px;
+            background: #1e1e1e; color: #dcdcdc;
+            font-family: 'Courier New', monospace; font-size: 14px;
+            border: none; padding: 20px; resize: vertical; outline: none;
+        }
+        
+        /* Área Visual (Claro) */
+        #editor-area {
+            min-height: 500px; padding: 40px; background: white; outline: none;
+        }
+        #editor-area blockquote { border-left: 4px solid #0d6efd; padding-left: 15px; color: #555; background: #f8fbff; padding: 10px; }
+        #editor-area pre { background: #f4f4f4; padding: 10px; border-radius: 4px; border: 1px solid #ddd; }
+        #editor-area img { max-width: 100%; height: auto; border-radius: 4px; }
+        
+        /* Input de Cor Escondido */
+        .color-picker-wrapper { position: relative; overflow: hidden; width: 30px; height: 30px; cursor: pointer; display: inline-block; }
+        .color-picker-wrapper input { position: absolute; left: -10px; top: -10px; width: 50px; height: 50px; cursor: pointer; }
+    </style>
 </head>
 <body class="bg-light">
     <div id="site-header"></div>
@@ -16,111 +45,99 @@
 
     <main class="page-content">
         <div class="container-fluid p-4">
+            
             <div class="d-flex align-items-center gap-3 mb-4">
-                <button id="btn-back" class="btn btn-light border shadow-sm rounded-circle p-2"><i class='bx bx-arrow-back fs-4'></i></button>
-                <div class="flex-grow-1">
-                    <h6 class="text-muted fw-bold mb-0 small" id="hierarchy">...</h6>
-                    <h3 class="fw-bold text-dark mb-0" id="page-title">Editor de Artigo</h3>
-                </div>
-                <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveTextContent()" id="btn-save">
-                    <i class='bx bx-save me-1'></i> Salvar Conteúdo
+                <button id="btn-back" class="btn btn-white border shadow-sm rounded-circle p-2">
+                    <i class='bx bx-arrow-back fs-4'></i>
                 </button>
+                <div class="flex-grow-1">
+                    <h6 class="text-muted fw-bold mb-0 small" id="lesson-hierarchy">...</h6>
+                    <h3 class="fw-bold text-dark mb-0" id="lesson-title">Carregando...</h3>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-dark fw-bold px-3 shadow-sm" onclick="toggleCodeView()" id="btn-code-view" title="Ver Código HTML">
+                        <i class='bx bx-code-alt'></i> HTML
+                    </button>
+                    <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveContent()" id="btn-save-top">
+                        <i class='bx bx-save me-1'></i> Salvar
+                    </button>
+                </div>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                <div class="rich-toolbar sticky-top">
-                    <button class="rich-btn" data-cmd="bold" title="Negrito"><i class='bx bx-bold'></i></button>
-                    <button class="rich-btn" data-cmd="italic" title="Itálico"><i class='bx bx-italic'></i></button>
-                    <button class="rich-btn" data-cmd="underline" title="Sublinhado"><i class='bx bx-underline'></i></button>
-                    <div class="vr mx-1"></div>
-                    <button class="rich-btn" data-cmd="formatBlock" data-val="H2" title="Título"><b>H1</b></button>
-                    <button class="rich-btn" data-cmd="formatBlock" data-val="H3" title="Subtítulo"><b>H2</b></button>
-                    <div class="vr mx-1"></div>
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                
+                <div class="rich-toolbar" id="toolbar">
+                    <button class="rich-btn" data-cmd="undo" title="Desfazer"><i class='bx bx-undo'></i></button>
+                    <button class="rich-btn" data-cmd="redo" title="Refazer"><i class='bx bx-redo'></i></button>
+                    <div class="vr-sep"></div>
+
+                    <button class="rich-btn" data-cmd="bold" title="Negrito"><b>B</b></button>
+                    <button class="rich-btn" data-cmd="italic" title="Itálico"><i>I</i></button>
+                    <button class="rich-btn" data-cmd="underline" title="Sublinhado"><u>U</u></button>
+                    <button class="rich-btn" data-cmd="strikeThrough" title="Tachado"><s>S</s></button>
+                    <div class="vr-sep"></div>
+
+                    <select class="form-select form-select-sm d-inline-block w-auto border-0 bg-transparent fw-bold" onchange="formatBlock(this.value)">
+                        <option value="P">Parágrafo</option>
+                        <option value="H2">Título Grande</option>
+                        <option value="H3">Título Médio</option>
+                        <option value="H4">Título Pequeno</option>
+                        <option value="BLOCKQUOTE">Citação</option>
+                        <option value="PRE">Código (Bloco)</option>
+                    </select>
+                    <div class="vr-sep"></div>
+
+                    <label class="rich-btn" title="Cor do Texto">
+                        <i class='bx bx-font-color' style="color:red; border-bottom: 2px solid red;"></i>
+                        <input type="color" onchange="execCmd('foreColor', this.value)" style="width:0; height:0; opacity:0; position:absolute;">
+                    </label>
+                    <label class="rich-btn" title="Cor de Fundo">
+                        <i class='bx bx-highlight' style="background:yellow;"></i>
+                        <input type="color" onchange="execCmd('hiliteColor', this.value)" style="width:0; height:0; opacity:0; position:absolute;">
+                    </label>
+                    <div class="vr-sep"></div>
+
                     <button class="rich-btn" data-cmd="justifyLeft"><i class='bx bx-align-left'></i></button>
                     <button class="rich-btn" data-cmd="justifyCenter"><i class='bx bx-align-middle'></i></button>
-                    <div class="vr mx-1"></div>
+                    <button class="rich-btn" data-cmd="justifyRight"><i class='bx bx-align-right'></i></button>
+                    <div class="vr-sep"></div>
+
                     <button class="rich-btn" data-cmd="insertUnorderedList"><i class='bx bx-list-ul'></i></button>
                     <button class="rich-btn" data-cmd="insertOrderedList"><i class='bx bx-list-ol'></i></button>
-                    <div class="vr mx-1"></div>
-                    <button class="rich-btn" onclick="insertLink()"><i class='bx bx-link'></i></button>
-                    <button class="rich-btn" onclick="insertImage()"><i class='bx bx-image'></i></button>
-                    <button class="rich-btn" onclick="insertVideo()"><i class='bx bxl-youtube'></i></button>
-                    <div class="vr mx-1"></div>
-                    <button class="rich-btn text-danger" data-cmd="removeFormat"><i class='bx bx-eraser'></i></button>
+                    <div class="vr-sep"></div>
+
+                    <button class="rich-btn" onclick="insertLink()" title="Link"><i class='bx bx-link'></i></button>
+                    <button class="rich-btn" onclick="insertImage()" title="Imagem"><i class='bx bx-image'></i></button>
+                    <button class="rich-btn" onclick="insertVideo()" title="Vídeo"><i class='bx bxl-youtube'></i></button>
+                    <button class="rich-btn" data-cmd="insertHorizontalRule" title="Linha Divisória"><i class='bx bx-minus'></i></button>
+                    
+                    <div class="ms-auto">
+                        <button class="rich-btn text-danger" data-cmd="removeFormat" title="Limpar Formatação"><i class='bx bx-eraser'></i></button>
+                    </div>
                 </div>
                 
-                <div id="editor-area" class="rich-content" contenteditable="true" placeholder="Escreva seu conteúdo aqui..."></div>
+                <div id="editor-area" class="rich-content" contenteditable="true" placeholder="Escreva seu artigo aqui..."></div>
+                
+                <textarea id="code-area" spellcheck="false"></textarea>
             </div>
+
+            <div class="card border-0 shadow-sm mt-4 bg-white border-top border-5 border-warning mb-5">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0"><i class='bx bx-error-circle text-warning fs-5 align-middle'></i> Alterações Pendentes</h6>
+                        <small class="text-muted">Não esqueça de salvar antes de sair.</small>
+                    </div>
+                    <button class="btn btn-success fw-bold px-4 py-2 shadow-sm" onclick="saveContent()" id="btn-save-bottom">
+                        <i class='bx bx-save me-1'></i> SALVAR TUDO
+                    </button>
+                </div>
+            </div>
+
         </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="./assets/js/chrome.js"></script>
-    
-    <script type="module">
-        import { supabase } from './assets/js/supabaseClient.js';
-        const params = new URLSearchParams(window.location.search);
-        const lessonId = params.get('id');
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            if(!lessonId) return alert("ID inválido");
-            const { data } = await supabase.from('lessons').select('*, modules(id, courses(id))').eq('id', lessonId).single();
-            if(data) {
-                document.getElementById('page-title').textContent = data.title;
-                document.getElementById('hierarchy').textContent = "Editando conteúdo de texto";
-                // Carrega o HTML salvo no campo description
-                document.getElementById('editor-area').innerHTML = data.description || "<p>Comece a escrever...</p>";
-                
-                document.getElementById('btn-back').onclick = () => {
-                    window.location.href = `course-editor.html?id=${data.modules.courses.id}`;
-                }
-            }
-            setupToolbar();
-        });
-
-        // Setup da Toolbar
-        function setupToolbar() {
-            document.querySelectorAll('.rich-btn[data-cmd]').forEach(btn => {
-                btn.onclick = (e) => {
-                    e.preventDefault();
-                    document.execCommand(btn.dataset.cmd, false, btn.dataset.val || null);
-                }
-            });
-        }
-
-        // Funções Globais para os botões de mídia
-        window.insertLink = () => {
-            const url = prompt("URL do Link:");
-            if(url) document.execCommand('createLink', false, url);
-        }
-        window.insertImage = () => {
-            const url = prompt("URL da Imagem:");
-            if(url) document.execCommand('insertImage', false, url);
-        }
-        window.insertVideo = () => {
-            const url = prompt("URL do Vídeo (Youtube) ou Embed:");
-            if(url) {
-                let embed = url;
-                if(url.includes('youtube') || url.includes('youtu.be')) {
-                    const videoId = url.split('v=')[1] || url.split('/').pop();
-                    embed = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
-                }
-                document.execCommand('insertHTML', false, `<div class="ratio ratio-16x9 my-3">${embed}</div><br>`);
-            }
-        }
-
-        window.saveTextContent = async () => {
-            const btn = document.getElementById('btn-save');
-            btn.innerHTML = 'Salvando...'; btn.disabled = true;
-            
-            const html = document.getElementById('editor-area').innerHTML;
-            
-            const { error } = await supabase.from('lessons').update({ description: html }).eq('id', lessonId);
-            
-            btn.innerHTML = '<i class="bx bx-save me-1"></i> Salvar Conteúdo'; btn.disabled = false;
-            if(error) alert("Erro: " + error.message);
-            else alert("Conteúdo salvo com sucesso!");
-        }
-    </script>
+    <script type="module" src="./assets/js/text-builder.js"></script>
 </body>
 </html>

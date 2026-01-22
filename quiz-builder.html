@@ -74,9 +74,7 @@
                         <small class="text-muted d-block" style="font-size: 0.75rem;">Total</small>
                         <span class="badge bg-warning text-dark border fs-6 mt-1" id="quiz-points">0 pts</span>
                     </div>
-                    <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="saveQuiz()">
-                        <i class='bx bx-save me-1'></i> Salvar
-                    </button>
+                    
                 </div>
             </div>
 
@@ -162,11 +160,23 @@
                             <i class='bx bx-info-circle text-primary me-1'></i>
                             O aluno responderá todas as questões cadastradas nesta ordem.
                         </div>
+                        
 
                         <div id="alert-bank" class="alert alert-info border-info border-opacity-25 small mb-0 bg-opacity-10 text-primary" style="display: none;">
                             <i class='bx bx-shuffle me-1'></i>
                             <strong>Modo Banco:</strong> O sistema sorteará aleatoriamente a quantidade definida a cada tentativa.
                         </div>
+                        <div class="card border-0 shadow-sm mt-4 bg-white border-top border-5 border-warning mb-5">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="fw-bold text-dark mb-0"><i class='bx bx-error-circle text-warning fs-5 align-middle'></i> Alterações Pendentes</h6>
+            <small class="text-muted">Não esqueça de salvar antes de sair.</small>
+        </div>
+        <button class="btn btn-success fw-bold px-4 py-2 shadow-sm" onclick="saveQuiz()">
+            <i class='bx bx-save me-1'></i> SALVAR TUDO
+        </button>
+    </div>
+</div>
                     </div>
                 </div>
             </div>

@@ -176,59 +176,107 @@ function renderSectionItem(sec, container, modId) {
     }
     container.appendChild(clone);
 }
+// ... (mantenha o código anterior)
 
 function renderLessonItem(les, container, modId, secId) {
-    const tpl = document.getElementById('tpl-lesson');
-    const clone = tpl.content.cloneNode(true);
-    
-    const lessonItem = clone.querySelector('.lesson-item');
-    if(lessonItem) lessonItem.setAttribute('data-id', les.id);
+    const tpl = document.createElement('div');
+    tpl.setAttribute('data-id', les.id);
+    tpl.className = "lesson-item-wrapper";
 
-    clone.querySelector('.lesson-order').textContent = les.ordem;
-    clone.querySelector('.lesson-title').textContent = les.title;
-    
-    const iconMap = { 
-        'VIDEO_AULA': 'bx-video', 'VIDEO': 'bx-video', 
-        'QUIZ': 'bx-trophy', 'TAREFA': 'bx-task', 
-        'PDF': 'bx-file-pdf', 'TEXTO': 'bx-text', 
-        'MATERIAL': 'bx-link', 'AVISO': 'bx-bell'
+    // Mapeamento de Estilos
+    const typeMap = {
+        'VIDEO_AULA': { icon: 'bx-play-circle', bg: 'bg-video', label: 'Vídeo Aula' },
+        'VIDEO':      { icon: 'bx-play-circle', bg: 'bg-video', label: 'Vídeo' },
+        'QUIZ':       { icon: 'bx-trophy', bg: 'bg-quiz', label: 'Questionário' },
+        'TAREFA':     { icon: 'bx-task', bg: 'bg-task', label: 'Atividade' },
+        'TEXTO':      { icon: 'bx-text', bg: 'bg-text', label: 'Leitura' },
+        'PDF':        { icon: 'bx-file-pdf', bg: 'bg-file', label: 'PDF' },
+        'MATERIAL':   { icon: 'bx-link', bg: 'bg-file', label: 'Link Externo' }
     };
-    clone.querySelector('.icon-circle i').className = `bx ${iconMap[les.type] || 'bx-file'}`;
-    clone.querySelector('.lesson-type').textContent = les.type;
+    const style = typeMap[les.type] || { icon: 'bx-file', bg: 'bg-file', label: les.type };
 
-    // --- REINSERIDO: BOTÃO DE VISUALIZAR ---
-    // Procura se já existe botão de view, se não cria (dependendo do template)
-    // Assumindo que o TPL tem um lugar para botões
-    const btnEdit = clone.querySelector('.btn-edit');
-    if(btnEdit) {
-        const btnView = document.createElement('button');
-        btnView.className = 'btn btn-sm btn-icon text-primary me-1';
-        btnView.title = 'Visualizar';
-        btnView.innerHTML = `<i class='bx bx-show'></i>`;
-        btnView.onclick = (e) => { e.stopPropagation(); openPreview(les); };
-        btnEdit.parentNode.insertBefore(btnView, btnEdit);
-    }
-
+    // --- LÓGICA DE DATAS (INÍCIO E FIM) ---
     const st = les.settings || {};
-    if (st.availability?.available_from || les.unlock_at) clone.querySelector('.condition-date-badge').style.display = 'inline-flex';
-    if (st.prerequisites?.ids?.length || les.prerequisite_ids?.length) clone.querySelector('.condition-lock-badge').style.display = 'inline-flex';
-    
-    const pts = st.grading?.points_max ?? (les.points || 0);
-    if (pts > 0) {
-        const ptBadge = clone.querySelector('.lesson-points-badge');
-        ptBadge.textContent = `${pts} pts`;
-        ptBadge.style.display = 'inline-flex';
+    const avail = st.availability || {};
+    let dateHtml = '';
+
+    // Data de Início
+    const startIso = avail.available_from || les.unlock_at;
+    if (startIso) {
+        const dStart = new Date(startIso).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+        dateHtml += `<div class="meta-row"><i class='bx bx-calendar text-success'></i> Início: ${dStart}</div>`;
     }
 
-    const actionsArea = clone.querySelector('.actions-area');
-    if (les.type === 'QUIZ') addBtn('tpl-btn-quiz', `quiz-builder.html?id=${les.id}`, actionsArea);
-    if (les.type === 'TAREFA') addBtn('tpl-btn-task', `task-builder.html?id=${les.id}`, actionsArea);
-    if (les.type === 'TEXTO') addBtn('tpl-btn-text', `text-builder.html?id=${les.id}`, actionsArea);
+    // Data de Término
+    const endIso = avail.available_until;
+    if (endIso) {
+        const dEnd = new Date(endIso).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+        dateHtml += `<div class="meta-row"><i class='bx bx-time-five text-danger'></i> Fim: ${dEnd}</div>`;
+    }
 
-    clone.querySelector('.btn-edit').onclick = () => openLessonModal(modId, secId, les);
-    clone.querySelector('.btn-del').onclick = () => deleteItem('lessons', les.id);
+    // Se não tiver datas, mas tiver bloqueio
+    if (!startIso && !endIso && (st.prerequisites?.ids?.length || les.prerequisite_ids?.length)) {
+        dateHtml = `<div class="meta-row text-danger"><i class='bx bx-lock-alt'></i> Bloqueado (Pré-req)</div>`;
+    }
+    
+    if (!dateHtml) dateHtml = `<span class="text-muted opacity-25" style="font-size:0.7rem;">Livre</span>`;
 
-    container.appendChild(clone);
+    // --- LÓGICA DE NOTA (TEXTO LIMPO) ---
+    const pts = st.grading?.points_max ?? (les.points || 0);
+    const gradeHtml = pts > 0 
+        ? `<span class="grade-value">${pts}</span> <span style="font-size:0.7rem; font-weight:400;">pts</span>` 
+        : '<span class="text-muted opacity-25">-</span>';
+
+    // --- RENDERIZAÇÃO DO GRID ---
+    tpl.innerHTML = `
+    <div class="lesson-row">
+        <div class="lesson-handle"><i class='bx bx-grid-vertical fs-5 handle'></i></div>
+
+        <div class="icon-box ${style.bg}"><i class='bx ${style.icon}'></i></div>
+
+        <div class="lesson-content">
+            <div class="lesson-title" title="${les.title}">${les.title}</div>
+            <div class="lesson-subtitle">${style.label}</div>
+        </div>
+
+        <div class="lesson-meta">
+            ${dateHtml}
+        </div>
+
+        <div class="lesson-grade">
+            ${gradeHtml}
+        </div>
+
+        <div class="actions-area">
+            <button class="btn btn-sm btn-light border-0 text-muted btn-view hover-dark" title="Visualizar"><i class='bx bx-show fs-5'></i></button>
+            <button class="btn btn-sm btn-light border-0 text-muted btn-edit hover-primary" title="Configurações"><i class='bx bx-cog fs-5'></i></button>
+            <button class="btn btn-sm btn-light border-0 text-muted btn-del hover-danger" title="Excluir"><i class='bx bx-trash fs-5'></i></button>
+        </div>
+    </div>`;
+
+    // Botão de Editar Conteúdo (Inserir antes da Engrenagem)
+    const actionsArea = tpl.querySelector('.actions-area');
+    let editPage = '';
+    if (les.type === 'QUIZ') editPage = 'quiz-builder.html';
+    else if (les.type === 'TAREFA') editPage = 'task-builder.html';
+    else if (les.type === 'TEXTO') editPage = 'text-builder.html';
+
+    if (editPage) {
+        const btnContent = document.createElement('a');
+        btnContent.href = `${editPage}?id=${les.id}&courseId=${courseId}`;
+        btnContent.className = "btn btn-sm btn-light border-0 text-primary fw-bold";
+        btnContent.title = "Editar Conteúdo";
+        btnContent.innerHTML = "<i class='bx bx-edit-alt fs-5'></i>";
+        // Insere como primeiro botão das ações
+        actionsArea.insertBefore(btnContent, actionsArea.firstChild);
+    }
+
+    // Eventos
+    tpl.querySelector('.btn-view').onclick = () => openPreview(les);
+    tpl.querySelector('.btn-edit').onclick = () => openLessonModal(modId, secId, les);
+    tpl.querySelector('.btn-del').onclick = () => deleteItem('lessons', les.id);
+
+    container.appendChild(tpl);
 }
 
 function addBtn(tplId, href, container) {
@@ -309,44 +357,187 @@ async function saveOrder(type, container, parentId = null) {
 // 4. FUNÇÃO DE PREVIEW (VISUALIZAR) - REINSERIDA
 // =========================================================
 window.openPreview = async (lesson) => {
-    // Requer um Modal HTML com id="modalPreviewLesson"
+    // 1. Verifica se o modal existe no HTML
     const modalEl = document.getElementById('modalPreviewLesson');
-    if(!modalEl) { alert("Aula: " + lesson.title); return; }
+    if (!modalEl) { alert("ERRO: O modal 'modalPreviewLesson' não existe no HTML."); return; }
     
     const modal = new bootstrap.Modal(modalEl);
-    const contentDiv = document.getElementById('previewContent'); // ID do body do modal
-    const titleDiv = document.getElementById('previewTitle'); // ID do titulo do modal
+    const contentDiv = document.getElementById('previewContent');
+    const titleDiv = document.getElementById('previewTitle');
     
-    if(titleDiv) titleDiv.textContent = lesson.title;
-    if(contentDiv) {
-        contentDiv.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
-        modal.show();
+    // Define Título
+    if (titleDiv) titleDiv.textContent = lesson.title || "Visualizar Aula";
+    
+    // Limpa e mostra loading
+    contentDiv.className = 'modal-body p-0 bg-white'; 
+    contentDiv.innerHTML = '<div class="h-100 d-flex align-items-center justify-content-center"><div class="spinner-border text-primary"></div></div>';
+    
+    modal.show();
 
-        // Se o conteúdo já estiver no objeto lesson (depende do select inicial)
-        // Se não tiver, faz fetch:
-        let fullLesson = lesson;
-        if(lesson.type === 'TEXTO' && !lesson.content) {
-             const { data } = await supabase.from('lessons').select('*').eq('id', lesson.id).single();
-             fullLesson = data;
-        }
+    // 2. Busca dados completos no banco (caso a listagem não tenha trazido tudo)
+    let fullLesson = lesson;
+    // Se for um tipo complexo e faltar dados, faz o fetch
+    if (!lesson.description && !lesson.quiz_data && !lesson.task_data && !lesson.content) {
+         const { data } = await supabase.from('lessons').select('*').eq('id', lesson.id).single();
+         if(data) fullLesson = data;
+    }
 
-        let html = '';
-        if (fullLesson.type === 'VIDEO_AULA' || fullLesson.type === 'VIDEO') {
-            const url = fullLesson.video_url || '';
-            let embedUrl = url;
-            if (url.includes('youtu')) {
-                const vidId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-                embedUrl = `https://www.youtube.com/embed/${vidId}`;
-            }
-            html = `<div class="ratio ratio-16x9"><iframe src="${embedUrl}" allowfullscreen></iframe></div>`;
-        } else if (fullLesson.type === 'TEXTO') {
-            html = `<div class="p-3 bg-white border rounded">${fullLesson.content || 'Sem conteúdo.'}</div>`;
+    let html = '';
+    const rawUrl = fullLesson.video_url || fullLesson.content_url || '';
+
+    // ============================================================
+    // 1. VÍDEO / YOUTUBE (Lógica Completa Restaurada)
+    // ============================================================
+    // Verifica se é tipo Vídeo OU se o link parece ser do YouTube
+    const isYouTubeLink = rawUrl.includes('youtube') || rawUrl.includes('youtu.be');
+
+    if (['VIDEO_AULA', 'VIDEO'].includes(fullLesson.type) || isYouTubeLink) {
+        contentDiv.className = 'modal-body p-0 bg-black'; // Fundo preto obrigatório para vídeo
+        
+        // Regex poderoso para capturar ID de qualquer formato (Shorts, Embed, Watch, Link curto)
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+        const match = rawUrl.match(regExp);
+
+        if (match && match[2].length === 11) {
+            const videoId = match[2];
+            html = `
+            <div class="ratio ratio-16x9 h-100">
+                <iframe src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1" 
+                    title="YouTube video player" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    referrerpolicy="strict-origin-when-cross-origin" 
+                    allowfullscreen>
+                </iframe>
+            </div>`;
         } else {
-            html = `<div class="alert alert-info">Pré-visualização simplificada indisponível para ${fullLesson.type}. <br><a href="${fullLesson.content_url}" target="_blank">Abrir Link</a></div>`;
+            // Se falhar o Regex, tenta um iframe genérico ou mostra erro
+            if(rawUrl) {
+                html = `<iframe src="${rawUrl}" class="w-100 h-100 border-0" allowfullscreen></iframe>`;
+            } else {
+                html = `<div class="d-flex h-100 align-items-center justify-content-center text-white flex-column">
+                    <i class='bx bx-error-circle fs-1 mb-2'></i>
+                    <p>Link de vídeo inválido ou não encontrado.</p>
+                </div>`;
+            }
+        }
+    }
+
+    // ============================================================
+    // 2. TEXTO / ARTIGO (HTML Rico)
+    // ============================================================
+    else if (fullLesson.type === 'TEXTO') {
+        const content = fullLesson.description || fullLesson.content || "<p class='text-center text-muted mt-5'>Conteúdo vazio.</p>";
+        html = `
+        <div class="container py-5 h-100 overflow-auto">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="p-5 bg-white shadow-sm border rounded" style="min-height: 60vh;">
+                        ${content}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ============================================================
+    // 3. QUIZ (Lista de Questões)
+    // ============================================================
+    else if (fullLesson.type === 'QUIZ') {
+        const data = fullLesson.quiz_data || { questions: [] };
+        
+        if (data.settings?.mode === 'bank') {
+            html = `
+            <div class="d-flex h-100 align-items-center justify-content-center flex-column text-center p-5">
+                <i class='bx bx-shuffle fs-1 text-primary mb-3'></i>
+                <h4>Banco de Questões (Sorteio)</h4>
+                <p class="text-muted">O aluno receberá <strong>${data.settings.drawCount}</strong> questões sorteadas aleatoriamente a cada tentativa.</p>
+                <span class="badge bg-light text-dark border">Total no Banco: ${data.questions.length}</span>
+            </div>`;
+        } else {
+            const list = (data.questions || []).map((q, i) => `
+                <div class="card mb-3 shadow-sm border-0">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-primary mb-2">Questão #${i+1}</h6>
+                        <div class="mb-3 fw-bold">${q.text}</div>
+                        <ul class="list-group list-group-flush small bg-light rounded">
+                            ${q.options.map(opt => `
+                                <li class="list-group-item bg-transparent border-0 d-flex align-items-center gap-2">
+                                    ${opt.isCorrect ? '<i class="bx bxs-check-circle text-success fs-5"></i>' : '<i class="bx bx-radio-circle text-muted fs-5"></i>'}
+                                    <span class="${opt.isCorrect ? 'fw-bold text-success' : ''}">${opt.text}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+            
+            html = `
+            <div class="container py-4 h-100 overflow-auto bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0"><i class='bx bx-trophy'></i> Pré-visualização do Quiz</h5>
+                    <span class="badge bg-warning text-dark border">${fullLesson.points || 0} pts</span>
+                </div>
+                ${list || '<div class="alert alert-warning">Nenhuma questão cadastrada.</div>'}
+            </div>`;
+        }
+    }
+
+    // ============================================================
+    // 4. TAREFA (Instruções + Itens)
+    // ============================================================
+    else if (fullLesson.type === 'TAREFA') {
+        const data = fullLesson.task_data || { items: [] };
+        const instructions = data.instructions || "Sem instruções gerais.";
+        
+        const list = (data.items || []).map((item, i) => `
+            <div class="card mb-3 border-start border-4 ${item.type==='text'?'border-primary':'border-success'} shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="badge bg-light text-dark border text-uppercase">${item.type === 'text' ? 'Dissertativa' : 'Envio de Link'}</span>
+                        <span class="fw-bold text-muted small">${item.points} pts</span>
+                    </div>
+                    <h6 class="fw-bold">Item #${i+1}</h6>
+                    <div class="bg-light p-3 rounded border border-dashed">${item.statement || 'Sem enunciado...'}</div>
+                </div>
+            </div>
+        `).join('');
+
+        html = `
+        <div class="container py-4 h-100 overflow-auto">
+            <div class="alert alert-info border-0 shadow-sm mb-4">
+                <h6 class="fw-bold"><i class='bx bx-info-circle'></i> Instruções da Atividade</h6>
+                ${instructions}
+            </div>
+            <h6 class="fw-bold mb-3 text-muted border-bottom pb-2">ITENS DE RESPOSTA</h6>
+            ${list || '<div class="text-center text-muted py-4">Nenhum item cadastrado.</div>'}
+        </div>`;
+    }
+
+    // ============================================================
+    // 5. PDF / MATERIAL EXTERNO / GOOGLE DRIVE
+    // ============================================================
+    else {
+        // Correção Google Drive
+        let finalUrl = rawUrl;
+        if (finalUrl.includes('drive.google.com')) {
+            finalUrl = finalUrl.replace(/\/view.*/, '/preview').replace(/\/edit.*/, '/preview');
         }
         
-        contentDiv.innerHTML = html;
+        if (finalUrl) {
+            html = `
+            <iframe src="${finalUrl}" style="width:100%; height:100%; border:none;"></iframe>
+            <div style="position:absolute; bottom:15px; right:15px;">
+                <a href="${finalUrl}" target="_blank" class="btn btn-dark btn-sm shadow fw-bold">
+                    <i class='bx bx-link-external'></i> Abrir em Nova Guia
+                </a>
+            </div>`;
+        } else {
+            html = `<div class="h-100 d-flex align-items-center justify-content-center text-muted">Nenhum conteúdo vinculado.</div>`;
+        }
     }
+
+    contentDiv.innerHTML = html;
 };
 
 // =========================================================

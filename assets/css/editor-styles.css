@@ -260,3 +260,99 @@ body { background-color: var(--light-bg); }
 .task-item-card { border-left: 4px solid transparent; background: #fff; border:1px solid #eee; margin-bottom: 10px; }
 .border-type-text { border-left: 5px solid #0d6efd !important; }
 .border-type-link { border-left: 5px solid #198754 !important; }
+
+//* --- LISTAGEM DE AULAS (LAYOUT TABELA RÍGIDA) --- */
+.lesson-item-wrapper {
+    display: block;
+    margin-bottom: -1px;
+}
+
+/* --- LISTAGEM DE AULAS (TABELA ORGANIZADA) --- */
+.lesson-item-wrapper {
+    display: block;
+    margin-bottom: -1px;
+}
+
+.lesson-row {
+    display: grid;
+    /* COLUNAS: 
+       1. Handle: 25px
+       2. Ícone: 45px
+       3. Título: FLEXÍVEL (1fr)
+       4. Datas: 200px (Fixo - Trazendo mais para esquerda)
+       5. Nota: 80px (Fixo - Centralizado)
+       6. Ações: 120px (Fixo) 
+    */
+    grid-template-columns: 25px 45px 1fr 200px 80px 120px; 
+    align-items: center;
+    gap: 15px; /* Espaço entre colunas */
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.1s;
+}
+
+.lesson-row:hover {
+    background-color: #f8f9fa;
+    z-index: 1; position: relative;
+}
+
+/* Coluna 1: Handle (Arrastar) */
+.lesson-handle { 
+    color: #d1d5db; cursor: grab; display: flex; justify-content: center; 
+}
+
+/* Coluna 2: Ícone */
+.icon-box {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* Coluna 3: Título */
+.lesson-content {
+    display: flex; flex-direction: column; justify-content: center; overflow: hidden;
+}
+.lesson-title {
+    font-weight: 600; color: #212529; font-size: 0.9rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lesson-subtitle {
+    font-size: 0.7rem; color: #adb5bd; text-transform: uppercase; font-weight: 700;
+}
+
+/* Coluna 4: Metadados (Datas) - ALINHADO À ESQUERDA */
+.lesson-meta {
+    font-size: 0.75rem; color: #6c757d;
+    display: flex; flex-direction: column; 
+    align-items: flex-start; /* Força alinhamento à esquerda */
+    justify-content: center;
+    gap: 3px;
+    border-left: 1px solid #f0f0f0; /* Linha sutil separando do título */
+    padding-left: 15px;
+    height: 100%;
+}
+.meta-row { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+/* Coluna 5: Nota - CENTRALIZADO E LIMPO */
+.lesson-grade {
+    text-align: center; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 700; color: #495057;
+    height: 100%;
+    border-left: 1px solid #f0f0f0;
+}
+.grade-suffix { font-size: 0.65rem; color: #adb5bd; font-weight: 600; text-transform: uppercase; }
+
+/* Coluna 6: Ações */
+.actions-area {
+    display: flex; justify-content: flex-end; gap: 5px;
+}
+
+/* Cores de Fundo dos Ícones */
+.bg-video { background: #eff6ff; color: #3b82f6; }
+.bg-quiz  { background: #fffbeb; color: #d97706; }
+.bg-task  { background: #ecfdf5; color: #059669; }
+.bg-text  { background: #f8fafc; color: #64748b; }
+.bg-file  { background: #f3f4f6; color: #4b5563; }
