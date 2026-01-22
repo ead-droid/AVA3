@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVA3 • Editor de Curso Avançado</title>
+    <title>AVA3 • Editor de Curso</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="./assets/css/chrome.css">
@@ -94,10 +94,55 @@
                     <div class="card border-0 shadow-sm rounded-4 p-4">
                         <form id="formEditCourse">
                             <div class="row g-3">
-                                <div class="col-md-8"><label class="fw-bold">Título</label><input type="text" id="edit_title" class="form-control" required></div>
-                                <div class="col-md-4"><label class="fw-bold">Status</label><select id="edit_status" class="form-select"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></div>
-                                <div class="col-12"><label class="fw-bold">Descrição</label><textarea id="edit_desc" class="form-control" rows="4"></textarea></div>
-                                <div class="col-12 text-end"><button type="submit" class="btn btn-success px-4">Salvar</button></div>
+                                <div class="col-12">
+                                    <label class="fw-bold small">Título</label>
+                                    <input type="text" id="edit_title" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-muted">Slug (Auto)</label>
+                                    <input type="text" id="edit_slug" class="form-control bg-light" readonly>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="fw-bold small">Carga Horária (h)</label>
+                                    <input type="number" id="edit_hours" class="form-control" step="0.5">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="fw-bold small text-primary">Média Aprovação</label>
+                                    <input type="number" id="edit_passing" class="form-control" step="0.1" placeholder="Ex: 7.0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="fw-bold small">Status</label>
+                                    <select id="edit_status" class="form-select">
+                                        <option value="draft">Rascunho</option>
+                                        <option value="published">Publicado</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="fw-bold small">Tipo</label>
+                                    <select id="edit_type" class="form-select">
+                                        <option value="LIVRE">Livre</option>
+                                        <option value="TECNICO">Técnico</option>
+                                        <option value="OUTRO">Outro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="fw-bold small">Inscrições</label>
+                                    <select id="edit_enroll" class="form-select">
+                                        <option value="FECHADO">Fechado</option>
+                                        <option value="ABERTO">Aberto</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="fw-bold small">Capa (URL)</label>
+                                    <input type="url" id="edit_img" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="fw-bold small">Descrição</label>
+                                    <textarea id="edit_desc" class="form-control" rows="4"></textarea>
+                                </div>
+                                <div class="col-12 text-end pt-3 border-top">
+                                    <button type="submit" class="btn btn-success px-4 fw-bold">Salvar Alterações</button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -116,37 +161,30 @@
                 <div class="modal-body p-4">
                     <form id="formModule">
                         <input type="hidden" id="mod_id">
-                        
                         <ul class="nav nav-tabs mb-3" id="modTabs" role="tablist">
                             <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#mod-general" type="button">Geral</button></li>
-                            <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#mod-rules" type="button"><i class='bx bx-time'></i> Regras</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold text-warning" data-bs-toggle="tab" data-bs-target="#mod-rules" type="button"><i class='bx bx-lock-alt'></i> Regras</button></li>
                         </ul>
-
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="mod-general">
                                 <div class="mb-3"><label class="fw-bold">Título</label><input type="text" id="mod_title" class="form-control" required></div>
                                 <div class="row g-3">
-                                    <div class="col-6"><label class="fw-bold small">Ordem</label><input type="number" id="mod_order" class="form-control" value="1"></div>
-                                    <div class="col-6"><label class="fw-bold small">Carga (h)</label><input type="number" id="mod_hours" class="form-control" step="0.5"></div>
+                                    <div class="col-4"><label class="fw-bold small">Ordem</label><input type="number" id="mod_order" class="form-control" value="1"></div>
+                                    <div class="col-4"><label class="fw-bold small">Carga (h)</label><input type="number" id="mod_hours" class="form-control" step="0.5"></div>
+                                    <div class="col-4"><label class="fw-bold small text-primary">Média Aprov.</label><input type="number" id="mod_passing" class="form-control" step="0.1" placeholder="Op."></div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="mod-rules">
-                                <h6 class="fw-bold small text-primary mb-3">Disponibilidade</h6>
                                 <div class="row g-2 mb-3">
                                     <div class="col-6"><label class="small">Abre em:</label><input type="datetime-local" id="mod_avail_from" class="form-control form-control-sm"></div>
                                     <div class="col-6"><label class="small">Fecha em:</label><input type="datetime-local" id="mod_avail_until" class="form-control form-control-sm"></div>
-                                    <div class="col-12 mt-2 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="mod_view_after">
-                                        <label class="form-check-label small">Permitir visualizar após fechamento</label>
-                                    </div>
+                                    <div class="col-12 mt-1"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="mod_view_after" checked><label class="form-check-label small">Permitir ver após fechar</label></div></div>
                                 </div>
-                                <h6 class="fw-bold small text-primary mb-2">Pré-requisitos (Módulos Anteriores)</h6>
-                                <div id="mod-prerequisites-list" class="border rounded p-2 bg-light overflow-auto" style="max-height: 150px;"></div>
+                                <label class="fw-bold small mb-2">Pré-requisitos:</label>
+                                <div id="mod-prerequisites-list" class="border rounded p-2 bg-light overflow-auto" style="max-height: 120px;"></div>
                             </div>
                         </div>
-                        <div class="text-end mt-4 pt-2 border-top">
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button>
-                        </div>
+                        <div class="text-end mt-4 pt-2 border-top"><button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button></div>
                     </form>
                 </div>
             </div>
@@ -166,8 +204,8 @@
                         <div class="mb-3"><label class="fw-bold small">Título</label><input type="text" id="sec_title" class="form-control" required></div>
                         <div class="mb-3"><label class="fw-bold small">Ordem</label><input type="number" id="sec_order" class="form-control" value="1"></div>
                         <hr>
-                        <div class="mb-2"><label class="fw-bold small mb-1">Disponível a partir de:</label><input type="datetime-local" id="sec_avail_from" class="form-control form-control-sm"></div>
-                        <div class="text-end mt-3 border-top pt-2"><button type="submit" class="btn btn-dark btn-sm w-100">Salvar</button></div>
+                        <div class="mb-2"><label class="fw-bold small mb-1">Abre em:</label><input type="datetime-local" id="sec_avail_from" class="form-control form-control-sm"></div>
+                        <div class="text-end mt-3"><button type="submit" class="btn btn-dark btn-sm w-100">Salvar</button></div>
                     </form>
                 </div>
             </div>
@@ -187,7 +225,8 @@
 
                         <ul class="nav nav-tabs mb-4" id="lessonTabs" role="tablist">
                             <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#tab-general" type="button">Geral</button></li>
-                            <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tab-availability" type="button"><i class='bx bx-time'></i> Disponibilidade</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold text-warning" data-bs-toggle="tab" data-bs-target="#tab-conditions" type="button"><i class='bx bx-lock-alt'></i> Regras</button></li>
+                            
                             <li class="nav-item"><button class="nav-link fw-bold text-success" data-bs-toggle="tab" data-bs-target="#tab-grading" type="button" id="btn-tab-grading"><i class='bx bx-trophy'></i> Avaliação</button></li>
                         </ul>
 
@@ -196,31 +235,33 @@
                                 <div class="row g-3">
                                     <div class="col-md-3"><label class="fw-bold small">Ordem</label><input type="number" id="les_order" class="form-control" required></div>
                                     <div class="col-md-9"><label class="fw-bold small">Tipo</label>
-                                        <select id="les_type" class="form-select" onchange="toggleGradingTab()">
-                                            <option value="VIDEO_AULA">🎥 Vídeo Aula</option><option value="TEXTO">📑 Texto / Artigo</option>
-                                            <option value="TAREFA">📝 Tarefa (Avaliativo)</option><option value="QUIZ">🏆 Quiz (Avaliativo)</option>
-                                            <option value="PDF">📄 PDF / Documento</option><option value="MATERIAL">🔗 Link Externo</option>
+                                        <select id="les_type" class="form-select" onchange="window.toggleGradingTab()">
+                                            <option value="VIDEO_AULA">🎥 Vídeo Aula</option>
+                                            <option value="TEXTO">📑 Texto / Artigo</option>
+                                            <option value="TAREFA">📝 Tarefa (Avaliativo)</option>
+                                            <option value="QUIZ">🏆 Quiz (Avaliativo)</option>
+                                            <option value="PDF">📄 PDF / Documento</option>
+                                            <option value="MATERIAL">🔗 Link Externo</option>
+                                            <option value="AVISO">📢 Aviso</option>
                                         </select>
                                     </div>
                                     <div class="col-12"><label class="fw-bold small">Título</label><input type="text" id="les_title" class="form-control" required></div>
                                     <div class="col-12"><label class="fw-bold small">URL (Drive/Youtube)</label><input type="url" id="les_url" class="form-control"></div>
-                                    <div class="col-12"><label class="fw-bold small">Descrição</label><textarea id="les_desc" class="form-control" rows="2"></textarea></div>
                                     <div class="col-12 d-flex gap-4 align-items-center bg-light p-2 rounded">
                                         <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_published" checked><label class="form-check-label small fw-bold">Publicado</label></div>
                                         <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_required" checked><label class="form-check-label small">Obrigatório</label></div>
                                     </div>
+                                    <div class="col-12"><label class="fw-bold small">Descrição</label><textarea id="les_desc" class="form-control" rows="2"></textarea></div>
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="tab-availability">
+                            <div class="tab-pane fade" id="tab-conditions">
                                 <div class="row g-3">
                                     <div class="col-md-6"><label class="small fw-bold">Abre em:</label><input type="datetime-local" id="les_avail_from" class="form-control"></div>
-                                    <div class="col-md-6"><label class="small fw-bold">Fecha em (Prazo):</label><input type="datetime-local" id="les_avail_until" class="form-control"></div>
-                                    <div class="col-12">
-                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_view_after" checked><label class="form-check-label small">Permitir visualização após prazo</label></div>
-                                    </div>
+                                    <div class="col-md-6"><label class="small fw-bold">Fecha em:</label><input type="datetime-local" id="les_avail_until" class="form-control"></div>
+                                    <div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_view_after" checked><label class="form-check-label small">Ver após fechamento</label></div></div>
                                     <div class="col-12 border-top pt-3">
-                                        <label class="fw-bold small mb-2"><i class='bx bx-list-check'></i> Pré-requisitos (Lógica E/OU):</label>
+                                        <label class="fw-bold small mb-2"><i class='bx bx-list-check'></i> Pré-requisitos:</label>
                                         <div class="d-flex gap-3 mb-2">
                                             <div class="form-check"><input class="form-check-input" type="radio" name="prereq_logic" id="logic_and" value="AND" checked><label class="form-check-label small" for="logic_and">Todas (E)</label></div>
                                             <div class="form-check"><input class="form-check-input" type="radio" name="prereq_logic" id="logic_or" value="OR"><label class="form-check-label small" for="logic_or">Pelo menos uma (OU)</label></div>
@@ -231,35 +272,28 @@
                             </div>
 
                             <div class="tab-pane fade" id="tab-grading">
-                                <div class="alert alert-success small py-2 mb-3"><i class='bx bx-info-circle'></i> Configurações de nota e conclusão.</div>
+                                <div class="alert alert-success small py-2 mb-3"><i class='bx bx-info-circle'></i> Configurações de Nota e Conclusão.</div>
                                 <div class="row g-3">
-                                    <div class="col-md-4"><label class="small fw-bold">Nota Máxima</label><input type="number" id="les_points_max" class="form-control" value="10"></div>
+                                    <div class="col-md-4"><label class="small fw-bold">Nota Máx.</label><input type="number" id="les_points_max" class="form-control" value="10"></div>
                                     <div class="col-md-4"><label class="small fw-bold">Peso</label><input type="number" id="les_weight" class="form-control" value="1"></div>
                                     <div class="col-md-4 pt-4"><div class="form-check"><input class="form-check-input" type="checkbox" id="les_include_avg" checked><label class="form-check-label small">Entra na Média</label></div></div>
                                     
-                                    <div class="col-12 border-top pt-2 mt-2"><h6 class="small fw-bold text-muted">Regras de Conclusão</h6></div>
+                                    <div class="col-12 border-top pt-2"><h6 class="small fw-bold text-muted">Conclusão</h6></div>
                                     <div class="col-md-6">
                                         <label class="small fw-bold">Política de Conclusão</label>
                                         <select id="les_completion_policy" class="form-select form-select-sm">
-                                            <option value="on_submit">Ao Enviar (Submit)</option>
+                                            <option value="on_submit">Ao Enviar</option>
                                             <option value="on_grade">Ao Receber Nota</option>
-                                            <option value="on_grade_min">Nota Mínima exigida</option>
+                                            <option value="on_grade_min">Nota Mínima</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="small fw-bold">Nota Mín. Conclusão</label>
-                                        <input type="number" id="les_min_grade" class="form-control form-control-sm" placeholder="Ex: 7.0">
-                                    </div>
+                                    <div class="col-md-6"><label class="small fw-bold">Nota Mínima</label><input type="number" id="les_min_grade" class="form-control form-control-sm"></div>
 
-                                    <div class="col-12 border-top pt-2 mt-2" id="quiz-options-area">
-                                        <h6 class="small fw-bold text-muted">Opções de Quiz</h6>
+                                    <div id="quiz-options-area" class="col-12 border-top pt-2 mt-2">
+                                        <h6 class="small fw-bold text-muted">Quiz</h6>
                                         <div class="row g-2">
-                                            <div class="col-6"><label class="small">Tentativas Máx (0=Inf)</label><input type="number" id="les_attempts" class="form-control form-control-sm" value="0"></div>
-                                            <div class="col-6"><label class="small">Método Nota</label>
-                                                <select id="les_grading_method" class="form-select form-select-sm">
-                                                    <option value="highest">Maior Nota</option><option value="last">Última</option><option value="average">Média</option>
-                                                </select>
-                                            </div>
+                                            <div class="col-6"><label class="small">Tentativas (0=Inf)</label><input type="number" id="les_attempts" class="form-control form-control-sm" value="0"></div>
+                                            <div class="col-6"><label class="small">Cálculo</label><select id="les_grading_method" class="form-select form-select-sm"><option value="highest">Maior Nota</option><option value="last">Última</option><option value="average">Média</option></select></div>
                                         </div>
                                     </div>
                                 </div>
@@ -268,7 +302,7 @@
 
                         <div class="text-end mt-4 pt-2 border-top">
                             <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Conteúdo</button>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button>
                         </div>
                     </form>
                 </div>
@@ -279,5 +313,55 @@
     <template id="tpl-module">
         <div class="module-card">
             <div class="module-header" data-bs-toggle="collapse">
-                <div class="d-flex align-items-center gap-2"><span class="badge bg-primary mod-badge">#</span><h5 class="mb-0 fw-bold text-dark mod-title"></h5><small class="badge bg-warning text-dark ms-2 mod-lock-badge" style="display:none"><i class='bx bx-time'></i></small></div>
-                <div class
+                <div class="d-flex align-items-center gap-2"><span class="badge bg-primary mod-badge">#</span><h5 class="mb-0 fw-bold text-dark mod-title"></h5><small class="badge bg-warning text-dark ms-2 mod-lock-badge" style="display:none"><i class='bx bx-lock-alt'></i></small></div>
+                <div class="mod-actions" onclick="event.stopPropagation()">
+                    <button class="btn btn-sm btn-outline-secondary me-1 btn-edit">Editar</button><button class="btn btn-sm btn-outline-danger me-2 btn-del"><i class='bx bx-trash'></i></button><button class="btn btn-sm btn-dark btn-add-sec"><i class='bx bx-plus'></i> Nova Seção</button>
+                </div>
+            </div>
+            <div class="collapse show mod-collapse"><div class="p-0 sections-container"></div></div>
+        </div>
+    </template>
+
+    <template id="tpl-section">
+        <div class="section-box">
+            <div class="section-header">
+                <div class="d-flex align-items-center gap-2"><i class='bx bx-chevron-down'></i><span class="badge bg-light text-dark border sec-badge">#</span><span class="sec-title fw-bold"></span><small class="badge bg-info text-dark ms-1 sec-lock-badge" style="display:none"><i class='bx bx-time'></i></small></div>
+                <div><button class="btn btn-sm btn-light border px-3 btn-add-content fw-bold text-primary">+ Conteúdo</button><button class="btn btn-sm text-secondary btn-edit"><i class='bx bx-pencil'></i></button><button class="btn btn-sm text-danger btn-del"><i class='bx bx-trash'></i></button></div>
+            </div>
+            <div class="bg-white content-container"></div>
+        </div>
+    </template>
+
+    <template id="tpl-lesson">
+        <div class="lesson-item">
+            <div class="d-flex align-items-center cursor-pointer lesson-click-area flex-grow-1">
+                <div class="me-3 fw-bold text-muted small lesson-order badge bg-light text-dark border">1</div>
+                <div class="icon-circle"><i class='bx'></i></div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark lesson-title"></h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <small class="text-muted lesson-type"></small>
+                        <small class="badge bg-warning text-dark condition-date-badge" style="display:none; font-size:0.7em"><i class='bx bx-time'></i></small>
+                        <small class="badge bg-info text-dark condition-lock-badge" style="display:none; font-size:0.7em"><i class='bx bx-lock-alt'></i></small>
+                        <small class="badge bg-success text-white lesson-points-badge" style="display:none; font-size:0.7em"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center actions-area">
+                <button class="btn btn-sm btn-light border me-1 btn-preview" title="Visualizar"><i class='bx bx-show'></i></button>
+                <button class="btn btn-sm btn-light border me-1 btn-edit" title="Editar"><i class='bx bx-pencil'></i></button>
+                <button class="btn btn-sm btn-light border text-danger btn-del" title="Excluir"><i class='bx bx-trash'></i></button>
+            </div>
+        </div>
+    </template>
+    
+    <template id="tpl-btn-quiz"><a href="#" class="btn btn-sm btn-warning text-dark border shadow-sm me-1 fw-bold" title="Configurar Quiz"><i class='bx bx-trophy'></i> Quiz</a></template>
+    <template id="tpl-btn-task"><a href="#" class="btn btn-sm btn-success text-white border shadow-sm me-1 fw-bold" title="Configurar Tarefa"><i class='bx bx-task'></i> Tarefa</a></template>
+    <template id="tpl-btn-text"><a href="#" class="btn btn-sm btn-info text-white border shadow-sm me-1 fw-bold" title="Editar Artigo"><i class='bx bx-edit-alt'></i> Texto</a></template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./assets/js/chrome.js"></script>
+    <script type="module" src="./assets/js/course-editor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</body>
+</html>

@@ -1,5 +1,8 @@
 import { supabase } from './supabaseClient.js';
 
+let currentMonth = new Date(); 
+let allEvents = []; 
+
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
@@ -8,422 +11,272 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   setupFilters();
+  setupNavigation();
+  setupViewSwitch(); 
+  
+  // Inicia em modo Agenda por padrão
+  const btnMonth = document.getElementById('btn-view-month');
+  const btnAgenda = document.getElementById('btn-view-agenda');
+  const calGridArea = document.getElementById('calendar-grid');
+  const calWeekdays = document.querySelector('.cal-weekdays');
+  const agendaWrap = document.getElementById('agenda-wrap');
+
+  btnAgenda?.classList.replace('btn-outline-primary', 'btn-primary');
+  btnMonth?.classList.replace('btn-primary', 'btn-outline-primary');
+
+  if(calWeekdays) calWeekdays.style.display = 'none';
+  if(calGridArea) calGridArea.style.display = 'none';
+  if(agendaWrap) agendaWrap.style.display = 'block';
+
   await loadUnifiedCalendar(session.user.id);
 });
 
-function setupFilters() {
-  const ids = ['filter-activities', 'filter-mural', 'filter-course'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('change', () => {
-      document.querySelectorAll('[data-kind]').forEach(card => {
-        const kind = card.getAttribute('data-kind');
-        const showActivities = document.getElementById('filter-activities')?.checked ?? true;
-        const showMural = document.getElementById('filter-mural')?.checked ?? true;
-        const showCourse = document.getElementById('filter-course')?.checked ?? true;
+// --- LÓGICA DE TROCA DE VISÃO ---
+function setupViewSwitch() {
+  const btnMonth = document.getElementById('btn-view-month');
+  const btnAgenda = document.getElementById('btn-view-agenda');
+  const calGridArea = document.getElementById('calendar-grid');
+  const calWeekdays = document.querySelector('.cal-weekdays');
+  const agendaWrap = document.getElementById('agenda-wrap');
 
-        const visible =
-          (kind === 'activity' && showActivities) ||
-          (kind === 'mural' && showMural) ||
-          (kind === 'course' && showCourse);
+  btnMonth?.addEventListener('click', () => {
+    btnMonth.classList.add('btn-primary');
+    btnMonth.classList.remove('btn-outline-primary');
+    btnAgenda.classList.add('btn-outline-primary');
+    btnAgenda.classList.remove('btn-primary');
+    if(calWeekdays) calWeekdays.style.display = 'grid';
+    if(calGridArea) calGridArea.style.display = 'grid';
+    if(agendaWrap) agendaWrap.style.display = 'none';
+    renderInterface();
+  });
 
-        card.style.display = visible ? '' : 'none';
-      });
-    });
+  btnAgenda?.addEventListener('click', () => {
+    btnAgenda.classList.add('btn-primary');
+    btnAgenda.classList.remove('btn-outline-primary');
+    btnMonth.classList.add('btn-outline-primary');
+    btnMonth.classList.remove('btn-primary');
+    if(calWeekdays) calWeekdays.style.display = 'none';
+    if(calGridArea) calGridArea.style.display = 'none';
+    if(agendaWrap) agendaWrap.style.display = 'block';
+    renderInterface();
   });
 }
 
+// --- NAVEGAÇÃO E FILTROS ---
+function setupNavigation() {
+  document.getElementById('btn-prev')?.addEventListener('click', () => {
+    currentMonth.setMonth(currentMonth.getMonth() - 1);
+    renderInterface();
+  });
+  document.getElementById('btn-next')?.addEventListener('click', () => {
+    currentMonth.setMonth(currentMonth.getMonth() + 1);
+    renderInterface();
+  });
+  document.getElementById('btn-today')?.addEventListener('click', () => {
+    currentMonth = new Date();
+    renderInterface();
+  });
+}
+
+function setupFilters() {
+  ['filter-activities', 'filter-mural', 'filter-course'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => renderInterface());
+  });
+}
+
+// --- UTILITÁRIOS ---
 function safeDate(value) {
   if (!value) return null;
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 }
 
-function fmtDayLabel(date) {
-  return date.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long'
-  });
-}
-
 function fmtMonthShort(date) {
-  return date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
-}
-
-function hasExplicitTime(date) {
-  return !(date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0);
+  return date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
 }
 
 function fmtTime(date) {
-  if (!hasExplicitTime(date)) return 'Dia inteiro';
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function sortKey(kind, subtype) {
-  const base = { course: 10, activity: 20, mural: 30 }[kind] ?? 99;
-  const sub = (subtype === 'start') ? 0 : (subtype === 'end') ? 1 : 5;
-  return base * 10 + sub;
-}
-
-async function loadUnifiedCalendar(userId) {
-  const container = document.getElementById('events-container');
-  const loader = document.getElementById('calendar-loader');
-
-  try {
-    // 1) matrículas do usuário (NÃO filtre por status no banco; normalize no JS)
-    const { data: enrollmentsRaw, error: enrollError } = await supabase
-      .from('class_enrollments')
-      .select('class_id,status')
-      .eq('user_id', userId);
-
-    if (enrollError) throw enrollError;
-
-    const enrollments = enrollmentsRaw || [];
-
-    // Normalização de status:
-    // - sua UI exibe "Ativo", então o banco pode ter 'ativo' (pt) ou 'active' (en)
-    // - para não "sumir" matrícula por divergência, só bloqueamos status claramente inativos/cancelados
-    const BLOCKED = new Set(['canceled', 'cancelled', 'cancelado', 'inativo', 'inactive', 'revoked', 'removed']);
-    const validEnrollments = enrollments.filter(e => {
-      const s = String(e.status ?? '').trim().toLowerCase();
-      if (!s) return true;          // se não há status, considera válido
-      return !BLOCKED.has(s);       // bloqueia apenas os inativos/cancelados
-    });
-
-    if (!validEnrollments.length) {
-      loader.style.display = 'none';
-      const statuses = [...new Set(enrollments.map(e => String(e.status ?? '(null)')))].join(', ');
-      container.innerHTML = `
-        <div class="alert alert-info text-center p-5 rounded-4">
-          <i class='bx bx-info-circle fs-1'></i>
-          <h4 class="mt-3">Nenhuma matrícula válida encontrada</h4>
-          <p>O sistema encontrou matrículas, mas todas parecem estar com status inativo/cancelado.</p>
-          <div class="small text-muted">Status encontrados: ${escapeHtml(statuses || '—')}</div>
-        </div>`;
-      return;
-    }
-
-    const classIds = [...new Set(validEnrollments.map(e => e.class_id).filter(Boolean))];
-
-    // 2) carrega turmas + curso (datas da turma)
-    const { data: classes, error: classError } = await supabase
-      .from('classes')
-      .select(`
-        id,
-        name,
-        course_id,
-        start_date,
-        end_date,
-        enrollment_start,
-        enrollment_deadline,
-        courses ( title )
-      `)
-      .in('id', classIds);
-
-    if (classError) throw classError;
-
-    const courseInfo = new Map(); // course_id -> { title, classNames[] }
-    (classes || []).forEach(cls => {
-      const courseId = cls.course_id;
-      if (!courseId) return;
-      const title = cls.courses?.title || 'Curso';
-      const prev = courseInfo.get(courseId) || { title, classNames: [] };
-      if (!prev.classNames.includes(cls.name)) prev.classNames.push(cls.name);
-      if (!prev.title || prev.title === 'Curso') prev.title = title;
-      courseInfo.set(courseId, prev);
-    });
-
-    const courseIds = [...new Set((classes || []).map(c => c.course_id).filter(Boolean))];
-
-    // 3) mural
-    const { data: posts, error: postError } = await supabase
-      .from('class_posts')
-      .select('id,class_id,type,title,content,event_date,created_at,resource_url')
-      .in('class_id', classIds)
-      .order('event_date', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (postError) throw postError;
-
-    // 4) atividades com data (lessons.start_at/end_at)
-    let modules = [];
-    let sections = [];
-    let lessons = [];
-    let lessonsDatesSupported = true;
-
-    if (courseIds.length) {
-      const { data: mods, error: modError } = await supabase
-        .from('modules')
-        .select('id,course_id,title,ordem')
-        .in('course_id', courseIds)
-        .order('ordem', { ascending: true });
-
-      if (modError) throw modError;
-      modules = mods || [];
-
-      const moduleIds = modules.map(m => m.id);
-
-      if (moduleIds.length) {
-        const { data: secs, error: secError } = await supabase
-          .from('sections')
-          .select('id,module_id,title,ordem')
-          .in('module_id', moduleIds)
-          .order('ordem', { ascending: true });
-
-        if (secError) throw secError;
-        sections = secs || [];
-
-        try {
-          const { data: les, error: lesError } = await supabase
-            .from('lessons')
-            .select('id,module_id,section_id,title,type,points,ordem,is_published,start_at,end_at')
-            .in('module_id', moduleIds)
-            .eq('is_published', true)
-            .or('start_at.not.is.null,end_at.not.is.null')
-            .order('start_at', { ascending: true })
-            .order('end_at', { ascending: true });
-
-          if (lesError) throw lesError;
-          lessons = les || [];
-        } catch (err) {
-          lessonsDatesSupported = false;
-          lessons = [];
-          console.warn('Calendário: start_at/end_at indisponível (coluna não existe ou RLS).', err);
-        }
-      }
-    }
-
-    // 5) timeline unificada
-    const timeline = [];
-
-    // 5.1) início / término da turma (+ janelas de matrícula)
-    (classes || []).forEach(cls => {
-      const courseTitle = cls.courses?.title || 'Curso';
-
-      const start = safeDate(cls.start_date);
-      if (start) timeline.push({
-        kind: 'course', subtype: 'start', date: start,
-        title: 'Início da turma',
-        subtitle: `${courseTitle} • Turma: ${cls.name}`,
-        badge: 'TURMA',
-      });
-
-      const end = safeDate(cls.end_date);
-      if (end) timeline.push({
-        kind: 'course', subtype: 'end', date: end,
-        title: 'Término da turma',
-        subtitle: `${courseTitle} • Turma: ${cls.name}`,
-        badge: 'TURMA',
-      });
-
-      const enrollStart = safeDate(cls.enrollment_start);
-      if (enrollStart) timeline.push({
-        kind: 'course', subtype: 'enroll-start', date: enrollStart,
-        title: 'Matrícula aberta',
-        subtitle: `${courseTitle} • Turma: ${cls.name}`,
-        badge: 'MATRÍCULA',
-      });
-
-      const enrollDeadline = safeDate(cls.enrollment_deadline);
-      if (enrollDeadline) timeline.push({
-        kind: 'course', subtype: 'enroll-deadline', date: enrollDeadline,
-        title: 'Prazo final de matrícula',
-        subtitle: `${courseTitle} • Turma: ${cls.name}`,
-        badge: 'MATRÍCULA',
-      });
-    });
-
-    // 5.2) mural
-    (posts || []).forEach(p => {
-      const when = safeDate(p.event_date) || safeDate(p.created_at);
-      if (!when) return;
-
-      const cls = (classes || []).find(c => c.id === p.class_id);
-      const courseTitle = cls?.courses?.title || 'Curso';
-
-      const type = (p.type || 'AVISO').toUpperCase();
-      const isEvent = type === 'EVENTO' && !!p.event_date;
-
-      timeline.push({
-        kind: 'mural',
-        subtype: isEvent ? 'event' : 'post',
-        date: when,
-        title: p.title || (isEvent ? 'Evento' : 'Post no mural'),
-        subtitle: `${courseTitle} • Turma: ${cls?.name || ''}`.trim(),
-        badge: type,
-        extra: p.resource_url ? { label: 'Recurso', url: p.resource_url } : null,
-      });
-    });
-
-    // 5.3) atividades
-    const moduleById = new Map(modules.map(m => [m.id, m]));
-    const sectionById = new Map(sections.map(s => [s.id, s]));
-
-    if (lessonsDatesSupported) {
-      lessons.forEach(les => {
-        const mod = moduleById.get(les.module_id);
-        const sec = sectionById.get(les.section_id);
-        const courseId = mod?.course_id;
-        const info = courseId ? courseInfo.get(courseId) : null;
-
-        const courseTitle = info?.title || 'Curso';
-        const classNames = info?.classNames?.length ? `Turmas: ${info.classNames.join(', ')}` : '';
-
-        const baseSubtitleParts = [
-          courseTitle,
-          classNames,
-          mod?.title ? `Módulo: ${mod.title}` : null,
-          sec?.title ? `Seção: ${sec.title}` : null
-        ].filter(Boolean);
-
-        const baseSubtitle = baseSubtitleParts.join(' • ');
-        const type = (les.type || 'ATIVIDADE').toUpperCase();
-
-        const startAt = safeDate(les.start_at);
-        if (startAt) timeline.push({
-          kind: 'activity', subtype: 'start', date: startAt,
-          title: `${les.title}`,
-          subtitle: baseSubtitle,
-          badge: `${type} • INÍCIO`,
-          points: les.points ?? null
-        });
-
-        const endAt = safeDate(les.end_at);
-        if (endAt) timeline.push({
-          kind: 'activity', subtype: 'end', date: endAt,
-          title: `${les.title}`,
-          subtitle: baseSubtitle,
-          badge: `${type} • PRAZO`,
-          points: les.points ?? null
-        });
-      });
-    }
-
-    loader.style.display = 'none';
-    container.innerHTML = '';
-
-    if (!timeline.length) {
-      container.innerHTML = `
-        <div class="text-center text-muted p-5">
-          <i class='bx bx-calendar-x fs-1'></i>
-          <h5 class="mt-3">Nenhum item com data encontrado</h5>
-          <p class="mb-0">Confirme se existem datas configuradas em turmas, mural ou atividades.</p>
-        </div>`;
-      return;
-    }
-
-    timeline.sort((a, b) => {
-      const ta = a.date.getTime();
-      const tb = b.date.getTime();
-      if (ta !== tb) return ta - tb;
-      return sortKey(a.kind, a.subtype) - sortKey(b.kind, b.subtype);
-    });
-
-    if (!lessonsDatesSupported) {
-      container.insertAdjacentHTML('beforeend', `
-        <div class="alert alert-warning rounded-4">
-          <div class="d-flex gap-3 align-items-start">
-            <i class='bx bx-error-circle fs-3'></i>
-            <div>
-              <h6 class="mb-1">Atividades com data ainda não estão habilitadas</h6>
-              <div class="small">
-                A tabela <code>lessons</code> precisa permitir leitura das colunas <code>start_at</code>/<code>end_at</code>
-                (e o editor precisa salvar esses campos). Mesmo assim, o calendário já exibe <b>mural</b> e <b>datas da turma</b>.
-              </div>
-            </div>
-          </div>
-        </div>
-      `);
-    }
-
-    let lastDayKey = '';
-    timeline.forEach(ev => {
-      const d = ev.date;
-      const dayKey = d.toISOString().slice(0, 10);
-
-      if (dayKey !== lastDayKey) {
-        lastDayKey = dayKey;
-        container.insertAdjacentHTML('beforeend', `
-          <div class="day-divider py-2 mt-2 rounded-3 border">
-            <div class="px-3 small text-muted text-capitalize">
-              <i class='bx bx-calendar'></i> ${fmtDayLabel(d)}
-            </div>
-          </div>
-        `);
-      }
-
-      const dia = String(d.getDate()).padStart(2, '0');
-      const mes = fmtMonthShort(d);
-      const hora = fmtTime(d);
-
-      const icon = ev.kind === 'activity'
-        ? (String(ev.badge || '').includes('QUIZ') ? 'bx bx-question-mark' : 'bx bx-task')
-        : ev.kind === 'mural'
-          ? 'bx bx-message-rounded-dots'
-          : 'bx bx-flag';
-
-      const badgeClass = ev.kind === 'activity'
-        ? 'bg-primary bg-opacity-10 text-primary'
-        : ev.kind === 'mural'
-          ? 'bg-warning bg-opacity-10 text-warning'
-          : 'bg-success bg-opacity-10 text-success';
-
-      const rightBadge = ev.badge
-        ? `<span class="badge ${badgeClass} rounded-pill px-3">${escapeHtml(ev.badge)}</span>`
-        : '';
-
-      const points = (ev.points !== null && ev.points !== undefined)
-        ? `<div class="small text-muted mt-1"><i class='bx bx-trophy'></i> Pontos: ${escapeHtml(ev.points)}</div>`
-        : '';
-
-      const resource = ev.extra?.url
-        ? `<div class="mt-1"><a class="small" href="${ev.extra.url}" target="_blank" rel="noopener">Abrir recurso</a></div>`
-        : '';
-
-      const html = `
-        <div class="card event-card shadow-sm border-0 rounded-3 overflow-hidden" data-kind="${ev.kind}">
-          <div class="card-body d-flex align-items-center p-3 gap-3">
-            <div class="date-badge rounded text-center p-2">
-              <span class="d-block fw-bold fs-4 line-height-1">${dia}</span>
-              <small class="text-uppercase text-primary fw-bold" style="font-size: 0.7rem;">${mes}</small>
-            </div>
-
-            <div class="flex-grow-1">
-              <div class="badge bg-light text-primary border mb-1" style="font-size: 0.65rem;">
-                <i class='${icon}'></i> ${escapeHtml(hora)}
-              </div>
-              <h6 class="mb-0 fw-bold text-dark">${escapeHtml(ev.title || '')}</h6>
-              <small class="text-muted">${escapeHtml(ev.subtitle || '')}</small>
-              ${points}
-              ${resource}
-            </div>
-
-            <div class="ms-auto text-end">
-              ${rightBadge}
-            </div>
-          </div>
-        </div>
-      `;
-
-      container.insertAdjacentHTML('beforeend', html);
-    });
-
-    // aplica filtro atual (se existir)
-    document.getElementById('filter-activities')?.dispatchEvent(new Event('change'));
-
-  } catch (err) {
-    console.error('Erro ao carregar calendário:', err);
-    if (loader) loader.innerHTML = `<p class="text-danger">Erro ao carregar calendário. Verifique RLS e a estrutura das tabelas.</p>`;
-  }
+  const hasTime = !(date.getHours() === 0 && date.getMinutes() === 0);
+  return hasTime ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Dia inteiro';
 }
 
 function escapeHtml(str) {
-  return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+  return String(str || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
+
+// --- CARREGAMENTO DE DADOS ---
+async function loadUnifiedCalendar(userId) {
+  const loader = document.getElementById('calendar-loader');
+  try {
+    const { data: enrollmentsRaw } = await supabase.from('class_enrollments').select('class_id,status').eq('user_id', userId);
+    const BLOCKED = new Set(['canceled', 'cancelled', 'cancelado', 'inativo', 'inactive']);
+    const validEnrollments = (enrollmentsRaw || []).filter(e => !BLOCKED.has(String(e.status ?? '').trim().toLowerCase()));
+    const classIds = [...new Set(validEnrollments.map(e => e.class_id).filter(Boolean))];
+
+    if (!classIds.length) {
+      if(loader) loader.innerHTML = "<h6>Nenhuma matrícula ativa encontrada.</h6>";
+      return;
+    }
+
+    const [resClasses, resPosts, resLessons] = await Promise.all([
+      supabase.from('classes').select('*, courses(title)').in('id', classIds),
+      supabase.from('class_posts').select('*').in('class_id', classIds),
+      supabase.from('lessons').select('*, modules(course_id, title)').in('is_published', [true])
+    ]);
+
+    const timeline = [];
+    const classMap = new Map(resClasses.data?.map(c => [c.id, c]));
+
+    resClasses.data?.forEach(cls => {
+      const courseTitle = cls.courses?.title || 'Curso';
+      if (cls.start_date) timeline.push({ kind: 'course', date: safeDate(cls.start_date), title: 'Início: ' + cls.name, course: courseTitle, className: cls.name, badge: 'TURMA' });
+      if (cls.end_date) timeline.push({ kind: 'course', date: safeDate(cls.end_date), title: 'Término: ' + cls.name, course: courseTitle, className: cls.name, badge: 'TURMA' });
+    });
+
+    resPosts.data?.forEach(p => {
+      const d = safeDate(p.event_date) || safeDate(p.created_at);
+      const cls = classMap.get(p.class_id);
+      if (d) timeline.push({ kind: 'mural', date: d, title: p.title, course: cls?.courses?.title || 'Geral', className: cls?.name || 'Mural', badge: (p.type || 'AVISO').toUpperCase() });
+    });
+
+    resLessons.data?.forEach(les => {
+      const courseTitle = les.modules?.title || 'Atividade'; 
+      if (les.start_at) timeline.push({ kind: 'activity', date: safeDate(les.start_at), title: les.title, course: courseTitle, className: 'Atividade', badge: 'INÍCIO', points: les.points });
+      if (les.end_at) timeline.push({ kind: 'activity', date: safeDate(les.end_at), title: les.title, course: courseTitle, className: 'Atividade', badge: 'PRAZO', points: les.points });
+    });
+
+    allEvents = timeline;
+    if(loader) loader.style.display = 'none';
+    document.getElementById('calendar-root').style.display = 'block';
+    renderInterface();
+
+  } catch (err) {
+    console.error(err);
+    if(loader) loader.innerHTML = `<p class="text-danger">Erro ao carregar dados.</p>`;
+  }
+}
+
+// --- RENDERIZAÇÃO ---
+function renderInterface() {
+  const grid = document.getElementById('calendar-grid');
+  const label = document.getElementById('cal-month-label');
+  const agenda = document.getElementById('agenda-container');
+  
+  if (grid) grid.innerHTML = '';
+  if (agenda) agenda.innerHTML = '';
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  if (label) label.innerText = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentMonth).toUpperCase();
+
+  const showAct = document.getElementById('filter-activities')?.checked ?? true;
+  const showMur = document.getElementById('filter-mural')?.checked ?? true;
+  const showCou = document.getElementById('filter-course')?.checked ?? true;
+
+  // 1. MODO MÊS COM LABELS MINIMALISTAS
+  if (grid) {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+    for (let i = 0; i < offset; i++) grid.insertAdjacentHTML('beforeend', '<div class="cal-cell is-outside"></div>');
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayEvents = allEvents.filter(ev => {
+          const evDate = ev.date.toISOString().split('T')[0];
+          return evDate === dateStr && ((ev.kind==='activity'&&showAct) || (ev.kind==='mural'&&showMur) || (ev.kind==='course'&&showCou));
+      });
+
+      const isToday = new Date().toISOString().split('T')[0] === dateStr;
+      
+      // Gera as labels de texto em vez de pontos
+      const labelsHtml = dayEvents.slice(0, 2).map(ev => {
+        const color = ev.kind === 'activity' ? '#0d6efd' : ev.kind === 'mural' ? '#9a6b00' : '#146c43';
+        const bgColor = ev.kind === 'activity' ? '#e7f1ff' : ev.kind === 'mural' ? '#fff9db' : '#d1e7dd';
+        return `
+          <div class="cal-event-label" style="
+            background: ${bgColor}; 
+            color: ${color}; 
+            font-size: 0.6rem; 
+            padding: 2px 4px; 
+            border-radius: 4px; 
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 2px solid ${color};
+            font-weight: 600;
+          ">
+            ${escapeHtml(ev.title)}
+          </div>`;
+      }).join('');
+
+      grid.insertAdjacentHTML('beforeend', `
+        <div class="cal-cell ${isToday ? 'is-today' : ''}" onclick="window.openDayDetails('${dateStr}')" style="min-height: 100px; display: flex; flex-direction: column; padding: 4px;">
+          <div class="cal-date d-flex justify-content-between">
+            <span class="num ${isToday ? 'bg-primary text-white rounded-circle' : ''}" style="${isToday ? 'width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;' : 'font-size: 0.85rem;'}">${day}</span>
+          </div>
+          <div class="cal-events-container mt-1" style="flex-grow: 1; overflow: hidden;">
+            ${labelsHtml}
+            ${dayEvents.length > 2 ? `<div class="text-muted" style="font-size: 0.55rem; padding-left: 4px;">+${dayEvents.length - 2} mais</div>` : ''}
+          </div>
+        </div>`);
+    }
+  }
+
+  // 2. MODO AGENDA
+  if (agenda) {
+    const filteredEvents = allEvents.filter(ev => (ev.kind==='activity'&&showAct) || (ev.kind==='mural'&&showMur) || (ev.kind==='course'&&showCou)).sort((a,b) => a.date - b.date);
+
+    filteredEvents.forEach(ev => {
+      const colorClass = ev.kind === 'activity' ? 'primary' : ev.kind === 'mural' ? 'warning' : 'success';
+      agenda.insertAdjacentHTML('beforeend', `
+        <div class="card event-card shadow-sm border-0 rounded-4 mb-3 border-start border-4 border-${colorClass}" data-kind="${ev.kind}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="date-badge rounded-3 text-center p-2 bg-light border" style="min-width: 65px;">
+                <span class="d-block fw-bold fs-4 line-height-1 text-dark">${String(ev.date.getDate()).padStart(2,'0')}</span>
+                <small class="text-uppercase fw-bold text-${colorClass}" style="font-size: 0.7rem;">${fmtMonthShort(ev.date)}</small>
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                   <span class="badge bg-${colorClass} bg-opacity-10 text-${colorClass} border border-${colorClass} border-opacity-25" style="font-size: 0.65rem;">
+                    <i class='bx bx-time-five'></i> ${fmtTime(ev.date)} • ${ev.badge}
+                   </span>
+                </div>
+                <h6 class="mb-1 fw-bold text-dark">${escapeHtml(ev.title)}</h6>
+                <div class="d-flex flex-wrap gap-3 mt-2">
+                  <small class="text-muted"><i class='bx bx-book-open'></i> ${escapeHtml(ev.course)}</small>
+                  <small class="text-muted"><i class='bx bx-group'></i> ${escapeHtml(ev.className)}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`);
+    });
+  }
+}
+
+// --- OFF-CANVAS DETALHADO ---
+window.openDayDetails = (dateStr) => {
+  const container = document.getElementById('day-items');
+  const label = document.getElementById('dayOffcanvasLabel');
+  const events = allEvents.filter(ev => ev.date.toISOString().split('T')[0] === dateStr);
+  const d = new Date(dateStr + 'T12:00:00');
+  label.innerText = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  container.innerHTML = events.length ? '' : '<p class="text-muted text-center py-4">Nenhum compromisso.</p>';
+  events.forEach(ev => {
+    container.insertAdjacentHTML('beforeend', `
+      <div class="p-3 border rounded-3 bg-light mb-2">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="badge bg-white text-dark border small">${fmtTime(ev.date)}</span>
+          <span class="badge bg-primary">${ev.badge}</span>
+        </div>
+        <h6 class="fw-bold mb-0">${escapeHtml(ev.title)}</h6>
+        <small class="text-muted d-block mt-1"><b>Curso:</b> ${ev.course}</small>
+        <small class="text-muted d-block"><b>Turma:</b> ${ev.className}</small>
+      </div>`);
+  });
+  new bootstrap.Offcanvas(document.getElementById('dayOffcanvas')).show();
+};

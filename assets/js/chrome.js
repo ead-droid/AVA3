@@ -108,29 +108,19 @@ function wireCacheBeforeNavigation() {
 
 // --- LÓGICA DO MENU COLAPSADO ---
 function applySavedSidebarState() {
-  // Verifica se estamos na página de sala de aula
   const isClassroom = window.location.href.includes('classroom.html');
-  
   let collapsed;
-  
   if (isClassroom) {
-    // Se for sala de aula, SEMPRE começa fechado (true)
     collapsed = true;
   } else {
-    // Nas outras páginas, lembra a escolha do usuário
     collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
   }
-
-  // Aplica as classes
   document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
   document.body.classList.toggle('sidebar-collapsed', collapsed);
 }
 
 function saveSidebarState() {
   const collapsed = document.body.classList.contains('sidebar-collapsed');
-  
-  // Só salva a preferência no localStorage se NÃO estivermos no classroom
-  // Assim, se o usuário fechar o menu no classroom, não afeta a home
   if (!window.location.href.includes('classroom.html')) {
       localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? '1' : '0');
   }
@@ -186,7 +176,15 @@ function updateUI(session) {
 
   if (session) {
     if (authActions) authActions.style.display = 'none';
-    if (userPill) userPill.style.display = 'flex';
+    if (userPill) {
+        userPill.style.display = 'flex';
+        // --- ADICIONADO: Redirecionamento para Perfil ---
+        userPill.style.cursor = 'pointer';
+        userPill.title = "Acessar meu perfil";
+        userPill.onclick = () => {
+            window.location.href = 'profile.html';
+        };
+    }
     if (logoutBtn) logoutBtn.style.display = 'flex';
     if (userNameEl) userNameEl.textContent = session.user.user_metadata?.full_name || session.user.email;
     checkRole(session.user.id);

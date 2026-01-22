@@ -68,68 +68,105 @@ async function loadStudents() {
     const tbody = document.getElementById('students-table-body');
     const empty = document.getElementById('students-empty');
     
-    const { data: enrolls, error } = await supabase
+    // PASSO 1: Busca apenas as matrículas (sem o comando 'profiles' que trava)
+    const { data: enrolls, error: errorEnrolls } = await supabase
         .from('class_enrollments')
-        .select(`id, status, joined_at, progress_percent, profiles (id, name, email, role)`)
-        .eq('class_id', classId)
-        .order('joined_at', { ascending: false });
+        .select('*') 
+        .eq('class_id', classId);
 
-    if (error) return;
+    if (errorEnrolls) {
+        console.error("Erro ao buscar matrículas:", errorEnrolls);
+        return;
+    }
 
     document.getElementById('dash-total-students').textContent = enrolls.length;
     tbody.innerHTML = '';
-    staffMembers = []; // Limpa cache
+    staffMembers = []; 
     
-    if (enrolls.length === 0) {
+    if (!enrolls || enrolls.length === 0) {
         empty.style.display = 'block';
         return;
     }
     empty.style.display = 'none';
 
+    // PASSO 2: Coleta os IDs dos alunos e busca os perfis separadamente
+    const userIds = enrolls.map(e => e.user_id);
+    
+    const { data: profilesData, error: errorProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, email, role')
+        .in('id', userIds);
+
+    if (errorProfiles) {
+        console.error("Erro ao buscar perfis:", errorProfiles);
+    }
+
+    // PASSO 3: Junta os dados manualmente (Manual Join)
+    // Isso funciona mesmo se o banco não tiver a Foreign Key configurada
+    const fullList = enrolls.map(enroll => {
+        const profile = profilesData?.find(p => p.id === enroll.user_id) || {};
+        return {
+            ...enroll,
+            profiles: profile,
+            // Truque para aceitar qualquer nome de coluna de data que estiver no banco
+            final_date: enroll.joined_at || enroll.enrolled_at || enroll.created_at,
+            // Garante que o progresso seja zero se a coluna falhar
+            final_progress: (typeof enroll.progress_percent === 'number') ? enroll.progress_percent : 0
+        };
+    });
+
+    // Ordena pela data (do mais recente para o mais antigo)
+    fullList.sort((a, b) => new Date(b.final_date) - new Date(a.final_date));
+
+    // PASSO 4: Renderiza na tela
     const tpl = document.getElementById('tpl-student-row');
 
-    enrolls.forEach(row => {
+    fullList.forEach(row => {
         const clone = tpl.content.cloneNode(true);
-        const profile = row.profiles || {};
-        const name = profile.name || 'Sem nome';
+        const profile = row.profiles;
+        const name = profile.name || 'Aluno sem Nome';
         const role = profile.role || 'aluno';
 
-        // Popula Staff se não for aluno
         if (role !== 'aluno') staffMembers.push({ id: profile.id, name: name, role: role });
 
         const initials = name.substring(0,2).toUpperCase();
-        clone.querySelector('.student-avatar').textContent = initials;
-        clone.querySelector('.student-name').textContent = name;
-        clone.querySelector('.student-email').textContent = profile.email || '---';
+        
+        // Preenche o HTML com segurança
+        const av = clone.querySelector('.student-avatar'); if(av) av.textContent = initials;
+        const nm = clone.querySelector('.student-name'); if(nm) nm.textContent = name;
+        const em = clone.querySelector('.student-email'); if(em) em.textContent = profile.email || '---';
         
         const badge = clone.querySelector('.student-status');
-        badge.textContent = translateStatus(row.status);
-        badge.className = `badge rounded-pill ${getStatusClass(row.status)}`;
+        if(badge) {
+            badge.textContent = translateStatus(row.status);
+            badge.className = `badge rounded-pill ${getStatusClass(row.status)}`;
+        }
 
-        clone.querySelector('.student-progress-bar').style.width = `${row.progress_percent || 0}%`;
-        clone.querySelector('.student-progress-text').textContent = `${row.progress_percent || 0}%`;
-        clone.querySelector('.student-date').textContent = new Date(row.joined_at).toLocaleDateString();
+        const pb = clone.querySelector('.student-progress-bar'); if(pb) pb.style.width = `${row.final_progress}%`;
+        const pt = clone.querySelector('.student-progress-text'); if(pt) pt.textContent = `${row.final_progress}%`;
+        
+        const dt = clone.querySelector('.student-date');
+        if(dt && row.final_date) dt.textContent = new Date(row.final_date).toLocaleDateString();
 
+        // Botões
         if (row.status === 'pending') {
             const btn = clone.querySelector('.btn-approve');
-            btn.style.display = 'inline-block';
-            btn.onclick = () => updateEnrollmentStatus(row.id, 'active');
+            if(btn) {
+                btn.style.display = 'inline-block';
+                btn.onclick = () => updateEnrollmentStatus(row.id, 'active');
+            }
         }
-        clone.querySelector('.btn-remove').onclick = () => removeStudent(row.id);
+        
+        const rmv = clone.querySelector('.btn-remove');
+        if(rmv) rmv.onclick = () => removeStudent(row.id);
 
-        // --- CORREÇÃO VISUAL: BOTÃO PERFIL (Outline azul, fundo transparente) ---
-        const roleBtn = clone.querySelector('.profile-role-btn');
-        const roleMap = { 'aluno': '🎓 Estudante', 'professor': '👨‍🏫 Professor', 'tutor': '🤝 Tutor', 'gerente': '🏗️ Gerente', 'admin': '⚡ Admin' };
-        roleBtn.textContent = roleMap[role] || role;
-        
-        // Remove classes de cor sólida se existirem e garante o outline
-        roleBtn.className = 'btn btn-sm btn-outline-primary dropdown-toggle profile-role-btn fw-bold';
-        
-        // Se for admin/gerente, dar um destaque extra sutil opcional (mantendo outline)
-        if(role === 'admin' || role === 'gerente') {
-            roleBtn.style.borderWidth = '2px'; 
+        const rBtn = clone.querySelector('.profile-role-btn');
+        if(rBtn) {
+            const rMap = { 'aluno': '🎓 Estudante', 'professor': '👨‍🏫 Professor', 'tutor': '🤝 Tutor', 'gerente': '🏗️ Gerente', 'admin': '⚡ Admin' };
+            rBtn.textContent = rMap[role] || role;
+            rBtn.className = 'btn btn-sm btn-outline-primary dropdown-toggle profile-role-btn fw-bold';
         }
-
+        
         clone.querySelectorAll('.dropdown-item[data-role]').forEach(item => {
             item.onclick = (e) => { e.preventDefault(); changeUserRole(profile.id, item.dataset.role); };
         });
@@ -139,7 +176,6 @@ async function loadStudents() {
 
     populateStaffSelect();
 }
-
 function populateStaffSelect() {
     const select = document.getElementById('team_task_assignee');
     if(!select) return;
@@ -356,7 +392,7 @@ window.searchStudentToEnroll = async function() {
 };
 window.confirmEnroll = async function(uid, btn) {
     btn.disabled = true;
-    const { error } = await supabase.from('class_enrollments').insert({ class_id: classId, user_id: uid, status: 'active', progress_percent: 0 });
+    const { error } = await supabase.from('class_enrollments').insert({ class_id: classId, user_id: uid, status: 'active' });
     if(error) alert(error.message);
     else { btn.className = 'btn btn-sm btn-success'; btn.textContent = 'OK'; loadStudents(); }
 };

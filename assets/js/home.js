@@ -4,6 +4,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     loadAvailableClasses(userId);
+// --- SOLUÇÃO DEFINITIVA DE REDIRECIONAMENTO ---
+    document.addEventListener('click', (e) => {
+        // Verifica se o clique foi no nome, no avatar ou na área envolvente
+        const isProfileClick = e.target.closest('#header-name') || 
+                               e.target.closest('#header-avatar-initials') ||
+                               e.target.closest('.profile-header-card');
+
+        if (isProfileClick) {
+            console.log("Clique detectado! Redirecionando...");
+            window.location.href = 'profile.html';
+        }
+    });
+
+    // Mantém apenas a mãozinha visual
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #header-name, #header-avatar-initials, .profile-header-card { 
+            cursor: pointer !important; 
+        }
+    `;
+    document.head.appendChild(style);
 });
 
 async function loadAvailableClasses(userId) {
