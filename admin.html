@@ -56,7 +56,6 @@
                             <div class="icon-shape bg-primary bg-opacity-10 text-primary"><i class='bx bx-book-bookmark'></i></div>
                         </div>
                     </div>
-
                     <div class="col-md-6 col-xl-3">
                         <div class="card-stat">
                             <div>
@@ -69,7 +68,6 @@
                             <div class="icon-shape bg-success bg-opacity-10 text-success"><i class='bx bx-group'></i></div>
                         </div>
                     </div>
-
                     <div class="col-md-6 col-xl-3">
                         <div class="card-stat">
                             <div>
@@ -82,7 +80,6 @@
                             <div class="icon-shape bg-warning bg-opacity-10 text-warning"><i class='bx bx-calendar-star'></i></div>
                         </div>
                     </div>
-
                     <div class="col-md-6 col-xl-3">
                         <div class="card-stat">
                             <div>
@@ -98,9 +95,8 @@
                 </div>
 
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="min-height: 500px;">
-                    
                     <div class="card-header bg-white py-3 px-4 border-bottom">
-                        <h5 class="mb-0 fw-bold text-dark" id="panel-title">Gerenciar</h5>
+                        <h5 class="mb-0 fw-bold text-dark" id="panel-title">Gerenciar Cursos</h5>
                     </div>
 
                     <div class="card-body p-0">
@@ -185,20 +181,66 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold">Novo Curso</h5>
+                    <h5 class="modal-title fw-bold" id="modalCourseTitle">Novo Curso</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <form id="formCourse" class="row g-3">
-                        <div class="col-12"><label class="fw-bold small">Título</label><input type="text" id="course_title" class="form-control" required></div>
-                        <div class="col-md-6"><label class="small text-muted">Slug (Auto)</label><input type="text" id="course_slug" class="form-control bg-white" readonly></div>
-                        <div class="col-md-6"><label class="fw-bold small">Carga (h)</label><input type="number" id="course_hours" class="form-control" step="0.5"></div>
-                        <div class="col-12"><label class="fw-bold small">Descrição</label><textarea id="course_desc" class="form-control" rows="3"></textarea></div>
-                        <div class="col-md-4"><label class="fw-bold small">Status</label><select id="course_status" class="form-select"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></div>
-                        <div class="col-md-4"><label class="fw-bold small">Tipo</label><select id="course_type" class="form-select"><option value="OUTRO">Outro</option><option value="LIVRE">Livre</option><option value="TECNICO">Técnico</option></select></div>
-                        <div class="col-md-4"><label class="fw-bold small">Inscrições</label><select id="course_enroll_status" class="form-select"><option value="FECHADO">Fechado</option><option value="ABERTO">Aberto</option></select></div>
-                        <div class="col-12"><label class="fw-bold small">Capa (URL)</label><input type="url" id="course_img" class="form-control" placeholder="https://..."></div>
-                        <div class="col-12 text-end mt-4"><button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Curso</button></div>
+                        <input type="hidden" id="course_id">
+                        
+                        <div class="col-12">
+                            <label class="fw-bold small">Título</label>
+                            <input type="text" id="course_title" class="form-control" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="small text-muted">Slug (Auto)</label>
+                            <input type="text" id="course_slug" class="form-control bg-white" readonly>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="fw-bold small">Carga Horária (h)</label>
+                            <input type="number" id="course_hours" class="form-control" placeholder="Ex: 40">
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="fw-bold small">Descrição</label>
+                            <textarea id="course_desc" class="form-control" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="fw-bold small">Status</label>
+                            <select id="course_status" class="form-select">
+                                <option value="draft">Rascunho</option>
+                                <option value="published">Publicado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="fw-bold small">Tipo</label>
+                            <select id="course_type" class="form-select">
+                                <option value="LIVRE">Livre</option>
+                                <option value="TECNICO">Técnico</option>
+                                <option value="OUTRO">Outro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="fw-bold small">Inscrições</label>
+                            <select id="course_enroll_status" class="form-select">
+                                <option value="FECHADO">Fechado</option>
+                                <option value="ABERTO">Aberto</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="fw-bold small">Capa (URL)</label>
+                            <input type="url" id="course_img" class="form-control" placeholder="https://...">
+                        </div>
+                        
+                        <div class="col-12 text-end mt-4">
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar Curso</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -274,13 +316,10 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="p-3 bg-light rounded text-dark border mb-3" id="msg-view-content" style="white-space: pre-wrap; font-size: 0.95rem;">Mensagem...</div>
-
+                    <div class="p-3 bg-light rounded text-dark border mb-3" id="msg-view-content" style="white-space: pre-wrap; font-size: 0.95rem;"></div>
                     <div class="border-top pt-3">
                         <h6 class="fw-bold small text-primary"><i class='bx bx-conversation'></i> Atendimento</h6>
                         <div id="msg-modal-alert" class="alert d-none py-2 px-3 small"></div>
-                        
                         <div class="mb-2">
                             <label class="small fw-bold text-muted">Status</label>
                             <select id="msg_status" class="form-select form-select-sm">
@@ -339,7 +378,6 @@
                         <div class="mb-3">
                             <label class="fw-bold small">Link do Mapa (URL)</label>
                             <input type="text" id="conf_map" class="form-control" placeholder="Cole o link do iframe (src)...">
-                            <div class="form-text small">Vá no Google Maps > Compartilhar > Incorporar mapa > Copie o link dentro de src="..."</div>
                         </div>
                         <div class="text-end pt-2 border-top">
                             <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>

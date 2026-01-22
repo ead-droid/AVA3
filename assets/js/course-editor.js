@@ -26,9 +26,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        await loadCourseData();   
-        await loadModules();      
-        await loadLinkedClasses();
+        // --- OTIMIZAÇÃO AQUI ---
+        // Carrega tudo em paralelo (Promise.all) ao invés de um por um
+        await Promise.all([
+            loadCourseData(),
+            loadModules(),
+            loadLinkedClasses()
+        ]);
+        
         setupFormListeners();     
     } catch (error) {
         console.error("Erro fatal:", error);
@@ -40,15 +45,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 // =========================================================
 async function loadCourseData() {
     const { data: course, error } = await supabase.from('courses').select('*').eq('id', courseId).single();
-    if (error) return console.error(error);
+    if (error) {
+        console.error("Erro curso:", error);
+        return;
+    }
 
+    // Preenche a interface
     document.getElementById('header-title').textContent = course.title;
     document.getElementById('course-id-badge').textContent = `ID: ${course.id}`;
-    document.getElementById('edit_title').value = course.title;
-    document.getElementById('edit_desc').value = course.description || '';
-    if (document.getElementById('edit_status')) {
+    
+    const titleInput = document.getElementById('edit_title');
+    if(titleInput) titleInput.value = course.title;
+    
+    const descInput = document.getElementById('edit_desc');
+    if(descInput) descInput.value = course.description || '';
+    
+    const statusSelect = document.getElementById('edit_status');
+    if (statusSelect) {
         const st = (course.status || '').toUpperCase();
-        document.getElementById('edit_status').value = (st === 'PUBLISHED' || st === 'CONCLUIDO') ? 'published' : 'draft';
+        statusSelect.value = (st === 'PUBLISHED' || st === 'CONCLUIDO' || st === 'PUBLICADO') ? 'published' : 'draft';
     }
 }
 
@@ -60,7 +75,7 @@ async function loadModules() {
     const emptyMsg = document.getElementById('modules-empty');
     
     if (!container) return;
-    container.innerHTML = ''; 
+    container.innerHTML = ''; // Limpa para evitar duplicidade se chamado novamente
 
     const { data: modules, error } = await supabase
         .from('modules')
@@ -68,7 +83,7 @@ async function loadModules() {
         .eq('course_id', courseId)
         .order('ordem', { ascending: true });
 
-    if (error) { console.error(error); return; }
+    if (error) { console.error("Erro módulos:", error); return; }
 
     globalModules = modules || [];
 
@@ -78,6 +93,7 @@ async function loadModules() {
     }
     if (emptyMsg) emptyMsg.style.display = 'none';
 
+    // Ordenação local para garantir a visualização correta
     modules.forEach(mod => {
         if (mod.sections) {
             mod.sections.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
@@ -98,7 +114,6 @@ function renderModuleItem(mod, container) {
     clone.querySelector('.mod-badge').textContent = mod.ordem;
     clone.querySelector('.mod-title').textContent = mod.title;
     
-    // Badge de bloqueio no módulo
     if (mod.unlock_at || (mod.prerequisite_ids && mod.prerequisite_ids.length > 0)) {
         const lockBadge = clone.querySelector('.mod-lock-badge');
         if (lockBadge) lockBadge.style.display = 'inline-flex';
@@ -128,7 +143,6 @@ function renderSectionItem(sec, container, modId) {
     clone.querySelector('.sec-badge').textContent = sec.ordem;
     clone.querySelector('.sec-title').textContent = sec.title;
 
-    // Badge de bloqueio na seção
     if (sec.unlock_at || (sec.prerequisite_ids && sec.prerequisite_ids.length > 0)) {
         const lockBadge = clone.querySelector('.sec-lock-badge');
         if (lockBadge) lockBadge.style.display = 'inline-flex';
@@ -176,7 +190,7 @@ function renderLessonItem(les, container, modId, secId) {
     iconEl.className = `bx ${iconClass}`;
     typeLabel.textContent = typeName;
 
-    // Badges de Condição
+    // Badges
     if (les.unlock_at) {
         const badgeDate = clone.querySelector('.condition-date-badge');
         if(badgeDate) badgeDate.style.display = 'inline-flex';
@@ -194,6 +208,7 @@ function renderLessonItem(les, container, modId, secId) {
 
     const actionsArea = clone.querySelector('.actions-area');
     
+    // Botões de configuração específica
     if (les.type === 'QUIZ') {
         const tplBtn = document.getElementById('tpl-btn-quiz');
         if (tplBtn) {
@@ -231,15 +246,21 @@ async function loadLinkedClasses() {
     const tbody = document.getElementById('linked-classes-list');
     if (!tbody) return;
     tbody.innerHTML = '';
+    
     const { data: classes } = await supabase.from('classes').select('*, class_enrollments(count)').eq('course_id', courseId);
+    
     if (!classes || classes.length === 0) {
-        document.getElementById('classes-empty').style.display = 'block';
+        const emptyDiv = document.getElementById('classes-empty');
+        if(emptyDiv) emptyDiv.style.display = 'block';
         return;
     }
-    document.getElementById('classes-empty').style.display = 'none';
+    
+    const emptyDiv = document.getElementById('classes-empty');
+    if(emptyDiv) emptyDiv.style.display = 'none';
+
     classes.forEach(cls => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="ps-4 fw-bold">${cls.name}</td><td><code>${cls.access_code || '-'}</code></td><td><span class="badge bg-secondary">${cls.class_enrollments ? cls.class_enrollments[0].count : 0} alunos</span></td><td>${cls.start_date ? new Date(cls.start_date).toLocaleDateString() : 'Indefinido'}</td><td class="text-end pe-4"><a href="class-manager.html" class="btn btn-sm btn-outline-primary fw-bold">Gerenciar</a></td>`;
+        tr.innerHTML = `<td class="ps-4 fw-bold">${cls.name}</td><td><code>${cls.code || '-'}</code></td><td><span class="badge bg-secondary">${cls.class_enrollments ? cls.class_enrollments[0].count : 0} alunos</span></td><td>${cls.start_date ? new Date(cls.start_date).toLocaleDateString() : 'Indefinido'}</td><td class="text-end pe-4"><a href="class-manager.html" class="btn btn-sm btn-outline-primary fw-bold">Gerenciar</a></td>`;
         tbody.appendChild(tr);
     });
 }
@@ -250,12 +271,12 @@ window.openModuleModal = (mod = null) => {
     resetTabs('modTabs');
     document.getElementById('mod_id').value = mod ? mod.id : '';
 
-    // Popula Lista de Pré-requisitos (Outros Módulos)
     const listContainer = document.getElementById('mod-prerequisites-list');
     listContainer.innerHTML = '';
     let hasItems = false;
+    
     globalModules.forEach(m => {
-        if (mod && m.id === mod.id) return; // Não listar a si mesmo
+        if (mod && m.id === mod.id) return;
         hasItems = true;
         const isChecked = mod && mod.prerequisite_ids && mod.prerequisite_ids.includes(m.id);
         const div = document.createElement('div');
@@ -292,16 +313,14 @@ window.openSectionModal = (modId, sec = null) => {
     document.getElementById('sec_module_id').value = modId;
     document.getElementById('sec_id').value = sec ? sec.id : '';
 
-    // Popula Lista de Pré-requisitos (Outras Seções do mesmo módulo ou de módulos anteriores)
     const listContainer = document.getElementById('sec-prerequisites-list');
     listContainer.innerHTML = '';
     let hasItems = false;
     
-    // Varre todos os módulos para listar seções anteriores
     globalModules.forEach(m => {
         if(m.sections) {
             m.sections.forEach(s => {
-                if (sec && s.id === sec.id) return; // Ignora a própria seção
+                if (sec && s.id === sec.id) return;
                 hasItems = true;
                 const isChecked = sec && sec.prerequisite_ids && sec.prerequisite_ids.includes(s.id);
                 const div = document.createElement('div');
@@ -338,7 +357,6 @@ window.openLessonModal = (modId, secId, les = null) => {
     document.getElementById('les_section_id').value = secId;
     document.getElementById('les_id').value = les ? les.id : '';
 
-    // Popula Lista com #Ordem
     const listContainer = document.getElementById('prerequisites-list');
     listContainer.innerHTML = '';
     let hasItems = false;
@@ -405,7 +423,7 @@ function resetTabs(id) {
 // =========================================================
 function setupFormListeners() {
     
-    // Módulo (Salvar com Restrições)
+    // Módulo (Salvar)
     document.getElementById('formModule').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('mod_id').value;
@@ -426,7 +444,7 @@ function setupFormListeners() {
         if(error) alert("Erro: " + error.message); else { modalModule.hide(); loadModules(); }
     });
 
-    // Seção (Salvar com Restrições)
+    // Seção (Salvar)
     document.getElementById('formSection').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('sec_id').value;
@@ -446,7 +464,7 @@ function setupFormListeners() {
         if(error) alert("Erro: " + error.message); else { modalSection.hide(); loadModules(); }
     });
 
-    // Conteúdo (Salvar com Restrições)
+    // Conteúdo (Salvar)
     document.getElementById('formLesson').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('les_id').value;

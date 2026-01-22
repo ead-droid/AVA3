@@ -1,58 +1,219 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVA3 • Calendário Acadêmico</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <link rel="stylesheet" href="./assets/css/chrome.css">
-    <link rel="stylesheet" href="./assets/css/site.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVA3 • Calendário Acadêmico</title>
 
-    <style>
-        .event-card {
-            transition: transform 0.2s;
-            border-left: 5px solid #0d6efd;
-        }
-        .event-card:hover {
-            transform: scale(1.01);
-        }
-        .date-badge {
-            min-width: 65px;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-        }
-        .line-height-1 { line-height: 1; }
-    </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="./assets/css/chrome.css">
+  <link rel="stylesheet" href="./assets/css/site.css">
+
+  <style>
+    /* ====== CALENDÁRIO (MÊS) ====== */
+    .cal-shell{ background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:18px; overflow:hidden; box-shadow:0 6px 22px rgba(0,0,0,.04); }
+    .cal-toolbar{ padding:14px 14px; border-bottom:1px solid rgba(0,0,0,.08); background:linear-gradient(180deg, rgba(13,110,253,.07), rgba(13,110,253,0)); }
+    .cal-title{ font-weight:800; letter-spacing:-.02em; }
+    .cal-sub{ color:#6c757d; font-size:.9rem; margin-top:2px; }
+    .cal-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); gap:0; padding:10px 14px; border-bottom:1px solid rgba(0,0,0,.06); background:#fbfcfe; }
+    .cal-weekdays div{ font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:#6c757d; font-weight:700; text-align:center; }
+    .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:0; }
+    .cal-cell{
+      min-height:108px;
+      padding:10px 10px 8px;
+      border-right:1px solid rgba(0,0,0,.06);
+      border-bottom:1px solid rgba(0,0,0,.06);
+      position:relative;
+      cursor:pointer;
+      transition: background .15s ease, transform .12s ease;
+    }
+    .cal-cell:hover{ background:rgba(13,110,253,.06); }
+    .cal-cell:active{ transform:scale(.995); }
+    .cal-cell:nth-child(7n){ border-right:none; }
+    .cal-date{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      font-weight:800; color:#212529; letter-spacing:-.02em;
+    }
+    .cal-date .num{
+      width:30px; height:30px; border-radius:10px;
+      display:grid; place-items:center;
+    }
+    .cal-cell.is-today .cal-date .num{
+      background:rgba(13,110,253,.12);
+      color:#0d6efd;
+      border:1px solid rgba(13,110,253,.22);
+    }
+    .cal-cell.is-outside{
+      background:#fcfcfd;
+      color:#adb5bd;
+    }
+    .cal-cell.is-outside .cal-date{ color:#adb5bd; }
+    .cal-badges{
+      margin-top:8px;
+      display:flex; flex-wrap:wrap; gap:6px;
+    }
+    .cal-dot{
+      width:10px; height:10px; border-radius:50%;
+      display:inline-block;
+    }
+    .cal-chip{
+      font-size:.72rem;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      color:#495057;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      white-space:nowrap;
+      max-width:100%;
+    }
+    .cal-chip .txt{
+      overflow:hidden; text-overflow:ellipsis;
+      max-width:140px;
+    }
+    .cal-count{
+      position:absolute;
+      right:10px; bottom:10px;
+      font-size:.75rem;
+      padding:2px 8px;
+      border-radius:999px;
+      background:rgba(13,110,253,.10);
+      color:#0d6efd;
+      border:1px solid rgba(13,110,253,.18);
+      font-weight:800;
+    }
+    .legend{
+      display:flex; flex-wrap:wrap; gap:10px;
+      align-items:center;
+      margin-top:8px;
+      color:#6c757d;
+      font-size:.85rem;
+    }
+    .legend span{ display:inline-flex; align-items:center; gap:6px; }
+    .dot-activity{ background:#0d6efd; }
+    .dot-mural{ background:#ffc107; }
+    .dot-course{ background:#198754; }
+
+    /* ====== CARDS (AGENDA) ====== */
+    .event-card{ border-left:5px solid #0d6efd; border-radius:14px; }
+    .event-card:hover{ background:rgba(13,110,253,.03); }
+    .date-badge{ min-width:70px; background:#f8f9fa; border:1px solid #dee2e6; border-radius:12px; }
+    .line-height-1{ line-height:1; }
+
+    .chip-filter{ border:1px solid rgba(0,0,0,.1); background:rgba(13,110,253,.06); }
+    .chip-filter input{ transform:translateY(1px); }
+
+    /* Responsivo */
+    @media (max-width: 768px){
+      .cal-cell{ min-height:96px; }
+      .cal-chip .txt{ max-width:110px; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="site-header"></div>
-    <div id="site-sidebar"></div>
+  <div id="site-header"></div>
+  <div id="site-sidebar"></div>
 
-    <main class="container mt-4">
-        <div class="section-header mb-4">
-            <div class="section-title">
-                <h2><i class='bx bx-calendar-event text-primary'></i> Calendário de Eventos</h2>
-                <p class="text-muted">Acompanhe datas de provas, aulas e prazos das suas turmas.</p>
+  <main class="container mt-4">
+    <div class="section-header mb-4">
+      <div class="section-title">
+        <h2 class="mb-1"><i class='bx bx-calendar-event text-primary'></i> Calendário Acadêmico</h2>
+        <p class="text-muted mb-3">Veja atividades com data, eventos do mural e datas da turma em um calendário de mês (e agenda).</p>
+
+        <!-- filtros -->
+        <div class="d-flex flex-wrap gap-2">
+          <label class="chip-filter rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-2">
+            <input id="filter-activities" class="form-check-input m-0" type="checkbox" checked>
+            <span><i class='bx bx-task'></i> Atividades</span>
+          </label>
+          <label class="chip-filter rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-2">
+            <input id="filter-mural" class="form-check-input m-0" type="checkbox" checked>
+            <span><i class='bx bx-message-rounded-dots'></i> Mural</span>
+          </label>
+          <label class="chip-filter rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-2">
+            <input id="filter-course" class="form-check-input m-0" type="checkbox" checked>
+            <span><i class='bx bx-flag'></i> Datas da turma</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div id="calendar-loader" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Buscando seus compromissos...</p>
+    </div>
+
+    <div id="calendar-root" style="display:none;">
+      <!-- Shell -->
+      <div class="cal-shell">
+        <!-- toolbar -->
+        <div class="cal-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <div class="cal-title h5 mb-0" id="cal-month-label">—</div>
+            <div class="cal-sub" id="cal-month-sub">Clique em um dia para ver a agenda.</div>
+            <div class="legend">
+              <span><i class='bx bxs-circle cal-dot dot-activity'></i> Atividades</span>
+              <span><i class='bx bxs-circle cal-dot dot-mural'></i> Mural</span>
+              <span><i class='bx bxs-circle cal-dot dot-course'></i> Datas da turma</span>
             </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <div class="btn-group" role="group" aria-label="Navegação mês">
+              <button id="btn-prev" class="btn btn-outline-primary btn-sm"><i class='bx bx-chevron-left'></i></button>
+              <button id="btn-today" class="btn btn-outline-primary btn-sm">Hoje</button>
+              <button id="btn-next" class="btn btn-outline-primary btn-sm"><i class='bx bx-chevron-right'></i></button>
+            </div>
+
+            <div class="btn-group" role="group" aria-label="Visão">
+              <button id="btn-view-month" class="btn btn-primary btn-sm"><i class='bx bx-grid-alt'></i> Mês</button>
+              <button id="btn-view-agenda" class="btn btn-outline-primary btn-sm"><i class='bx bx-list-ul'></i> Agenda</button>
+            </div>
+          </div>
         </div>
 
-        <div id="calendar-content">
-            <div id="calendar-loader" class="text-center py-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2 text-muted">Buscando seus compromissos...</p>
-            </div>
-
-            <div id="events-container" class="d-flex flex-column gap-3"></div>
+        <!-- weekdays -->
+        <div class="cal-weekdays">
+          <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
         </div>
-    </main>
 
-    <div id="site-footer"></div>
+        <!-- month grid -->
+        <div id="calendar-grid" class="cal-grid"></div>
+      </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="./assets/js/chrome.js"></script>
-    <script type="module" src="./assets/js/calendar.js"></script>
+      <!-- Agenda (lista) -->
+      <div id="agenda-wrap" class="mt-4" style="display:none;">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0"><i class='bx bx-list-ul'></i> Próximos itens</h5>
+          <small class="text-muted">Mostra os próximos 60 dias (com seus filtros).</small>
+        </div>
+        <div id="agenda-container" class="d-flex flex-column gap-3"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Offcanvas do dia -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="dayOffcanvas" aria-labelledby="dayOffcanvasLabel">
+    <div class="offcanvas-header">
+      <div>
+        <h5 class="offcanvas-title mb-0" id="dayOffcanvasLabel">Agenda do dia</h5>
+        <div class="small text-muted" id="dayOffcanvasSub">—</div>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div id="day-items" class="d-flex flex-column gap-3"></div>
+    </div>
+  </div>
+
+  <div id="site-footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="./assets/js/chrome.js"></script>
+  <script type="module" src="./assets/js/calendar.js"></script>
 </body>
 </html>

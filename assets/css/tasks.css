@@ -159,3 +159,14 @@
     font-weight: bold;
     font-size: 0.7rem;
 }
+
+
+.task-thumb {
+    object-fit: cover;
+    height: 100px;
+    width: 100%;
+    transition: opacity 0.2s;
+}
+.task-thumb:hover {
+    opacity: 0.8;
+}

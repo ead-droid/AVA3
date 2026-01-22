@@ -2,7 +2,8 @@ import { supabase } from './supabaseClient.js';
 
 let allTasks = [];
 let allAdmins = [];
-// Lista de páginas padrão
+let pendingImageFile = null; // Armazena a imagem colada temporariamente
+
 const defaultPages = [
     "index.html", "login.html", "app.html", "profile.html", 
     "classroom.html", "grading.html", "admin.html", 
@@ -20,9 +21,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    setupPasteListener(); // Ativa o Ctrl+V
     await loadAdmins();
     await loadTasks();
 });
+
+// === IMAGENS: LÓGICA DE COLAR E PREVIEW ===
+
+function setupPasteListener() {
+    const textarea = document.getElementById('task-desc');
+    if (!textarea) return;
+
+    textarea.addEventListener('paste', (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.type.indexOf("image") === 0) {
+                const file = item.getAsFile();
+                handleImageSelect(file);
+                e.preventDefault(); // Evita colar o nome do arquivo como texto
+            }
+        }
+    });
+}
+
+function handleImageSelect(file) {
+    pendingImageFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = document.getElementById('image-preview');
+        const container = document.getElementById('image-preview-container');
+        if(img && container) {
+            img.src = e.target.result;
+            container.style.display = 'block';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+window.clearImage = () => {
+    pendingImageFile = null;
+    const img = document.getElementById('image-preview');
+    const container = document.getElementById('image-preview-container');
+    if(img && container) {
+        img.src = "";
+        container.style.display = 'none';
+    }
+};
+
+window.viewImage = (url) => {
+    const imgModal = document.getElementById('full-image-view');
+    const modalEl = document.getElementById('modalImage');
+    if(imgModal && modalEl) {
+        imgModal.src = url;
+        new bootstrap.Modal(modalEl).show();
+    }
+};
+
+// === CARREGAMENTO DE DADOS ===
 
 async function loadAdmins() {
     const { data } = await supabase.from('profiles').select('id, name').in('role', ['admin', 'gerente', 'professor']);
@@ -44,7 +99,6 @@ async function loadTasks() {
 
 function populatePageSelect() {
     const select = document.getElementById('task-page');
-    // Junta páginas padrão com as que já foram cadastradas no banco
     const existingPages = allTasks.map(t => t.page_ref);
     const uniquePages = [...new Set([...defaultPages, ...existingPages])].sort();
 
@@ -53,10 +107,12 @@ function populatePageSelect() {
     select.innerHTML += '<option value="new">+ Nova Página...</option>';
 }
 
+// === RENDERIZAÇÃO DO BOARD ===
+
 function renderBoard() {
     const statuses = ['ideas', 'todo', 'doing', 'review', 'done'];
 
-    // Limpa
+    // Limpa colunas
     statuses.forEach(s => {
         const list = document.getElementById(`list-${s}`);
         const count = document.getElementById(`count-${s}`);
@@ -64,15 +120,14 @@ function renderBoard() {
         if(count) count.textContent = '0';
     });
 
-    // Popula
+    // Popula colunas
     allTasks.forEach(task => {
-        // Fallback se o status for inválido
         const status = statuses.includes(task.status) ? task.status : 'todo';
         const col = document.getElementById(`list-${status}`);
         if(col) col.appendChild(createCardHTML(task));
     });
 
-    // Conta
+    // Atualiza contadores
     statuses.forEach(s => {
         const el = document.getElementById(`count-${s}`);
         if(el) el.textContent = allTasks.filter(t => t.status === s).length;
@@ -95,11 +150,22 @@ function createCardHTML(task) {
     });
     el.addEventListener('dragend', () => el.classList.remove('dragging'));
 
+    // HTML da Imagem (Thumbnail)
+    let imgHtml = '';
+    if (task.image_url) {
+        imgHtml = `
+            <div class="mb-2 position-relative group">
+                <img src="${task.image_url}" class="img-fluid rounded border cursor-pointer task-thumb" onclick="window.viewImage('${task.image_url}')" style="object-fit:cover; height:100px; width:100%;">
+                <div class="small text-muted text-center mt-1" style="font-size:0.7rem"><i class='bx bx-image'></i> Anexo</div>
+            </div>`;
+    }
+
     el.innerHTML = `
         <div class="d-flex justify-content-between align-items-start mb-2">
             <span class="card-tag">${task.page_ref}</span>
             <button class="btn btn-sm btn-link p-0 text-muted" onclick="window.openTaskModal(${task.id})"><i class='bx bx-edit-alt'></i></button>
         </div>
+        ${imgHtml}
         <div class="card-desc">${task.description}</div>
         <div class="card-footer">
             <div class="d-flex align-items-center gap-2">
@@ -112,31 +178,26 @@ function createCardHTML(task) {
     return el;
 }
 
-// === INTERAÇÃO ===
+// === INTERAÇÃO DO MODAL E SALVAMENTO ===
 
 window.toggleNewPageInput = () => {
     const input = document.getElementById('new-page-input');
     const select = document.getElementById('task-page');
     if (input.style.display === 'none') {
-        input.style.display = 'block';
-        input.focus();
-        select.value = "";
+        input.style.display = 'block'; input.focus(); select.value = "";
     } else {
-        input.style.display = 'none';
-        input.value = '';
+        input.style.display = 'none'; input.value = '';
     }
 };
 
 window.checkNewPage = (select) => {
-    if(select.value === 'new') {
-        window.toggleNewPageInput();
-        select.value = "";
-    }
+    if(select.value === 'new') { window.toggleNewPageInput(); select.value = ""; }
 };
 
 window.openTaskModal = (id = null) => {
     const form = document.getElementById('form-task');
     form.reset();
+    window.clearImage(); 
     document.getElementById('new-page-input').style.display = 'none';
     
     if (id) {
@@ -149,14 +210,21 @@ window.openTaskModal = (id = null) => {
         document.getElementById('task-assignee').value = task.assigned_to || "";
         document.getElementById('task-date').value = task.request_date || "";
         
-        // Define página
         const pageSelect = document.getElementById('task-page');
         const exists = [...pageSelect.options].some(o => o.value === task.page_ref);
         if(exists) pageSelect.value = task.page_ref;
-        else {
-            window.toggleNewPageInput();
-            document.getElementById('new-page-input').value = task.page_ref;
+        else { window.toggleNewPageInput(); document.getElementById('new-page-input').value = task.page_ref; }
+
+        // Se tem imagem, mostra no preview
+        if (task.image_url) {
+            const img = document.getElementById('image-preview');
+            const container = document.getElementById('image-preview-container');
+            if(img && container) {
+                img.src = task.image_url;
+                container.style.display = 'block';
+            }
         }
+
     } else {
         document.getElementById('modalTitle').textContent = "Nova Tarefa";
         document.getElementById('task-id').value = "";
@@ -174,15 +242,45 @@ window.saveTask = async () => {
     
     let page = document.getElementById('task-page').value;
     const newPageVal = document.getElementById('new-page-input').value;
-    if (document.getElementById('new-page-input').style.display !== 'none' && newPageVal) {
-        page = newPageVal;
-    }
+    if (document.getElementById('new-page-input').style.display !== 'none' && newPageVal) { page = newPageVal; }
 
     if (!page || !desc) { alert("Preencha página e descrição."); return; }
 
+    // --- UPLOAD DA IMAGEM ---
+    let imageUrl = null;
+
+    // Se é edição, tenta manter a imagem antiga a menos que o usuário tenha removido
+    if (id) {
+        const existing = allTasks.find(t => t.id == id);
+        const container = document.getElementById('image-preview-container');
+        // Se tinha imagem E o container de preview ainda está visível, mantém
+        if (existing && existing.image_url && container.style.display !== 'none') {
+            imageUrl = existing.image_url;
+        }
+    }
+
+    if (pendingImageFile) {
+        console.log("Iniciando upload para bucket: task-images");
+        const fileName = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`;
+        
+        const { data, error: uploadError } = await supabase.storage
+            .from('task-images')
+            .upload(fileName, pendingImageFile, { cacheControl: '3600', upsert: false });
+        
+        if (uploadError) {
+            console.error("Erro upload:", uploadError);
+            alert("Erro ao subir imagem (verifique permissões): " + uploadError.message);
+            return;
+        }
+        
+        const { data: urlData } = supabase.storage.from('task-images').getPublicUrl(fileName);
+        imageUrl = urlData.publicUrl;
+    }
+
+    // --- SALVAR NO BANCO ---
     const taskObj = {
         page_ref: page, description: desc, assigned_to: assignee,
-        priority: priority, request_date: date
+        priority: priority, request_date: date, image_url: imageUrl
     };
 
     let error;
@@ -190,32 +288,63 @@ window.saveTask = async () => {
         const { error: err } = await supabase.from('system_tasks').update(taskObj).eq('id', id);
         error = err;
     } else {
-        taskObj.status = 'todo'; // Padrão para novo
+        taskObj.status = 'todo';
         const { error: err } = await supabase.from('system_tasks').insert([taskObj]);
         error = err;
     }
 
-    if (error) { alert('Erro: ' + error.message); } 
+    if (error) { alert('Erro ao salvar tarefa: ' + error.message); } 
     else {
         bootstrap.Modal.getInstance(document.getElementById('modalTask')).hide();
         loadTasks();
     }
 };
 
+// === EXCLUIR E MOVER ===
+
+async function removeImageFromStorage(url) {
+    if (!url) return;
+    try {
+        const path = url.split('/task-images/')[1];
+        if (path) {
+            console.log("Removendo imagem:", path);
+            await supabase.storage.from('task-images').remove([path]);
+        }
+    } catch (e) { console.error("Erro ao deletar arquivo", e); }
+}
+
 window.deleteTask = async (id) => {
-    if(!confirm("Excluir?")) return;
+    if(!confirm("Excluir esta tarefa?")) return;
+    
+    // Deleta imagem antes
+    const task = allTasks.find(t => t.id == id);
+    if(task && task.image_url) await removeImageFromStorage(task.image_url);
+
     const { error } = await supabase.from('system_tasks').delete().eq('id', id);
     if(error) alert("Erro ao excluir"); else loadTasks();
 };
 
 window.allowDrop = (ev) => ev.preventDefault();
+
 window.drop = async (ev, newStatus) => {
     ev.preventDefault();
     const taskId = ev.dataTransfer.getData("text/plain");
-    const t = allTasks.find(x => x.id == taskId);
-    if(t) { 
-        t.status = newStatus; 
+    const task = allTasks.find(x => x.id == taskId);
+    
+    if(task) { 
+        // SE FOR PARA CONCLUÍDO (DONE): Apaga a imagem do storage e limpa o link no banco
+        if (newStatus === 'done' && task.image_url) {
+            await removeImageFromStorage(task.image_url);
+            
+            // Atualiza localmente e no banco para remover a referência
+            task.image_url = null;
+            await supabase.from('system_tasks').update({ status: newStatus, image_url: null }).eq('id', taskId);
+        } else {
+            // Apenas move
+            await supabase.from('system_tasks').update({ status: newStatus }).eq('id', taskId);
+        }
+
+        task.status = newStatus; 
         renderBoard();
-        await supabase.from('system_tasks').update({ status: newStatus }).eq('id', taskId);
     }
 };
