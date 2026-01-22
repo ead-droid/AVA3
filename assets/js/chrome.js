@@ -1,11 +1,10 @@
-// assets/js/chrome.js
 import { supabase } from './supabaseClient.js';
 
-// Caminho robusto: chrome.js está em /assets/js/ -> ../chrome.html = /assets/chrome.html
+// Caminho para o HTML do layout
 const LAYOUT_URL = new URL('../chrome.html', import.meta.url).toString();
 
-// Cache de slots (PRECISA bater com o boot.js)
-const VER = 'v1';
+// === VERSÃO v5: Limpa cache para mostrar a nova logo ===
+const VER = 'v5'; 
 const CACHE_KEYS = {
   header: `ava3.chrome.${VER}.header`,
   sidebar: `ava3.chrome.${VER}.sidebar`,
@@ -22,18 +21,14 @@ async function initChrome() {
   ensureSlot('site-sidebar');
   ensureSlot('site-footer');
 
-  // garante classe no body conforme estado salvo
+  // Aplica estado inicial do menu (Verifica se é classroom aqui dentro)
   applySavedSidebarState();
 
-  // Liga cache antes de navegação (para não perder cache)
   wireCacheBeforeNavigation();
-  // Fallback forte: garante cache mesmo se navegação não for por <a>
   window.addEventListener('beforeunload', cacheCurrentChromeDOM, { capture: true });
 
-  // UI básica (pode já existir via boot.js)
   document.body.classList.add('has-sidebar');
 
-  // Reaplica handlers (se o boot.js já hidratou HTML, agora ativamos botões)
   setupSidebarToggle();
   highlightActiveLink();
   applyCachedRole();
@@ -41,10 +36,9 @@ async function initChrome() {
   wireAuthStateChange();
   wireLogoutButton();
 
-  // Atualiza o layout “de verdade” (rede) em background
   try {
     const res = await fetch(LAYOUT_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`Não foi possível carregar: ${LAYOUT_URL} (${res.status})`);
+    if (!res.ok) throw new Error(`Erro layout: ${res.status}`);
 
     const text = await res.text();
     const parser = new DOMParser();
@@ -55,22 +49,18 @@ async function initChrome() {
     inject('site-footer', doc, 'footer');
 
     document.body.classList.add('has-sidebar');
-    applySavedSidebarState();
+    applySavedSidebarState(); // Reaplica após injeção para garantir
 
     setupSidebarToggle();
     highlightActiveLink();
-
-    // MUITO IMPORTANTE: salvar cache para a próxima página abrir instantâneo
+    
     cacheCurrentChromeDOM();
 
-    // Revalida auth/role depois de reinjetar (garante ids existirem)
     await checkAuth();
     wireLogoutButton();
 
   } catch (err) {
-    console.error('Erro ao inicializar interface (Chrome):', err);
-
-    // Se a rede falhar, pelo menos tenta garantir que existe cache (se tiver)
+    console.error('Chrome UI Error:', err);
     injectFromCacheFallback();
     setupSidebarToggle();
     highlightActiveLink();
@@ -78,9 +68,7 @@ async function initChrome() {
   }
 }
 
-// ----------------------
-// Cache / Hydration
-// ----------------------
+// --- Cache System ---
 function cacheCurrentChromeDOM() {
   const headerEl = document.getElementById('site-header');
   const sidebarEl = document.getElementById('site-sidebar');
@@ -100,66 +88,59 @@ function injectFromCacheFallback() {
   const sidebarHTML = sessionStorage.getItem(CACHE_KEYS.sidebar) || '';
   const footerHTML = sessionStorage.getItem(CACHE_KEYS.footer) || '';
 
-  if (headerEl && headerHTML && headerEl.innerHTML.trim() === '') headerEl.innerHTML = headerHTML;
-  if (sidebarEl && sidebarHTML && sidebarEl.innerHTML.trim() === '') sidebarEl.innerHTML = sidebarHTML;
-  if (footerEl && footerHTML && footerEl.innerHTML.trim() === '') footerEl.innerHTML = footerHTML;
+  if (headerEl && !headerEl.innerHTML.trim()) headerEl.innerHTML = headerHTML;
+  if (sidebarEl && !sidebarEl.innerHTML.trim()) sidebarEl.innerHTML = sidebarHTML;
+  if (footerEl && !footerEl.innerHTML.trim()) footerEl.innerHTML = footerHTML;
 }
 
 function wireCacheBeforeNavigation() {
   if (wiredNavCache) return;
   wiredNavCache = true;
-
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a');
     if (!a) return;
-
     const href = a.getAttribute('href') || '';
-    if (!href) return;
-
-    // ignora âncoras e links externos
-    if (
-      href.startsWith('#') ||
-      href.startsWith('javascript:') ||
-      href.startsWith('mailto:') ||
-      href.startsWith('tel:') ||
-      /^(https?:)?\/\//i.test(href)
-    ) return;
-
-    // ignora nova aba
-    const target = (a.getAttribute('target') || '').toLowerCase();
-    if (target === '_blank') return;
-
-    // salva cache antes de navegar
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || /^(https?:)?\/\//i.test(href)) return;
+    if (a.getAttribute('target') === '_blank') return;
     cacheCurrentChromeDOM();
   }, { capture: true });
 }
 
-// ----------------------
-// Sidebar state
-// ----------------------
+// --- LÓGICA DO MENU COLAPSADO ---
 function applySavedSidebarState() {
-  const collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
+  // Verifica se estamos na página de sala de aula
+  const isClassroom = window.location.href.includes('classroom.html');
+  
+  let collapsed;
+  
+  if (isClassroom) {
+    // Se for sala de aula, SEMPRE começa fechado (true)
+    collapsed = true;
+  } else {
+    // Nas outras páginas, lembra a escolha do usuário
+    collapsed = localStorage.getItem(SIDEBAR_STATE_KEY) === '1';
+  }
+
+  // Aplica as classes
   document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
   document.body.classList.toggle('sidebar-collapsed', collapsed);
 }
 
 function saveSidebarState() {
-  const collapsed =
-    document.body.classList.contains('sidebar-collapsed') ||
-    document.documentElement.classList.contains('sidebar-collapsed');
-
-  localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? '1' : '0');
+  const collapsed = document.body.classList.contains('sidebar-collapsed');
+  
+  // Só salva a preferência no localStorage se NÃO estivermos no classroom
+  // Assim, se o usuário fechar o menu no classroom, não afeta a home
+  if (!window.location.href.includes('classroom.html')) {
+      localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? '1' : '0');
+  }
 }
 
-// ----------------------
-// UI functions (suas)
-// ----------------------
+// --- UI Actions ---
 function highlightActiveLink() {
   const path = window.location.pathname;
   const page = path.split("/").pop();
-
-  const links = document.querySelectorAll('.side-item, .navlink');
-  links.forEach(link => {
+  document.querySelectorAll('.side-item, .navlink').forEach(link => {
     const href = link.getAttribute('href');
     if (href && page && href.includes(page)) {
       link.style.color = 'var(--brand)';
@@ -172,17 +153,12 @@ function highlightActiveLink() {
 function setupSidebarToggle() {
   const btn = document.getElementById('sidebar-toggle');
   if (!btn) return;
-
   btn.onclick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+    e.preventDefault(); e.stopPropagation();
     if (window.innerWidth <= 900) {
       document.body.classList.toggle('sidebar-open');
-
-      let overlay = document.getElementById('sidebar-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
+      if (!document.getElementById('sidebar-overlay')) {
+        const overlay = document.createElement('div');
         overlay.id = 'sidebar-overlay';
         overlay.className = 'sidebar-overlay';
         overlay.onclick = () => document.body.classList.remove('sidebar-open');
@@ -196,9 +172,7 @@ function setupSidebarToggle() {
   };
 }
 
-// ----------------------
-// Auth / Role (seus)
-// ----------------------
+// --- Auth ---
 async function checkAuth() {
   const { data: { session } } = await supabase.auth.getSession();
   updateUI(session);
@@ -214,16 +188,12 @@ function updateUI(session) {
     if (authActions) authActions.style.display = 'none';
     if (userPill) userPill.style.display = 'flex';
     if (logoutBtn) logoutBtn.style.display = 'flex';
-
-    const name = session.user.user_metadata?.full_name || session.user.email;
-    if (userNameEl) userNameEl.textContent = name;
-
+    if (userNameEl) userNameEl.textContent = session.user.user_metadata?.full_name || session.user.email;
     checkRole(session.user.id);
   } else {
     if (authActions) authActions.style.display = 'block';
     if (userPill) userPill.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
-
     const adminGroup = document.getElementById('sidebar-admin-group');
     if (adminGroup) adminGroup.style.display = 'none';
   }
@@ -233,11 +203,7 @@ async function checkRole(uid) {
   const cachedRole = localStorage.getItem('ava3_role');
   if (cachedRole) applyRoleUI(cachedRole);
 
-  const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
-  if (error) {
-    console.warn('Erro ao buscar role:', error.message);
-    return;
-  }
+  const { data } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
   if (data) {
     const role = data.role || 'aluno';
     localStorage.setItem('ava3_role', role);
@@ -248,13 +214,15 @@ async function checkRole(uid) {
 function applyRoleUI(role) {
   const adminGroup = document.getElementById('sidebar-admin-group');
   const linkAdmin = document.getElementById('link-admin');
-
-  if (['admin', 'gerente', 'professor'].includes(role)) {
-    if (adminGroup) adminGroup.style.display = 'block';
-    if (linkAdmin) linkAdmin.style.display = 'inline-block';
-  } else {
-    if (adminGroup) adminGroup.style.display = 'none';
-    if (linkAdmin) linkAdmin.style.display = 'none';
+  
+  if (adminGroup) {
+    if (['admin', 'gerente', 'professor'].includes(role)) {
+      adminGroup.style.display = 'block';
+      if (linkAdmin) linkAdmin.style.display = 'inline-block';
+    } else {
+      adminGroup.style.display = 'none';
+      if (linkAdmin) linkAdmin.style.display = 'none';
+    }
   }
 }
 
@@ -266,12 +234,11 @@ function applyCachedRole() {
 function wireAuthStateChange() {
   if (wiredAuth) return;
   wiredAuth = true;
-
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') {
       localStorage.removeItem('ava3_role');
       window.location.href = 'login.html';
-    } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+    } else if (event === 'SIGNED_IN') {
       checkAuth();
     }
   });
@@ -280,17 +247,12 @@ function wireAuthStateChange() {
 function wireLogoutButton() {
   const btnLogout = document.getElementById('side-logout');
   if (!btnLogout) return;
-
   btnLogout.onclick = async () => {
-    if (confirm("Deseja sair?")) {
-      await supabase.auth.signOut();
-    }
+    if (confirm("Deseja sair?")) await supabase.auth.signOut();
   };
 }
 
-// ----------------------
-// Slots/inject (seus)
-// ----------------------
+// --- Injection Helpers ---
 function ensureSlot(id) {
   if (!document.getElementById(id)) {
     const div = document.createElement('div');
@@ -306,5 +268,4 @@ function inject(id, doc, slotName) {
   if (container && source) container.innerHTML = source.innerHTML;
 }
 
-// Inicia
 initChrome();

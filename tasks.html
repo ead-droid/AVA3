@@ -27,25 +27,6 @@
         </div>
 
         <div class="kanban-board">
-            <div class="kanban-column" id="col-todo" ondrop="window.drop(event, 'todo')" ondragover="window.allowDrop(event)">
-                <div class="column-header header-todo"><span>A Fazer</span> <span class="count-badge" id="count-todo">0</span></div>
-                <div class="column-body" id="list-todo"></div>
-            </div>
-
-            <div class="kanban-column" id="col-doing" ondrop="window.drop(event, 'doing')" ondragover="window.allowDrop(event)">
-                <div class="column-header header-doing"><span>Em Andamento</span> <span class="count-badge" id="count-doing">0</span></div>
-                <div class="column-body" id="list-doing"></div>
-            </div>
-
-            <div class="kanban-column" id="col-review" ondrop="window.drop(event, 'review')" ondragover="window.allowDrop(event)">
-                <div class="column-header header-review"><span>Revisão</span> <span class="count-badge" id="count-review">0</span></div>
-                <div class="column-body" id="list-review"></div>
-            </div>
-
-            <div class="kanban-column" id="col-done" ondrop="window.drop(event, 'done')" ondragover="window.allowDrop(event)">
-                <div class="column-header header-done"><span>Concluído</span> <span class="count-badge" id="count-done">0</span></div>
-                <div class="column-body" id="list-done"></div>
-                <div class="kanban-board">
             
             <div class="kanban-column" id="col-ideas" ondrop="window.drop(event, 'ideas')" ondragover="window.allowDrop(event)">
                 <div class="column-header header-ideas">
@@ -56,12 +37,37 @@
             </div>
 
             <div class="kanban-column" id="col-todo" ondrop="window.drop(event, 'todo')" ondragover="window.allowDrop(event)">
-                <div class="column-header header-todo"><span>A Fazer</span> <span class="count-badge" id="count-todo">0</span></div>
+                <div class="column-header header-todo">
+                    <span>A Fazer</span> 
+                    <span class="count-badge" id="count-todo">0</span>
+                </div>
                 <div class="column-body" id="list-todo"></div>
             </div>
-            
+
+            <div class="kanban-column" id="col-doing" ondrop="window.drop(event, 'doing')" ondragover="window.allowDrop(event)">
+                <div class="column-header header-doing">
+                    <span>Em Andamento</span> 
+                    <span class="count-badge" id="count-doing">0</span>
+                </div>
+                <div class="column-body" id="list-doing"></div>
             </div>
+
+            <div class="kanban-column" id="col-review" ondrop="window.drop(event, 'review')" ondragover="window.allowDrop(event)">
+                <div class="column-header header-review">
+                    <span>Revisão</span> 
+                    <span class="count-badge" id="count-review">0</span>
+                </div>
+                <div class="column-body" id="list-review"></div>
             </div>
+
+            <div class="kanban-column" id="col-done" ondrop="window.drop(event, 'done')" ondragover="window.allowDrop(event)">
+                <div class="column-header header-done">
+                    <span>Concluído</span> 
+                    <span class="count-badge" id="count-done">0</span>
+                </div>
+                <div class="column-body" id="list-done"></div>
+            </div>
+
         </div>
     </div>
 
@@ -74,7 +80,9 @@
                 </div>
                 <div class="modal-body">
                     <form id="form-task">
-                        <input type="hidden" id="task-id"> <div class="mb-3">
+                        <input type="hidden" id="task-id">
+                        
+                        <div class="mb-3">
                             <label class="form-label">Página / Local</label>
                             <div class="input-group">
                                 <select id="task-page" class="form-select" required onchange="window.checkNewPage(this)">
@@ -110,7 +118,7 @@
                             <label class="form-label">Responsável (Admin)</label>
                             <select id="task-assignee" class="form-select">
                                 <option value="">Ninguém</option>
-                                </select>
+                            </select>
                         </div>
                     </form>
                 </div>

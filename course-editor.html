@@ -49,7 +49,6 @@
             </ul>
 
             <div class="tab-content">
-                
                 <div class="tab-pane fade show active" id="tab-modules">
                     <div class="d-flex justify-content-end mb-3">
                         <button class="btn btn-primary px-4 shadow-sm fw-bold" onclick="openModuleModal()">
@@ -81,8 +80,7 @@
                                         <th class="text-end pe-4">Ação</th>
                                     </tr>
                                 </thead>
-                                <tbody id="linked-classes-list">
-                                    </tbody>
+                                <tbody id="linked-classes-list"></tbody>
                             </table>
                         </div>
                         <div id="classes-empty" class="text-center py-5 text-muted" style="display:none">
@@ -129,14 +127,207 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modalModule" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><div class="modal-header bg-white border-bottom"><h5 class="modal-title fw-bold">Módulo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="formModule"><input type="hidden" id="mod_id"><div class="mb-3"><label class="fw-bold">Título</label><input type="text" id="mod_title" class="form-control" required></div><div class="row g-3"><div class="col-6"><label class="fw-bold small">Ordem</label><input type="number" id="mod_order" class="form-control" value="1"></div><div class="col-6"><label class="fw-bold small">Carga (h)</label><input type="number" id="mod_hours" class="form-control" step="0.5"></div></div><div class="text-end mt-4"><button type="submit" class="btn btn-primary px-4">Salvar</button></div></form></div></div></div></div>
-    <div class="modal fade" id="modalSection" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content border-0 shadow"><div class="modal-header bg-light border-bottom"><h5 class="modal-title fw-bold small text-dark">Nova Seção</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-3"><form id="formSection"><input type="hidden" id="sec_id"><input type="hidden" id="sec_module_id"><div class="mb-3"><label class="fw-bold small">Título</label><input type="text" id="sec_title" class="form-control" required></div><div class="mb-3"><label class="fw-bold small">Ordem</label><input type="number" id="sec_order" class="form-control" value="1"></div><div class="text-end"><button type="submit" class="btn btn-dark btn-sm w-100">Salvar Seção</button></div></form></div></div></div></div>
-    <div class="modal fade" id="modalLesson" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow"><div class="modal-header bg-white border-bottom"><h5 class="modal-title fw-bold text-primary">Adicionar Conteúdo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="formLesson"><input type="hidden" id="les_id"><input type="hidden" id="les_module_id"><input type="hidden" id="les_section_id"><div class="row g-3"><div class="col-md-3"><label class="fw-bold small">Ordem</label><input type="number" id="les_order" class="form-control" required></div><div class="col-md-9"><label class="fw-bold small">Tipo</label><select id="les_type" class="form-select"><option value="VIDEO_AULA">🎥 Vídeo Aula</option><option value="TEXTO">📑 Texto / Artigo</option><option value="TAREFA">📝 Tarefa</option><option value="QUIZ">🏆 Quiz</option><option value="PDF">📄 PDF / Documento</option><option value="MATERIAL">🔗 Link Externo</option><option value="AVISO">📢 Aviso</option></select></div><div class="col-12"><label class="fw-bold small">Título</label><input type="text" id="les_title" class="form-control" required></div><div class="col-12"><label class="fw-bold small">URL (Drive/Youtube)</label><input type="url" id="les_url" class="form-control" placeholder="https://..."><div class="form-text small text-muted">Para Tarefas, Quiz ou Texto, deixe em branco.</div></div><div class="col-12 bg-light p-3 rounded border"><div class="row g-2"><div class="col-md-6"><label class="small fw-bold">Início:</label><input type="datetime-local" id="les_start" class="form-control form-control-sm"></div><div class="col-md-6"><label class="small fw-bold">Fim:</label><input type="datetime-local" id="les_end" class="form-control form-control-sm"></div><div class="col-12 d-flex gap-4 mt-3 align-items-center"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_published" checked><label class="form-check-label small fw-bold">Publicado</label></div><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_required" checked><label class="form-check-label small">Obrigatório</label></div><div class="d-flex align-items-center gap-2 ms-auto"><label class="small fw-bold text-primary mb-0">Pontos:</label><input type="number" id="les_points" class="form-control form-control-sm" style="width: 80px;" value="0"></div></div></div></div><div class="col-12"><label class="fw-bold small">Descrição</label><textarea id="les_desc" class="form-control" rows="2"></textarea></div></div><div class="text-end mt-4 pt-2 border-top"><button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button></div></form></div></div></div></div>
+    <div class="modal fade" id="modalModule" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title fw-bold">Gerenciar Módulo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formModule">
+                        <input type="hidden" id="mod_id">
+                        
+                        <ul class="nav nav-tabs mb-3" id="modTabs" role="tablist">
+                            <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#mod-general" type="button">Geral</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold text-warning" data-bs-toggle="tab" data-bs-target="#mod-conditions" type="button"><i class='bx bx-lock-alt'></i> Restrições</button></li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="mod-general">
+                                <div class="mb-3">
+                                    <label class="fw-bold">Título</label>
+                                    <input type="text" id="mod_title" class="form-control" required>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label class="fw-bold small">Ordem</label>
+                                        <input type="number" id="mod_order" class="form-control" value="1">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="fw-bold small">Carga (h)</label>
+                                        <input type="number" id="mod_hours" class="form-control" step="0.5">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="mod-conditions">
+                                <div class="alert alert-warning small py-2 mb-3">
+                                    Define quando este módulo inteiro ficará visível.
+                                </div>
+                                <div class="mb-3">
+                                    <label class="fw-bold small mb-1"><i class='bx bx-calendar'></i> Liberar a partir de:</label>
+                                    <input type="datetime-local" id="mod_unlock_at" class="form-control">
+                                </div>
+                                <div>
+                                    <label class="fw-bold small mb-2"><i class='bx bx-list-check'></i> Requer Módulos Anteriores:</label>
+                                    <div id="mod-prerequisites-list" class="border rounded p-2 bg-light overflow-auto" style="max-height: 150px;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-4 pt-2 border-top">
+                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalSection" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm"> <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title fw-bold small text-dark">Gerenciar Seção</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <form id="formSection">
+                        <input type="hidden" id="sec_id">
+                        <input type="hidden" id="sec_module_id">
+
+                        <ul class="nav nav-tabs mb-3" id="secTabs" role="tablist">
+                            <li class="nav-item"><button class="nav-link active fw-bold small" data-bs-toggle="tab" data-bs-target="#sec-general" type="button">Geral</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold text-warning small" data-bs-toggle="tab" data-bs-target="#sec-conditions" type="button"><i class='bx bx-lock-alt'></i></button></li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="sec-general">
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Título</label>
+                                    <input type="text" id="sec_title" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="fw-bold small">Ordem</label>
+                                    <input type="number" id="sec_order" class="form-control" value="1">
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="sec-conditions">
+                                <div class="mb-3">
+                                    <label class="fw-bold small mb-1">Data:</label>
+                                    <input type="datetime-local" id="sec_unlock_at" class="form-control form-control-sm">
+                                </div>
+                                <div>
+                                    <label class="fw-bold small mb-1">Pré-requisitos (Seções):</label>
+                                    <div id="sec-prerequisites-list" class="border rounded p-2 bg-light overflow-auto" style="max-height: 150px;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-3 border-top pt-2">
+                            <button type="submit" class="btn btn-dark btn-sm w-100">Salvar Seção</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalLesson" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title fw-bold text-primary">Gerenciar Conteúdo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formLesson">
+                        <input type="hidden" id="les_id">
+                        <input type="hidden" id="les_module_id">
+                        <input type="hidden" id="les_section_id">
+
+                        <ul class="nav nav-tabs mb-4" id="lessonTabs" role="tablist">
+                            <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#tab-general" type="button">Geral</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold text-warning" data-bs-toggle="tab" data-bs-target="#tab-conditions" type="button"><i class='bx bx-lock-alt'></i> Condições de Acesso</button></li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="tab-general">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="fw-bold small">Ordem</label>
+                                        <input type="number" id="les_order" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <label class="fw-bold small">Tipo</label>
+                                        <select id="les_type" class="form-select">
+                                            <option value="VIDEO_AULA">🎥 Vídeo Aula</option>
+                                            <option value="TEXTO">📑 Texto / Artigo</option>
+                                            <option value="TAREFA">📝 Tarefa</option>
+                                            <option value="QUIZ">🏆 Quiz</option>
+                                            <option value="PDF">📄 PDF / Documento</option>
+                                            <option value="MATERIAL">🔗 Link Externo</option>
+                                            <option value="AVISO">📢 Aviso</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="fw-bold small">Título</label>
+                                        <input type="text" id="les_title" class="form-control" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="fw-bold small">URL (Drive/Youtube)</label>
+                                        <input type="url" id="les_url" class="form-control" placeholder="https://...">
+                                        <div class="form-text small text-muted">Para Tarefas, Quiz ou Texto, deixe em branco.</div>
+                                    </div>
+                                    <div class="col-12 bg-light p-3 rounded border">
+                                        <div class="row g-2">
+                                            <div class="col-md-6"><label class="small fw-bold">Início:</label><input type="datetime-local" id="les_start" class="form-control form-control-sm"></div>
+                                            <div class="col-md-6"><label class="small fw-bold">Fim:</label><input type="datetime-local" id="les_end" class="form-control form-control-sm"></div>
+                                            <div class="col-12 d-flex gap-4 mt-3 align-items-center">
+                                                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_published" checked><label class="form-check-label small fw-bold">Publicado</label></div>
+                                                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="les_required" checked><label class="form-check-label small">Obrigatório</label></div>
+                                                <div class="d-flex align-items-center gap-2 ms-auto"><label class="small fw-bold text-primary mb-0">Pontos:</label><input type="number" id="les_points" class="form-control form-control-sm" style="width: 80px;" value="0"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12"><label class="fw-bold small">Descrição</label><textarea id="les_desc" class="form-control" rows="2"></textarea></div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="tab-conditions">
+                                <div class="alert alert-warning small py-2 mb-3"><i class='bx bx-info-circle'></i> Regras para desbloquear este conteúdo.</div>
+                                <div class="mb-4 pb-3 border-bottom">
+                                    <label class="fw-bold small mb-1"><i class='bx bx-calendar'></i> Liberar acesso a partir de:</label>
+                                    <input type="datetime-local" id="les_unlock_at" class="form-control">
+                                    <div class="form-text small">Deixe em branco para liberar imediatamente.</div>
+                                </div>
+                                <div>
+                                    <label class="fw-bold small mb-2"><i class='bx bx-list-check'></i> O aluno deve ter concluído:</label>
+                                    <div class="d-flex gap-3 mb-2">
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="prereq_logic" id="logic_and" value="AND" checked><label class="form-check-label small" for="logic_and">Todas (E)</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="prereq_logic" id="logic_or" value="OR"><label class="form-check-label small" for="logic_or">Pelo menos uma (OU)</label></div>
+                                    </div>
+                                    <div id="prerequisites-list" class="border rounded p-2 bg-light overflow-auto" style="max-height: 200px;"></div>
+                                    <div class="form-text small mt-1">Marque as atividades necessárias.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-4 pt-2 border-top">
+                            <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <template id="tpl-module">
         <div class="module-card">
             <div class="module-header" data-bs-toggle="collapse">
-                <div class="d-flex align-items-center gap-2"><span class="badge bg-primary mod-badge">#</span><h5 class="mb-0 fw-bold text-dark mod-title"></h5></div>
+                <div class="d-flex align-items-center gap-2"><span class="badge bg-primary mod-badge">#</span><h5 class="mb-0 fw-bold text-dark mod-title"></h5>
+                    <small class="badge bg-warning text-dark ms-2 mod-lock-badge" style="display:none; font-size:0.7em"><i class='bx bx-lock-alt'></i></small>
+                </div>
                 <div class="mod-actions" onclick="event.stopPropagation()">
                     <button class="btn btn-sm btn-outline-secondary me-1 btn-edit">Editar</button><button class="btn btn-sm btn-outline-danger me-2 btn-del"><i class='bx bx-trash'></i></button><button class="btn btn-sm btn-dark btn-add-sec"><i class='bx bx-plus'></i> Nova Seção</button>
                 </div>
@@ -148,7 +339,9 @@
     <template id="tpl-section">
         <div class="section-box">
             <div class="section-header">
-                <div class="d-flex align-items-center gap-2"><i class='bx bx-chevron-down'></i><span class="badge bg-light text-dark border sec-badge">#</span><span class="sec-title fw-bold"></span></div>
+                <div class="d-flex align-items-center gap-2"><i class='bx bx-chevron-down'></i><span class="badge bg-light text-dark border sec-badge">#</span><span class="sec-title fw-bold"></span>
+                    <small class="badge bg-info text-dark ms-1 sec-lock-badge" style="display:none; font-size:0.6em"><i class='bx bx-lock-alt'></i></small>
+                </div>
                 <div><button class="btn btn-sm btn-light border px-3 btn-add-content fw-bold text-primary">+ Conteúdo</button><button class="btn btn-sm text-secondary btn-edit"><i class='bx bx-pencil'></i></button><button class="btn btn-sm text-danger btn-del"><i class='bx bx-trash'></i></button></div>
             </div>
             <div class="bg-white content-container"></div>
@@ -160,7 +353,15 @@
             <div class="d-flex align-items-center cursor-pointer lesson-click-area flex-grow-1">
                 <div class="me-3 fw-bold text-muted small lesson-order badge bg-light text-dark border">1</div>
                 <div class="icon-circle"><i class='bx'></i></div>
-                <div><h6 class="mb-0 fw-bold text-dark lesson-title"></h6><small class="text-muted lesson-type"></small><span class="points-badge lesson-points ms-2" style="display:none"></span></div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark lesson-title"></h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <small class="text-muted lesson-type"></small>
+                        <small class="badge bg-warning text-dark condition-date-badge" style="display:none; font-size:0.7em"><i class='bx bx-time'></i></small>
+                        <small class="badge bg-info text-dark condition-lock-badge" style="display:none; font-size:0.7em"><i class='bx bx-lock-alt'></i></small>
+                    </div>
+                    <span class="points-badge lesson-points ms-2" style="display:none"></span>
+                </div>
             </div>
             <div class="d-flex align-items-center actions-area">
                 <button class="btn btn-sm btn-light border me-1 btn-preview" title="Visualizar"><i class='bx bx-show'></i></button>
@@ -170,9 +371,9 @@
         </div>
     </template>
     
-    <template id="tpl-btn-quiz"><a href="#" target="_blank" class="btn btn-sm btn-warning text-dark border shadow-sm me-1 fw-bold" title="Configurar Quiz"><i class='bx bx-trophy'></i> Quiz</a></template>
-    <template id="tpl-btn-task"><a href="#" target="_blank" class="btn btn-sm btn-success text-white border shadow-sm me-1 fw-bold" title="Configurar Tarefa"><i class='bx bx-task'></i> Tarefa</a></template>
-    <template id="tpl-btn-text"><a href="#" target="_blank" class="btn btn-sm btn-info text-white border shadow-sm me-1 fw-bold" title="Editar Artigo"><i class='bx bx-edit-alt'></i> Texto</a></template>
+    <template id="tpl-btn-quiz"><a href="#" class="btn btn-sm btn-warning text-dark border shadow-sm me-1 fw-bold" title="Configurar Quiz"><i class='bx bx-trophy'></i> Quiz</a></template>
+    <template id="tpl-btn-task"><a href="#" class="btn btn-sm btn-success text-white border shadow-sm me-1 fw-bold" title="Configurar Tarefa"><i class='bx bx-task'></i> Tarefa</a></template>
+    <template id="tpl-btn-text"><a href="#" class="btn btn-sm btn-info text-white border shadow-sm me-1 fw-bold" title="Editar Artigo"><i class='bx bx-edit-alt'></i> Texto</a></template>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="./assets/js/chrome.js"></script>
