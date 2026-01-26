@@ -135,3 +135,114 @@ body {
 /* Variação de cor para botão "Acessar" */
 .btn-access { background-color: #10b981; }
 .btn-access:hover { background-color: #059669; }
+
+/* =========================================================
+   HOME (index.html) — filtros, badges, toast, loader
+   Cole no FINAL do assets/css/site.css
+   ========================================================= */
+
+/* Cursor do perfil (antes era injetado no JS) */
+#header-name,
+#header-avatar-initials,
+.profile-header-card {
+  cursor: pointer !important;
+}
+
+/* Loader padrão da Home */
+.home-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px;
+  color: var(--text-muted);
+}
+.home-loading i {
+  font-size: 2.5rem;
+  opacity: 0.6;
+  display: inline-block;
+}
+.home-loading p {
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+}
+
+/* Filtros (chips) */
+.home-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+  align-items: center;
+}
+
+.home-filter-btn {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.06s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.home-filter-btn:active {
+  transform: scale(0.98);
+}
+
+.home-filter-btn.is-active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #0b3a86;
+}
+
+/* Badges (ciclo + inscrição) */
+.home-badges {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.home-badge {
+  background-color: rgba(0, 0, 0, 0.60);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.70rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  backdrop-filter: blur(2px);
+  white-space: nowrap;
+}
+
+/* Estados do botão (sem inline) */
+.btn-enroll.btn-muted {
+  background-color: #e5e7eb;
+  color: #777;
+}
+.btn-enroll.btn-muted:hover {
+  background-color: #e5e7eb;
+  color: #777;
+}
+
+.btn-enroll.btn-wait {
+  background-color: #ffc107;
+  color: #333;
+  cursor: default;
+  opacity: 1;
+}
+.btn-enroll.btn-wait:hover {
+  background-color: #ffc107;
+  color: #333;
+}
+
+/* Toast (substitui alert)*
