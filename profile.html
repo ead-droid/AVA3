@@ -10,7 +10,220 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="./assets/css/chrome.css">
     <link rel="stylesheet" href="./assets/css/chrome-uxfix.css">
-    <link rel="stylesheet" href="./assets/css/profile.css"> </head>
+    <link rel="stylesheet" href="./assets/css/profile.css"> 
+
+    <style>
+        /* ============================================================
+           ESTILOS DE IMPRESSÃO - MODELO AZUL E BRANCO (DUAS COLUNAS)
+           ============================================================ */
+
+        /* Esconde a área de impressão na visualização normal do navegador */
+        #cv-print-area { 
+            display: none; 
+        }
+
+        @media print {
+            /* Esconde tudo da página normal */
+            body * { 
+                visibility: hidden; 
+                height: 0;
+                overflow: hidden;
+            }
+            
+            /* Mostra apenas a área do CV e seus filhos */
+            #cv-print-area, #cv-print-area * { 
+                visibility: visible; 
+                height: auto;
+                overflow: visible;
+            }
+
+            /* Posiciona o CV no topo absoluto */
+            #cv-print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                display: block !important;
+                background: white;
+            }
+
+            /* Configuração da página */
+            @page {
+                size: A4;
+                margin: 0; /* Remove margens do navegador para usarmos as nossas */
+            }
+        }
+
+        /* Container Principal do Papel */
+        .cv-paper {
+            width: 210mm;
+            min-height: 297mm;
+            background: #fff;
+            margin: 0 auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* --- CABEÇALHO --- */
+        .cv-header-custom {
+            padding: 40px 50px; /* Espaçamento interno */
+            background-color: #ffffff;
+            border-bottom: 2px solid #f2f4f7;
+        }
+
+        .cv-header-custom h1 {
+            font-size: 32pt;
+            margin: 0;
+            color: #2563eb; /* Azul Destacado */
+            font-weight: 800;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+
+        .cv-header-custom h2 {
+            font-size: 14pt;
+            color: #64748b; /* Cinza azulado */
+            margin-top: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* --- CORPO (LAYOUT FLEX) --- */
+        .cv-body-wrapper {
+            display: flex;
+            /* Garante que a altura vá até o fim da página se houver conteúdo */
+            min-height: 230mm; 
+        }
+
+        /* --- BARRA LATERAL (ESQUERDA) --- */
+        .cv-sidebar {
+            width: 32%; /* Largura da barra */
+            background-color: #f1f5f9; /* Cinza muito suave */
+            padding: 30px 25px;
+            color: #334155;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .cv-sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .cv-sidebar-section h4 {
+            font-size: 11pt;
+            font-weight: 800;
+            color: #1e293b;
+            border-bottom: 2px solid #cbd5e1;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* Itens da sidebar (contato, skills) */
+        .cv-contact-item {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 10pt;
+            word-wrap: break-word;
+        }
+
+        .cv-contact-item i {
+            color: #2563eb;
+            margin-right: 8px;
+            width: 15px;
+            text-align: center;
+        }
+
+        .cv-list-simple {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .cv-list-simple li {
+            margin-bottom: 6px;
+            font-size: 10pt;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .cv-list-simple li::before {
+            content: "•";
+            color: #2563eb;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        /* --- CONTEÚDO PRINCIPAL (DIREITA) --- */
+        .cv-main-content {
+            width: 68%;
+            padding: 30px 40px;
+        }
+
+        .cv-main-section {
+            margin-bottom: 30px;
+        }
+
+        .cv-main-section h4 {
+            font-size: 12pt;
+            font-weight: 800;
+            color: #2563eb; /* Azul igual ao título */
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .cv-text-justify {
+            text-align: justify;
+            font-size: 10.5pt;
+            color: #334155;
+        }
+
+        /* Itens de Lista (Experiência/Formação) */
+        .cv-item {
+            margin-bottom: 20px;
+            page-break-inside: avoid; /* Evita quebrar o item no meio da página */
+        }
+
+        .cv-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .cv-item-title {
+            font-weight: 700;
+            font-size: 11pt;
+            color: #1e293b;
+        }
+
+        .cv-item-date {
+            font-size: 10pt;
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        .cv-item-subtitle {
+            font-style: italic;
+            font-size: 10pt;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .cv-item-desc {
+            font-size: 10pt;
+            color: #475569;
+            white-space: pre-wrap; /* Mantém quebras de linha do textarea */
+        }
+    </style>
+</head>
 
 <body class="bg-light">
 
@@ -99,12 +312,12 @@
                                     <div class="card-body p-4">
                                         <div class="row g-3">
                                             <div class="col-12">
-                                                <label class="form-label fw-bold small">Título Profissional</label>
-                                                <input type="text" id="cv_title" class="form-control" placeholder="Ex: Desenvolvedor Front-end Júnior">
+                                                <label class="form-label fw-bold small">Título Profissional (Objetivo)</label>
+                                                <input type="text" id="cv_title" class="form-control" placeholder="Ex: Analista de Dados">
                                             </div>
                                             <div class="col-12">
                                                 <label class="form-label fw-bold small">Resumo / Bio</label>
-                                                <textarea id="cv_bio" class="form-control" rows="4" placeholder="Fale um pouco sobre seus objetivos e experiências..."></textarea>
+                                                <textarea id="cv_bio" class="form-control" rows="4" placeholder="Breve resumo das suas qualificações..."></textarea>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label fw-bold small">Telefone / WhatsApp</label>
@@ -119,25 +332,24 @@
                                                 <input type="url" id="cv_portfolio" class="form-control" placeholder="https://...">
                                             </div>
                                             <div class="col-12">
-                                                <label class="form-label fw-bold small">Habilidades (Separadas por vírgula)</label>
-                                                <input type="text" id="cv_skills" class="form-control" placeholder="Ex: HTML, CSS, Liderança, Vendas...">
+                                                <label class="form-label fw-bold small">Habilidades Técnicas (Separadas por vírgula)</label>
+                                                <input type="text" id="cv_skills" class="form-control" placeholder="Ex: Python, SQL, Power BI, Excel Avançado...">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-<div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <h5 class="fw-bold mb-0">Idiomas</h5>
-        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addLanguageField()">
-            <i class='bx bx-plus'></i> Adicionar
-        </button>
-    </div>
-    <div class="card-body p-4">
-        <div id="languages-list" class="d-flex flex-column gap-3">
-            </div>
-    </div>
-</div>
+                                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                                        <h5 class="fw-bold mb-0">Idiomas</h5>
+                                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addLanguageField()">
+                                            <i class='bx bx-plus'></i> Adicionar
+                                        </button>
+                                    </div>
+                                    <div class="card-body p-4">
+                                        <div id="languages-list" class="d-flex flex-column gap-3"></div>
+                                    </div>
+                                </div>
 
                                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                                     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -147,8 +359,7 @@
                                         </button>
                                     </div>
                                     <div class="card-body p-4">
-                                        <div id="experience-list" class="d-flex flex-column gap-3">
-                                            </div>
+                                        <div id="experience-list" class="d-flex flex-column gap-3"></div>
                                     </div>
                                 </div>
 
@@ -161,10 +372,9 @@
                                     </div>
                                     <div class="card-body p-4">
                                         <div class="alert alert-info small mb-3">
-                                            <i class='bx bx-info-circle'></i> Seus cursos concluídos na plataforma <b>AVA3</b> serão adicionados automaticamente ao final do currículo.
+                                            <i class='bx bx-info-circle'></i> Seus cursos concluídos na plataforma <b>AVA3</b> serão adicionados automaticamente.
                                         </div>
-                                        <div id="education-list" class="d-flex flex-column gap-3">
-                                            </div>
+                                        <div id="education-list" class="d-flex flex-column gap-3"></div>
                                     </div>
                                 </div>
 
@@ -196,59 +406,80 @@
     </main>
 
     <div id="cv-print-area">
-    <div class="cv-paper">
-        <header class="cv-header-custom">
-            <h1 id="print-name">NOME DO USUÁRIO</h1>
-            <h2 id="print-title">TECNOLOGIA DA INFORMAÇÃO</h2>
-        </header>
+        <div class="cv-paper">
+            
+            <header class="cv-header-custom">
+                <h1 id="print-name">NOME DO USUÁRIO</h1>
+                <h2 id="print-title">SEU CARGO AQUI</h2>
+            </header>
 
-        <div class="cv-body-wrapper">
-            <aside class="cv-sidebar">
-                <section class="cv-sidebar-section">
-                    <h4>DADOS PESSOAIS</h4>
-                    <div id="print-contact-custom">
+            <div class="cv-body-wrapper">
+                
+                <aside class="cv-sidebar">
+                    
+                    <section class="cv-sidebar-section">
+                        <h4>Contato</h4>
+                        <div id="print-contact-custom">
+                            <div id="print-wrap-phone" class="cv-contact-item">
+                                <i class='bx bxs-phone'></i> <span id="print-phone">...</span>
+                            </div>
+                            
+                            <div id="print-wrap-email" class="cv-contact-item">
+                                <i class='bx bxs-envelope'></i> <span id="print-email">...</span>
+                            </div>
+
+                            <div id="print-wrap-linkedin" class="cv-contact-item">
+                                <i class='bx bxl-linkedin'></i> <span id="print-linkedin">...</span>
+                            </div>
+
+                            <div id="print-wrap-portfolio" class="cv-contact-item">
+                                <i class='bx bxs-folder-open'></i> <span id="print-portfolio">...</span>
+                            </div>
                         </div>
-                </section>
+                    </section>
 
-                <section class="cv-sidebar-section">
-                    <h4>COMPETÊNCIAS</h4>
-                    <div id="print-skills-custom">
+                    <section class="cv-sidebar-section" id="print-sec-skills">
+                        <h4>Habilidades</h4>
+                        <div id="print-skills-area">
+                             <p id="print-skills-text" style="font-size: 10pt;"></p>
                         </div>
-                </section>
+                    </section>
 
-               <section class="cv-sidebar-section">
-    <h4>IDIOMAS</h4>
-    <div id="print-languages-custom">
-        </div>
-</section>
-            </aside>
+                    <section class="cv-sidebar-section" id="print-sec-languages">
+                        <h4>Idiomas</h4>
+                        <ul id="print-languages-list" class="cv-list-simple">
+                        </ul>
+                    </section>
+                </aside>
 
-            <main class="cv-main-content">
-                <section class="cv-main-section">
-                    <h4>PERFIL</h4>
-                    <p id="print-summary"></p>
-                </section>
+                <main class="cv-main-content">
+                    
+                    <section class="cv-main-section" id="print-sec-summary">
+                        <h4>Perfil Profissional</h4>
+                        <p id="print-summary" class="cv-text-justify"></p>
+                    </section>
 
-                <section class="cv-main-section">
-                    <h4>FORMAÇÃO</h4>
-                    <div id="print-education-list">
+                    <section class="cv-main-section" id="print-sec-experience">
+                        <h4>Experiência Profissional</h4>
+                        <div id="print-experience-list"></div>
+                    </section>
+
+                    <section class="cv-main-section" id="print-sec-education">
+                        <h4>Formação Acadêmica</h4>
+                        <div id="print-education-list"></div>
+
+                        <div id="print-ava3-certs-area" style="margin-top: 20px;">
+                            <h5 style="font-size: 11pt; font-weight: bold; margin-bottom: 10px; color: #333;">Cursos e Certificações Extras</h5>
+                            <ul id="print-ava3-list" class="cv-list-simple" style="color: #444;"></ul>
                         </div>
-                </section>
+                    </section>
 
-                <section class="cv-main-section">
-                    <h4>CURSOS</h4>
-                    <div id="print-courses-custom">
-                        </div>
-                    <div id="print-ava3-certs-area">
-                        <ul id="print-ava3-list" class="simple-list"></ul>
-                    </div>
-                </section>
-            </main>
+                </main>
+            </div>
         </div>
     </div>
-</div>
 
-<template id="tpl-language-item">
+    <template id="tpl-language-item">
         <div class="p-3 bg-light rounded border position-relative language-item">
             <button type="button" class="btn btn-sm text-danger position-absolute top-0 end-0 m-1" onclick="this.closest('.language-item').remove()">
                 <i class='bx bx-trash'></i>
@@ -270,35 +501,6 @@
     </template>
 
     <template id="tpl-experience-item">
-        <div class="p-3 bg-light rounded border position-relative experience-item">
-            <button type="button" class="btn btn-sm text-danger position-absolute top-0 end-0 m-1" onclick="this.closest('.experience-item').remove()"><i class='bx bx-trash'></i></button>
-            <div class="row g-2">
-                <div class="col-md-6"><input type="text" class="form-control form-control-sm exp-company" placeholder="Empresa"></div>
-                <div class="col-md-6"><input type="text" class="form-control form-control-sm exp-role" placeholder="Cargo"></div>
-                <div class="col-md-6"><input type="text" class="form-control form-control-sm exp-period" placeholder="Período (Ex: 2020 - 2022)"></div>
-                <div class="col-12"><textarea class="form-control form-control-sm exp-desc" rows="2" placeholder="Descrição das atividades..."></textarea></div>
-            </div>
-        </div>
-    </template>
-
-    <template id="tpl-education-item">
-        <div class="p-3 bg-light rounded border position-relative education-item">
-            <button type="button" class="btn btn-sm text-danger position-absolute top-0 end-0 m-1" onclick="this.closest('.education-item').remove()"><i class='bx bx-trash'></i></button>
-            <div class="row g-2">
-                <div class="col-md-6"><input type="text" class="form-control form-control-sm edu-school" placeholder="Instituição"></div>
-                <div class="col-md-6"><input type="text" class="form-control form-control-sm edu-degree" placeholder="Curso / Grau"></div>
-                <div class="col-md-4"><input type="text" class="form-control form-control-sm edu-year" placeholder="Ano Conclusão"></div>
-            </div>
-        </div>
-    </template>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="./assets/js/chrome.js"></script>
-    <script type="module" src="./assets/js/profile.js"></script>
-</body>
-</html>
-
-<template id="tpl-experience-item">
         <div class="p-3 bg-light rounded border position-relative experience-item">
             <button type="button" class="btn btn-sm text-danger position-absolute top-0 end-0 m-1" onclick="this.closest('.experience-item').remove()"><i class='bx bx-trash'></i></button>
             <div class="row g-2">

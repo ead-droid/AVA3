@@ -290,13 +290,27 @@
                                     <div class="col-md-6"><label class="small fw-bold">Nota Mínima</label><input type="number" id="les_min_grade" class="form-control form-control-sm"></div>
 
                                     <div id="quiz-options-area" class="col-12 border-top pt-2 mt-2">
-                                        <h6 class="small fw-bold text-muted">Quiz</h6>
+                                        <h6 class="small fw-bold text-muted">Configurações do Quiz</h6>
                                         <div class="row g-2">
-                                            <div class="col-6"><label class="small">Tentativas (0=Inf)</label><input type="number" id="les_attempts" class="form-control form-control-sm" value="0"></div>
-                                            <div class="col-6"><label class="small">Cálculo</label><select id="les_grading_method" class="form-select form-select-sm"><option value="highest">Maior Nota</option><option value="last">Última</option><option value="average">Média</option></select></div>
+                                            <div class="col-4">
+                                                <label class="small">Tentativas (0=Inf)</label>
+                                                <input type="number" id="les_attempts" class="form-control form-control-sm" value="0">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="small">Espera (horas)</label>
+                                                <input type="number" id="les_attempt_wait" class="form-control form-control-sm" value="24" placeholder="Ex: 24">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="small">Cálculo Nota</label>
+                                                <select id="les_grading_method" class="form-select form-select-sm">
+                                                    <option value="highest">Maior Nota</option>
+                                                    <option value="last">Última</option>
+                                                    <option value="average">Média</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                    </div>
                             </div>
                         </div>
 
@@ -358,6 +372,7 @@
     <template id="tpl-btn-quiz"><a href="#" class="btn btn-sm btn-warning text-dark border shadow-sm me-1 fw-bold" title="Configurar Quiz"><i class='bx bx-trophy'></i> Quiz</a></template>
     <template id="tpl-btn-task"><a href="#" class="btn btn-sm btn-success text-white border shadow-sm me-1 fw-bold" title="Configurar Tarefa"><i class='bx bx-task'></i> Tarefa</a></template>
     <template id="tpl-btn-text"><a href="#" class="btn btn-sm btn-info text-white border shadow-sm me-1 fw-bold" title="Editar Artigo"><i class='bx bx-edit-alt'></i> Texto</a></template>
+
 <div class="modal fade" id="modalPreviewLesson" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 60%;">
         <div class="modal-content border-0 shadow" style="height: 90vh;">

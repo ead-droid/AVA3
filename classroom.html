@@ -11,12 +11,14 @@
   <link rel="stylesheet" href="./assets/css/classroom-styles.css">
 </head>
 
-<body class="sidebar-collapsed">
+<body class="has-sidebar sidebar-collapsed">
 
+  <!-- Chrome do sistema -->
   <div id="site-header"></div>
   <div id="site-sidebar"></div>
 
-  <div class="classroom-layout">
+  <div class="classroom-layout" id="classroomLayout">
+
     <header class="classroom-header">
       <div class="d-flex align-items-center gap-3">
         <a href="app.html" class="btn btn-light border btn-sm">
@@ -28,6 +30,7 @@
         </div>
       </div>
 
+      <!-- Progresso geral -->
       <div class="d-flex align-items-center gap-2" id="header-actions">
         <div class="progress-bar-wrapper">
           <div class="progress">
@@ -35,13 +38,10 @@
           </div>
           <div class="small fw-bold text-muted" id="progress-text">0%</div>
         </div>
-
-        <button class="btn btn-outline-success rounded-pill fw-bold" id="btn-finish">
-          <i class='bx bx-check'></i> Concluir Aula
-        </button>
       </div>
     </header>
 
+    <!-- Navegação do curso -->
     <aside class="course-nav" id="course-nav">
       <div class="course-nav-header">
         <div class="fw-bold">Conteúdo do Curso</div>
@@ -55,41 +55,73 @@
 
     <main class="classroom-main">
 
-      <ul class="nav nav-tabs classroom-tabs" id="classTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-aula-btn" data-bs-toggle="tab" data-bs-target="#tab-aula" type="button" role="tab">
-            Aula
+      <!-- ✅ Barra única: abas + ações à direita -->
+      <div class="tabs-bar">
+        <ul class="nav nav-tabs classroom-tabs" id="classTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-aula-btn" data-bs-toggle="tab" data-bs-target="#tab-aula" type="button" role="tab">
+              Aula
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-mural-btn" data-bs-toggle="tab" data-bs-target="#tab-mural" type="button" role="tab">
+              Mural <span class="badge bg-danger ms-1" id="mural-badge" style="display:none;">0</span>
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-notas-btn" data-bs-toggle="tab" data-bs-target="#tab-notas" type="button" role="tab">
+              Notas
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-cal-btn" data-bs-toggle="tab" data-bs-target="#tab-cal" type="button" role="tab">
+              Calendário
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-cert-btn" data-bs-toggle="tab" data-bs-target="#tab-cert" type="button" role="tab">
+              Certificado
+            </button>
+          </li>
+        </ul>
+
+        <!-- ✅ Ações no mesmo “row” das abas -->
+        <div class="tabs-actions">
+          <button class="btn btn-sm btn-outline-primary rounded-pill" id="btnTopContact" type="button">
+            <i class='bx bx-chat'></i> <span>Contato</span>
           </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-mural-btn" data-bs-toggle="tab" data-bs-target="#tab-mural" type="button" role="tab">
-            Mural <span class="badge bg-danger ms-1" id="mural-badge" style="display:none;">0</span>
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-notas-btn" data-bs-toggle="tab" data-bs-target="#tab-notas" type="button" role="tab">
-            Notas
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-cal-btn" data-bs-toggle="tab" data-bs-target="#tab-cal" type="button" role="tab">
-            Calendário
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-cert-btn" data-bs-toggle="tab" data-bs-target="#tab-cert" type="button" role="tab">
-            Certificado
-          </button>
-        </li>
-      </ul>
+
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" id="btnTopClassCfg" href="#" role="button">
+            <i class='bx bx-cog'></i> <span>Config. Turma</span>
+          </a>
+
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" id="btnTopCourseCfg" href="#" role="button">
+            <i class='bx bx-slider-alt'></i> <span>Config. Curso</span>
+          </a>
+        </div>
+      </div>
 
       <div class="tab-content pt-3">
+
         <!-- AULA -->
         <div class="tab-pane fade show active" id="tab-aula" role="tabpanel">
+
           <div class="lesson-header">
             <div>
               <span class="badge bg-secondary" id="lbl-type">AULA</span>
               <h2 class="lesson-title" id="lbl-title">Selecione uma aula</h2>
+            </div>
+
+            <!-- ✅ Concluir ao lado do título -->
+            <div class="d-flex flex-column align-items-end gap-2" id="lesson-actions" style="min-width:220px;">
+              <button class="btn btn-outline-success rounded-pill fw-bold" id="btn-finish" type="button" disabled>
+                <i class='bx bx-check'></i> Concluir aula
+              </button>
+              <span class="badge bg-success" id="lesson-status" style="display:none;">Concluída</span>
             </div>
           </div>
 
@@ -102,6 +134,54 @@
               <i class='bx bx-pointer'></i>
               <div class="fw-bold">Selecione uma aula no menu à esquerda</div>
               <div class="text-muted small">Ao clicar, o conteúdo aparece aqui automaticamente.</div>
+            </div>
+          </div>
+
+          <!-- ✅ Dúvidas e contato (agora sem “espação”) -->
+          <div class="lesson-extras" id="lesson-extras" style="display:none;">
+            <div class="row g-3">
+              <div class="col-lg-7">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div class="fw-bold d-flex align-items-center gap-2">
+                        <i class='bx bx-message-rounded-dots'></i> Dúvidas e comentários
+                      </div>
+                      <div class="small text-muted">Visível para toda a turma</div>
+                    </div>
+                  </div>
+
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <textarea class="form-control" id="newCommentText" rows="3" placeholder="Escreva sua dúvida ou comentário..."></textarea>
+                      <div class="d-flex justify-content-end mt-2">
+                        <button class="btn btn-primary rounded-pill px-4" id="btnPublishComment" type="button">
+                          <i class='bx bx-send'></i> Publicar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="commentsThread"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-5" id="contactBlock">
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div class="fw-bold d-flex align-items-center gap-2">
+                        <i class='bx bx-user-voice'></i> Contato direto
+                      </div>
+                      <div class="small text-muted">Professor / Tutoria</div>
+                    </div>
+                  </div>
+
+                  <div class="card-body">
+                    <div id="staffList"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -118,8 +198,9 @@
               <i class='bx bx-pin'></i>
               <div class="fw-bold">Mural da Turma</div>
             </div>
-            <div class="small text-muted">Arraste os post-its para organizar</div>
+            <div class="small text-muted">Arraste os post-its para reorganizar</div>
           </div>
+
           <div id="wall-container" class="postit-board"></div>
         </div>
 
@@ -143,9 +224,8 @@
     </main>
   </div>
 
-  <!-- GAVETA ÚNICA (QUIZ + TAREFA) -->
+  <!-- DRAWER (QUIZ + TAREFA) -->
   <div id="activity-backdrop" class="quiz-backdrop"></div>
-
   <aside id="activity-drawer" class="quiz-drawer" aria-hidden="true">
     <div class="quiz-drawer-header">
       <div class="d-flex flex-column">
@@ -159,8 +239,68 @@
     <div class="quiz-drawer-body" id="drawer-body"></div>
   </aside>
 
+  <!-- Modal: responder comentário -->
+  <div class="modal fade" id="modalReply" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+        <div class="modal-header bg-white">
+          <div>
+            <div class="fw-bold">Responder para: <span id="replyToName">—</span></div>
+            <div class="small text-muted" id="replyContextText">—</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body bg-white">
+          <label class="form-label fw-bold">Sua resposta</label>
+          <textarea class="form-control" id="replyText" rows="5" placeholder="Digite sua resposta..."></textarea>
+
+          <div class="d-flex justify-content-end align-items-center mt-2 gap-2">
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnSendReply">
+              <i class='bx bx-send'></i> Enviar resposta
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: contato direto -->
+  <div class="modal fade" id="modalContact" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+        <div class="modal-header bg-white">
+          <div>
+            <div class="fw-bold">Mensagem para: <span id="contactToName">—</span></div>
+            <div class="small text-muted" id="contactToRole">—</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body bg-white">
+          <label class="form-label fw-bold">Mensagem</label>
+          <textarea class="form-control" id="contactText" rows="5" placeholder="Escreva sua mensagem..."></textarea>
+
+          <div class="d-flex justify-content-end mt-2 gap-2">
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnSendContact">
+              <i class='bx bx-send'></i> Enviar
+            </button>
+          </div>
+
+          <div class="alert alert-light border mt-3 mb-0 small">
+            Mock: ainda não envia (só layout).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Chrome -->
   <script type="module" src="./assets/js/chrome.js"></script>
+
+  <!-- Classroom (mock) -->
   <script type="module" src="./assets/js/classroom.js"></script>
 </body>
 </html>

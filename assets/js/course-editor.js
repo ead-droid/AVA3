@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await Promise.all([
             loadCourseData(),
-            loadModules(), // Agora carrega e ativa o Drag & Drop
+            loadModules(), // Carrega e ativa o Drag & Drop
             loadLinkedClasses()
         ]);
         setupFormListeners();     
@@ -103,19 +103,17 @@ async function loadModules() {
         renderModuleItem(mod, container);
     });
 
-    // --- REINSERIDO: INICIALIZA O DRAG & DROP APÓS RENDERIZAR ---
     initSortable();
 }
 
 // =========================================================
-// 2. RENDERIZAÇÃO (Com atributos data-id para Drag & Drop)
+// 2. RENDERIZAÇÃO
 // =========================================================
 function renderModuleItem(mod, container) {
     const tpl = document.getElementById('tpl-module');
     const clone = tpl.content.cloneNode(true);
     
-    // Configura o ID no elemento pai para o Drag & Drop funcionar
-    const card = clone.querySelector('.module-card'); // Certifique-se que seu HTML tem essa classe no div principal
+    const card = clone.querySelector('.module-card');
     if(card) card.setAttribute('data-id', mod.id);
 
     clone.querySelector('.mod-badge').textContent = mod.ordem;
@@ -135,13 +133,11 @@ function renderModuleItem(mod, container) {
     btnAddSec.onclick = (e) => { e.stopPropagation(); e.preventDefault(); openSectionModal(mod.id); };
 
     const secContainer = clone.querySelector('.sections-container');
-    // Adiciona ID para saber de qual módulo é a seção
     secContainer.setAttribute('data-module-id', mod.id); 
 
     if (mod.sections && mod.sections.length > 0) {
         mod.sections.forEach(sec => renderSectionItem(sec, secContainer, mod.id));
     } else {
-        // Remove mensagem de vazio se quiser permitir drop em área vazia, ou mantenha
         secContainer.innerHTML = `<div class="p-4 text-center text-muted border-top bg-light small empty-placeholder">Nenhuma seção.</div>`;
     }
     container.appendChild(clone);
@@ -151,7 +147,7 @@ function renderSectionItem(sec, container, modId) {
     const tpl = document.getElementById('tpl-section');
     const clone = tpl.content.cloneNode(true);
 
-    const sectionBox = clone.querySelector('.section-box'); // Certifique-se que seu HTML tem essa classe
+    const sectionBox = clone.querySelector('.section-box');
     if(sectionBox) sectionBox.setAttribute('data-id', sec.id);
 
     clone.querySelector('.sec-badge').textContent = sec.ordem;
@@ -167,7 +163,7 @@ function renderSectionItem(sec, container, modId) {
     clone.querySelector('.btn-del').onclick = () => deleteItem('sections', sec.id);
 
     const contentContainer = clone.querySelector('.content-container');
-    contentContainer.setAttribute('data-section-id', sec.id); // Para saber onde a aula caiu
+    contentContainer.setAttribute('data-section-id', sec.id); 
 
     if (sec.lessons && sec.lessons.length > 0) {
         sec.lessons.forEach(les => renderLessonItem(les, contentContainer, modId, sec.id));
@@ -176,8 +172,25 @@ function renderSectionItem(sec, container, modId) {
     }
     container.appendChild(clone);
 }
-// ... (mantenha o código anterior)
 
+// --- FUNÇÃO AUXILIAR NOVA: Busca nome da aula pelo ID ---
+function getLessonTitleById(id) {
+    if (!globalModules) return id;
+    for (const mod of globalModules) {
+        if (mod.sections) {
+            for (const sec of mod.sections) {
+                if (sec.lessons) {
+                    // Usa == para permitir comparação entre string e number
+                    const found = sec.lessons.find(l => l.id == id);
+                    if (found) return found.title;
+                }
+            }
+        }
+    }
+    return "ID: " + id;
+}
+
+// --- ATUALIZAÇÃO: renderLessonItem (Datas e Pré-requisitos juntos) ---
 function renderLessonItem(les, container, modId, secId) {
     const tpl = document.createElement('div');
     tpl.setAttribute('data-id', les.id);
@@ -195,36 +208,48 @@ function renderLessonItem(les, container, modId, secId) {
     };
     const style = typeMap[les.type] || { icon: 'bx-file', bg: 'bg-file', label: les.type };
 
-    // --- LÓGICA DE DATAS (INÍCIO E FIM) ---
+    // --- LÓGICA DE DATAS E REQUISITOS ---
     const st = les.settings || {};
     const avail = st.availability || {};
-    let dateHtml = '';
+    let metaHtml = '';
 
-    // Data de Início
+    // 1. Data de Início
     const startIso = avail.available_from || les.unlock_at;
     if (startIso) {
         const dStart = new Date(startIso).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-        dateHtml += `<div class="meta-row"><i class='bx bx-calendar text-success'></i> Início: ${dStart}</div>`;
+        metaHtml += `<div class="meta-row text-muted" style="font-size:0.75rem"><i class='bx bx-calendar text-success'></i> Início: ${dStart}</div>`;
     }
 
-    // Data de Término
+    // 2. Data de Término
     const endIso = avail.available_until;
     if (endIso) {
         const dEnd = new Date(endIso).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-        dateHtml += `<div class="meta-row"><i class='bx bx-time-five text-danger'></i> Fim: ${dEnd}</div>`;
+        metaHtml += `<div class="meta-row text-muted" style="font-size:0.75rem"><i class='bx bx-time-five text-danger'></i> Fim: ${dEnd}</div>`;
     }
 
-    // Se não tiver datas, mas tiver bloqueio
-    if (!startIso && !endIso && (st.prerequisites?.ids?.length || les.prerequisite_ids?.length)) {
-        dateHtml = `<div class="meta-row text-danger"><i class='bx bx-lock-alt'></i> Bloqueado (Pré-req)</div>`;
+    // 3. Pré-requisitos (Mostra os nomes)
+    const prereqIds = st.prerequisites?.ids || les.prerequisite_ids || [];
+    if (prereqIds.length > 0) {
+        // Busca os títulos usando a função auxiliar
+        const titles = prereqIds.map(pid => getLessonTitleById(pid));
+        const titlesHtml = titles.map(t => `<div class="text-truncate" style="max-width: 160px;">• ${t}</div>`).join('');
+        
+        metaHtml += `
+        <div class="mt-1 pt-1 border-top border-light">
+            <div class="text-danger fw-bold" style="font-size: 0.7rem;"><i class='bx bx-lock-alt'></i> Pré-requisitos:</div>
+            <div class="text-muted fst-italic" style="font-size: 0.7rem; line-height: 1.2;">
+                ${titlesHtml}
+            </div>
+        </div>`;
     }
     
-    if (!dateHtml) dateHtml = `<span class="text-muted opacity-25" style="font-size:0.7rem;">Livre</span>`;
+    // Se não tiver nenhuma restrição
+    if (!metaHtml) metaHtml = `<span class="text-muted opacity-25" style="font-size:0.7rem;">Livre</span>`;
 
-    // --- LÓGICA DE NOTA (TEXTO LIMPO) ---
+    // --- LÓGICA DE NOTA ---
     const pts = st.grading?.points_max ?? (les.points || 0);
     const gradeHtml = pts > 0 
-        ? `<span class="grade-value">${pts}</span> <span style="font-size:0.7rem; font-weight:400;">pts</span>` 
+        ? `<span class="grade-value fw-bold text-dark">${pts}</span> <span style="font-size:0.7rem; font-weight:400;">pts</span>` 
         : '<span class="text-muted opacity-25">-</span>';
 
     // --- RENDERIZAÇÃO DO GRID ---
@@ -239,8 +264,8 @@ function renderLessonItem(les, container, modId, secId) {
             <div class="lesson-subtitle">${style.label}</div>
         </div>
 
-        <div class="lesson-meta">
-            ${dateHtml}
+        <div class="lesson-meta d-flex flex-column justify-content-center ps-2">
+            ${metaHtml}
         </div>
 
         <div class="lesson-grade">
@@ -254,7 +279,7 @@ function renderLessonItem(les, container, modId, secId) {
         </div>
     </div>`;
 
-    // Botão de Editar Conteúdo (Inserir antes da Engrenagem)
+    // Botões Específicos de Edição de Conteúdo
     const actionsArea = tpl.querySelector('.actions-area');
     let editPage = '';
     if (les.type === 'QUIZ') editPage = 'quiz-builder.html';
@@ -267,7 +292,6 @@ function renderLessonItem(les, container, modId, secId) {
         btnContent.className = "btn btn-sm btn-light border-0 text-primary fw-bold";
         btnContent.title = "Editar Conteúdo";
         btnContent.innerHTML = "<i class='bx bx-edit-alt fs-5'></i>";
-        // Insere como primeiro botão das ações
         actionsArea.insertBefore(btnContent, actionsArea.firstChild);
     }
 
@@ -289,7 +313,7 @@ function addBtn(tplId, href, container) {
 }
 
 // =========================================================
-// 3. LOGICA DE ARRASTAR E SOLTAR (SortableJS) - REINSERIDA
+// 3. LOGICA DE ARRASTAR E SOLTAR (SortableJS)
 // =========================================================
 function initSortable() {
     if (typeof Sortable === 'undefined') return;
@@ -299,7 +323,7 @@ function initSortable() {
     if (modulesList) {
         new Sortable(modulesList, {
             animation: 150,
-            handle: '.mod-handle', // Adicione classe .mod-handle no seu HTML do modulo ou remova para arrastar pelo card todo
+            handle: '.mod-handle', 
             ghostClass: 'bg-light',
             onEnd: (evt) => saveOrder('modules', evt.from)
         });
@@ -333,7 +357,6 @@ function initSortable() {
 }
 
 async function saveOrder(type, container, parentId = null) {
-    // Remove os placeholders "Vazio" antes de contar
     const items = [...container.children].filter(c => !c.classList.contains('empty-placeholder'));
     
     const updates = items.map((item, index) => {
@@ -349,15 +372,12 @@ async function saveOrder(type, container, parentId = null) {
     }).filter(p => p !== null);
 
     await Promise.all(updates);
-    // Opcional: Recarregar para garantir numeração visual correta
-    // loadModules(); 
 }
 
 // =========================================================
-// 4. FUNÇÃO DE PREVIEW (VISUALIZAR) - REINSERIDA
+// 4. FUNÇÃO DE PREVIEW (VISUALIZAR)
 // =========================================================
 window.openPreview = async (lesson) => {
-    // 1. Verifica se o modal existe no HTML
     const modalEl = document.getElementById('modalPreviewLesson');
     if (!modalEl) { alert("ERRO: O modal 'modalPreviewLesson' não existe no HTML."); return; }
     
@@ -365,18 +385,14 @@ window.openPreview = async (lesson) => {
     const contentDiv = document.getElementById('previewContent');
     const titleDiv = document.getElementById('previewTitle');
     
-    // Define Título
     if (titleDiv) titleDiv.textContent = lesson.title || "Visualizar Aula";
     
-    // Limpa e mostra loading
     contentDiv.className = 'modal-body p-0 bg-white'; 
     contentDiv.innerHTML = '<div class="h-100 d-flex align-items-center justify-content-center"><div class="spinner-border text-primary"></div></div>';
     
     modal.show();
 
-    // 2. Busca dados completos no banco (caso a listagem não tenha trazido tudo)
     let fullLesson = lesson;
-    // Se for um tipo complexo e faltar dados, faz o fetch
     if (!lesson.description && !lesson.quiz_data && !lesson.task_data && !lesson.content) {
          const { data } = await supabase.from('lessons').select('*').eq('id', lesson.id).single();
          if(data) fullLesson = data;
@@ -385,16 +401,12 @@ window.openPreview = async (lesson) => {
     let html = '';
     const rawUrl = fullLesson.video_url || fullLesson.content_url || '';
 
-    // ============================================================
-    // 1. VÍDEO / YOUTUBE (Lógica Completa Restaurada)
-    // ============================================================
-    // Verifica se é tipo Vídeo OU se o link parece ser do YouTube
+    // 1. VÍDEO
     const isYouTubeLink = rawUrl.includes('youtube') || rawUrl.includes('youtu.be');
 
     if (['VIDEO_AULA', 'VIDEO'].includes(fullLesson.type) || isYouTubeLink) {
-        contentDiv.className = 'modal-body p-0 bg-black'; // Fundo preto obrigatório para vídeo
+        contentDiv.className = 'modal-body p-0 bg-black'; 
         
-        // Regex poderoso para capturar ID de qualquer formato (Shorts, Embed, Watch, Link curto)
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
         const match = rawUrl.match(regExp);
 
@@ -403,140 +415,56 @@ window.openPreview = async (lesson) => {
             html = `
             <div class="ratio ratio-16x9 h-100">
                 <iframe src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1" 
-                    title="YouTube video player" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    referrerpolicy="strict-origin-when-cross-origin" 
-                    allowfullscreen>
+                    title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
                 </iframe>
             </div>`;
         } else {
-            // Se falhar o Regex, tenta um iframe genérico ou mostra erro
             if(rawUrl) {
                 html = `<iframe src="${rawUrl}" class="w-100 h-100 border-0" allowfullscreen></iframe>`;
             } else {
-                html = `<div class="d-flex h-100 align-items-center justify-content-center text-white flex-column">
-                    <i class='bx bx-error-circle fs-1 mb-2'></i>
-                    <p>Link de vídeo inválido ou não encontrado.</p>
-                </div>`;
+                html = `<div class="d-flex h-100 align-items-center justify-content-center text-white flex-column"><i class='bx bx-error-circle fs-1 mb-2'></i><p>Link de vídeo inválido.</p></div>`;
             }
         }
     }
 
-    // ============================================================
-    // 2. TEXTO / ARTIGO (HTML Rico)
-    // ============================================================
+    // 2. TEXTO
     else if (fullLesson.type === 'TEXTO') {
         const content = fullLesson.description || fullLesson.content || "<p class='text-center text-muted mt-5'>Conteúdo vazio.</p>";
-        html = `
-        <div class="container py-5 h-100 overflow-auto">
-            <div class="row justify-content-center">
-                <div class="col-lg-10">
-                    <div class="p-5 bg-white shadow-sm border rounded" style="min-height: 60vh;">
-                        ${content}
-                    </div>
-                </div>
-            </div>
-        </div>`;
+        html = `<div class="container py-5 h-100 overflow-auto"><div class="row justify-content-center"><div class="col-lg-10"><div class="p-5 bg-white shadow-sm border rounded" style="min-height: 60vh;">${content}</div></div></div></div>`;
     }
 
-    // ============================================================
-    // 3. QUIZ (Lista de Questões)
-    // ============================================================
+    // 3. QUIZ
     else if (fullLesson.type === 'QUIZ') {
         const data = fullLesson.quiz_data || { questions: [] };
-        
         if (data.settings?.mode === 'bank') {
-            html = `
-            <div class="d-flex h-100 align-items-center justify-content-center flex-column text-center p-5">
-                <i class='bx bx-shuffle fs-1 text-primary mb-3'></i>
-                <h4>Banco de Questões (Sorteio)</h4>
-                <p class="text-muted">O aluno receberá <strong>${data.settings.drawCount}</strong> questões sorteadas aleatoriamente a cada tentativa.</p>
-                <span class="badge bg-light text-dark border">Total no Banco: ${data.questions.length}</span>
-            </div>`;
+            html = `<div class="d-flex h-100 align-items-center justify-content-center flex-column text-center p-5"><i class='bx bx-shuffle fs-1 text-primary mb-3'></i><h4>Banco de Questões</h4><p class="text-muted">Sorteio de <strong>${data.settings.drawCount}</strong> questões.</p><span class="badge bg-light text-dark border">Total: ${data.questions.length}</span></div>`;
         } else {
             const list = (data.questions || []).map((q, i) => `
-                <div class="card mb-3 shadow-sm border-0">
-                    <div class="card-body">
-                        <h6 class="fw-bold text-primary mb-2">Questão #${i+1}</h6>
-                        <div class="mb-3 fw-bold">${q.text}</div>
-                        <ul class="list-group list-group-flush small bg-light rounded">
-                            ${q.options.map(opt => `
-                                <li class="list-group-item bg-transparent border-0 d-flex align-items-center gap-2">
-                                    ${opt.isCorrect ? '<i class="bx bxs-check-circle text-success fs-5"></i>' : '<i class="bx bx-radio-circle text-muted fs-5"></i>'}
-                                    <span class="${opt.isCorrect ? 'fw-bold text-success' : ''}">${opt.text}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                </div>
-            `).join('');
-            
-            html = `
-            <div class="container py-4 h-100 overflow-auto bg-light">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold mb-0"><i class='bx bx-trophy'></i> Pré-visualização do Quiz</h5>
-                    <span class="badge bg-warning text-dark border">${fullLesson.points || 0} pts</span>
-                </div>
-                ${list || '<div class="alert alert-warning">Nenhuma questão cadastrada.</div>'}
-            </div>`;
+                <div class="card mb-3 shadow-sm border-0"><div class="card-body"><h6 class="fw-bold text-primary mb-2">Questão #${i+1}</h6><div class="mb-3 fw-bold">${q.text}</div>
+                <ul class="list-group list-group-flush small bg-light rounded">${q.options.map(opt => `<li class="list-group-item bg-transparent border-0 d-flex align-items-center gap-2">${opt.isCorrect ? '<i class="bx bxs-check-circle text-success fs-5"></i>' : '<i class="bx bx-radio-circle text-muted fs-5"></i>'}<span class="${opt.isCorrect ? 'fw-bold text-success' : ''}">${opt.text}</span></li>`).join('')}</ul></div></div>`).join('');
+            html = `<div class="container py-4 h-100 overflow-auto bg-light"><div class="d-flex justify-content-between align-items-center mb-4"><h5 class="fw-bold mb-0"><i class='bx bx-trophy'></i> Quiz</h5><span class="badge bg-warning text-dark border">${fullLesson.points || 0} pts</span></div>${list || '<div class="alert alert-warning">Vazio.</div>'}</div>`;
         }
     }
 
-    // ============================================================
-    // 4. TAREFA (Instruções + Itens)
-    // ============================================================
+    // 4. TAREFA
     else if (fullLesson.type === 'TAREFA') {
         const data = fullLesson.task_data || { items: [] };
-        const instructions = data.instructions || "Sem instruções gerais.";
-        
-        const list = (data.items || []).map((item, i) => `
-            <div class="card mb-3 border-start border-4 ${item.type==='text'?'border-primary':'border-success'} shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="badge bg-light text-dark border text-uppercase">${item.type === 'text' ? 'Dissertativa' : 'Envio de Link'}</span>
-                        <span class="fw-bold text-muted small">${item.points} pts</span>
-                    </div>
-                    <h6 class="fw-bold">Item #${i+1}</h6>
-                    <div class="bg-light p-3 rounded border border-dashed">${item.statement || 'Sem enunciado...'}</div>
-                </div>
-            </div>
-        `).join('');
-
-        html = `
-        <div class="container py-4 h-100 overflow-auto">
-            <div class="alert alert-info border-0 shadow-sm mb-4">
-                <h6 class="fw-bold"><i class='bx bx-info-circle'></i> Instruções da Atividade</h6>
-                ${instructions}
-            </div>
-            <h6 class="fw-bold mb-3 text-muted border-bottom pb-2">ITENS DE RESPOSTA</h6>
-            ${list || '<div class="text-center text-muted py-4">Nenhum item cadastrado.</div>'}
-        </div>`;
+        const instructions = data.instructions || "Sem instruções.";
+        const list = (data.items || []).map((item, i) => `<div class="card mb-3 border-start border-4 ${item.type==='text'?'border-primary':'border-success'} shadow-sm"><div class="card-body"><div class="d-flex justify-content-between mb-2"><span class="badge bg-light text-dark border text-uppercase">${item.type === 'text' ? 'Dissertativa' : 'Envio de Link'}</span><span class="fw-bold text-muted small">${item.points} pts</span></div><h6 class="fw-bold">Item #${i+1}</h6><div class="bg-light p-3 rounded border border-dashed">${item.statement || 'Sem enunciado...'}</div></div></div>`).join('');
+        html = `<div class="container py-4 h-100 overflow-auto"><div class="alert alert-info border-0 shadow-sm mb-4"><h6 class="fw-bold"><i class='bx bx-info-circle'></i> Instruções</h6>${instructions}</div><h6 class="fw-bold mb-3 text-muted border-bottom pb-2">ITENS</h6>${list || '<div class="text-center text-muted py-4">Vazio.</div>'}</div>`;
     }
 
-    // ============================================================
-    // 5. PDF / MATERIAL EXTERNO / GOOGLE DRIVE
-    // ============================================================
+    // 5. PDF / DRIVE
     else {
-        // Correção Google Drive
         let finalUrl = rawUrl;
-        if (finalUrl.includes('drive.google.com')) {
-            finalUrl = finalUrl.replace(/\/view.*/, '/preview').replace(/\/edit.*/, '/preview');
-        }
+        if (finalUrl.includes('drive.google.com')) finalUrl = finalUrl.replace(/\/view.*/, '/preview').replace(/\/edit.*/, '/preview');
         
         if (finalUrl) {
-            html = `
-            <iframe src="${finalUrl}" style="width:100%; height:100%; border:none;"></iframe>
-            <div style="position:absolute; bottom:15px; right:15px;">
-                <a href="${finalUrl}" target="_blank" class="btn btn-dark btn-sm shadow fw-bold">
-                    <i class='bx bx-link-external'></i> Abrir em Nova Guia
-                </a>
-            </div>`;
+            html = `<iframe src="${finalUrl}" style="width:100%; height:100%; border:none;"></iframe><div style="position:absolute; bottom:15px; right:15px;"><a href="${finalUrl}" target="_blank" class="btn btn-dark btn-sm shadow fw-bold"><i class='bx bx-link-external'></i> Abrir Nova Guia</a></div>`;
         } else {
             html = `<div class="h-100 d-flex align-items-center justify-content-center text-muted">Nenhum conteúdo vinculado.</div>`;
         }
     }
-
     contentDiv.innerHTML = html;
 };
 
@@ -631,12 +559,16 @@ window.openLessonModal = (modId, secId, les = null) => {
         document.getElementById('les_completion_policy').value = completion.policy || 'on_submit';
         document.getElementById('les_min_grade').value = completion.min_grade_to_complete || '';
         
+        // --- ATUALIZAÇÃO: Carrega tentativas e tempo de espera (Padrão 24h) ---
         document.getElementById('les_attempts').value = attempts.attempts_max || 0;
+        document.getElementById('les_attempt_wait').value = (attempts.wait_time !== undefined) ? attempts.wait_time : 24;
         document.getElementById('les_grading_method').value = attempts.grading_method || 'highest';
         
         if(s.prerequisites?.logic === 'OR') document.getElementById('logic_or').checked = true;
     } else {
         document.getElementById('logic_and').checked = true;
+        // Para novas lições, define padrão de 24h
+        document.getElementById('les_attempt_wait').value = 24;
     }
     
     window.toggleGradingTab();
@@ -687,6 +619,7 @@ function setupFormListeners() {
         const preIds = [...document.querySelectorAll('.prereq-check:checked')].map(c => c.value);
         const availFrom = document.getElementById('les_avail_from').value || null;
         
+        // --- ATUALIZAÇÃO: Inclui wait_time no payload ---
         const settings = {
             availability: {
                 available_from: availFrom,
@@ -708,6 +641,7 @@ function setupFormListeners() {
             },
             attempts: {
                 attempts_max: parseInt(document.getElementById('les_attempts').value) || 0,
+                wait_time: parseInt(document.getElementById('les_attempt_wait').value) || 0,
                 grading_method: document.getElementById('les_grading_method').value
             }
         };

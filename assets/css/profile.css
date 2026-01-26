@@ -1,101 +1,226 @@
 /* ============================================================
-   ESTILOS DE IMPRESSÃO - FORMATO CURRÍCULO PROFISSIONAL
+   ESTILOS GERAIS DA PÁGINA DE PERFIL (TELA)
+   ============================================================ */
+/* Adicione aqui seus estilos normais de tela se houver... */
+.profile-header-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.profile-avatar-xl {
+    width: 100px;
+    height: 100px;
+    font-size: 2.5rem;
+    border: 4px solid #fff;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+/* ============================================================
+   ESTILOS DE IMPRESSÃO - MODELO AZUL E BRANCO (DUAS COLUNAS)
    ============================================================ */
 
-/* Esconde tudo da página e mostra apenas a área do CV ao imprimir */
+/* Esconde a área de impressão na visualização normal do navegador */
+#cv-print-area { 
+    display: none; 
+}
+
 @media print {
-    body * { visibility: hidden; }
-    #cv-print-area, #cv-print-area * { visibility: visible; }
+    /* Esconde tudo da página normal */
+    body * { 
+        visibility: hidden; 
+        height: 0;
+        overflow: hidden;
+    }
+    
+    /* Mostra apenas a área do CV e seus filhos */
+    #cv-print-area, #cv-print-area * { 
+        visibility: visible; 
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Posiciona o CV no topo absoluto */
     #cv-print-area {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
+        margin: 0;
+        padding: 0;
         display: block !important;
+        background: white;
+        font-size: 12pt; /* Garante legibilidade */
+    }
+
+    /* Configuração da página */
+    @page {
+        size: A4;
+        margin: 0; /* Remove margens do navegador para usarmos as nossas */
     }
 }
 
-/* Esconde a área de impressão na visualização normal do navegador */
-#cv-print-area { display: none; }
-
+/* Container Principal do Papel */
 .cv-paper {
     width: 210mm;
     min-height: 297mm;
     background: #fff;
-    margin: 0;
-    padding: 0;
+    margin: 0 auto;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    line-height: 1.5;
 }
 
-/* Cabeçalho superior */
+/* --- CABEÇALHO --- */
 .cv-header-custom {
-    padding: 40px 60px;
+    padding: 40px 50px; /* Espaçamento interno */
     background-color: #ffffff;
+    border-bottom: 2px solid #f2f4f7;
 }
 
 .cv-header-custom h1 {
-    font-size: 32pt; /* Aumentado de 26pt para 32pt */
+    font-size: 32pt;
     margin: 0;
-    color: #2563eb; /* Azul destacado */
+    color: #2563eb; /* Azul Destacado */
     font-weight: 800;
     letter-spacing: -1px;
     text-transform: uppercase;
+    line-height: 1.1;
 }
 
 .cv-header-custom h2 {
-    font-size: 15pt; /* Aumentado um pouco o subtítulo */
-    color: #475569;
-    margin-top: 5px;
+    font-size: 14pt;
+    color: #64748b; /* Cinza azulado */
+    margin-top: 8px;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
-/* Layout de Duas Colunas */
+/* --- CORPO (LAYOUT FLEX) --- */
 .cv-body-wrapper {
     display: flex;
-    min-height: 240mm;
+    /* Garante que a altura vá até o fim da página se houver conteúdo */
+    min-height: 230mm; 
 }
 
-/* Coluna Lateral (Cinza) */
+/* --- BARRA LATERAL (ESQUERDA) --- */
 .cv-sidebar {
-    width: 35%;
-    background-color: #f2f4f7; /* Cor baseada no seu modelo */
-    padding: 40px 30px;
+    width: 32%; /* Largura da barra */
+    background-color: #f1f5f9; /* Cinza muito suave */
+    padding: 30px 25px;
+    color: #334155;
+    border-right: 1px solid #e2e8f0;
 }
 
-/* Coluna de Conteúdo (Branca) */
-.cv-main-content {
-    width: 65%;
-    padding: 40px;
+.cv-sidebar-section {
+    margin-bottom: 30px;
 }
 
-/* Títulos das Seções */
-.cv-sidebar-section h4, .cv-main-section h4 {
-    font-size: 10pt;
-    font-weight: bold;
-    color: #1a1a1a;
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 5px;
+.cv-sidebar-section h4 {
+    font-size: 11pt;
+    font-weight: 800;
+    color: #1e293b;
+    border-bottom: 2px solid #cbd5e1;
+    padding-bottom: 8px;
     margin-bottom: 15px;
     text-transform: uppercase;
 }
 
-/* Espaçamento dos Itens */
-.cv-sidebar-section { margin-bottom: 35px; }
-.cv-sidebar-section p { font-size: 9pt; margin-bottom: 8px; line-height: 1.4; }
+/* Itens da sidebar (contato, skills) */
+.cv-contact-item {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 10pt;
+    word-wrap: break-word;
+}
 
-.cv-main-section { margin-bottom: 30px; }
-.cv-main-section p { font-size: 10pt; line-height: 1.6; color: #333; }
+.cv-contact-item i {
+    color: #2563eb;
+    margin-right: 8px;
+    width: 15px;
+    text-align: center;
+}
 
-/* Estilo para lista de Formação e Cursos */
-.item-cv-print { margin-bottom: 15px; }
-.item-cv-print b { font-size: 10pt; display: block; color: #000; }
-.item-cv-print span { font-size: 9pt; color: #666; }
+.cv-list-simple {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
 
-@media print {
-    .cv-header-custom h1 {
-        font-size: 32pt !important;
-        color: #2563eb !important; /* Azul destacado */
-        margin-bottom: 10px;
-    }
+.cv-list-simple li {
+    margin-bottom: 6px;
+    font-size: 10pt;
+    position: relative;
+    padding-left: 15px;
+}
+
+.cv-list-simple li::before {
+    content: "•";
+    color: #2563eb;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+/* --- CONTEÚDO PRINCIPAL (DIREITA) --- */
+.cv-main-content {
+    width: 68%;
+    padding: 30px 40px;
+}
+
+.cv-main-section {
+    margin-bottom: 30px;
+}
+
+.cv-main-section h4 {
+    font-size: 12pt;
+    font-weight: 800;
+    color: #2563eb; /* Azul igual ao título */
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.cv-text-justify {
+    text-align: justify;
+    font-size: 10.5pt;
+    color: #334155;
+}
+
+/* Itens de Lista (Experiência/Formação) */
+.cv-item {
+    margin-bottom: 20px;
+    page-break-inside: avoid; /* Evita quebrar o item no meio da página */
+}
+
+.cv-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+
+.cv-item-title {
+    font-weight: 700;
+    font-size: 11pt;
+    color: #1e293b;
+}
+
+.cv-item-date {
+    font-size: 10pt;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.cv-item-subtitle {
+    font-style: italic;
+    font-size: 10pt;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.cv-item-desc {
+    font-size: 10pt;
+    color: #475569;
+    white-space: pre-wrap; /* Mantém quebras de linha do textarea */
 }
