@@ -1,11 +1,11 @@
 /* ============================================================
-   AVA3 • classroom.js (MOCK + LAYOUT + RESTRIÇÃO VISÍVEL)
-   - Sem Supabase / sem auth
-   - Restrição sequencial: bloqueados ficam visíveis (cinza), mas não abrem
-   - Modelos: VIDEO_AULA, PDF, QUIZ, TASK, AUDIO, TEXTO
+   AVA3 • classroom.js (MOCK + LAYOUT)
+   - Contato direto via MODAL (sem card na página)
+   - Restrição sequencial: bloqueados visíveis (cinza), sem clique
+   - Quiz/Tarefa: 1 questão/etapa por vez (wizard)
    ============================================================ */
 
-const STORAGE_KEY = "ava3.classroom.mock.v3";
+const STORAGE_KEY = "ava3.classroom.mock.v4";
 
 /* ===================== MOCK DATA ===================== */
 const MOCK = {
@@ -100,6 +100,11 @@ const MOCK = {
                   "Inclua horário e meta.",
                   "Envie como texto (mock).",
                 ],
+                questions: [
+                  { label: "1) Quais dias e horários você vai estudar?", type: "textarea", placeholder: "Ex.: seg/qua/sex, 19h–20h..." },
+                  { label: "2) Qual sua meta de aprendizado para esta semana?", type: "textarea", placeholder: "Ex.: concluir Módulo 1 + quiz..." },
+                  { label: "3) Como você vai acompanhar seu progresso?", type: "textarea", placeholder: "Ex.: checklist diário, agenda, etc." },
+                ]
               },
             },
           ],
@@ -189,6 +194,7 @@ const DEFAULT_STATE = {
   muralOrder: null,
   quizDone: {},
   quizAnswers: {},
+  taskAnswers: {},
   _comments: {},
 };
 const STATE = Object.assign({}, DEFAULT_STATE, loadState() || {});
@@ -291,12 +297,10 @@ function isAccessible(lesson) {
   }
   return true;
 }
-
 function firstAccessibleLessonId() {
   const first = FLAT_LESSONS.find((l) => isAccessible(l));
   return first ? first.id : null;
 }
-
 function getAccessibleLessonsList() {
   return FLAT_LESSONS.filter((l) => isAccessible(l));
 }
@@ -321,7 +325,7 @@ function updateHeaderProgress() {
   $("progress-text").textContent = `${pct}%`;
 }
 
-/* ===================== RENDER: MODULES (bloqueado visível) ===================== */
+/* ===================== RENDER: MODULES ===================== */
 function renderModules() {
   const container = $("modules-list");
   container.innerHTML = "";
@@ -343,15 +347,13 @@ function renderModules() {
 
         const done = isCompleted(full.id);
         const accessible = isAccessible(full);
-        const locked = !accessible; // ✅ VISÍVEL, mas cinza e sem clique
+        const locked = !accessible;
         const icon = ICONS[full.type] || ICONS.default;
 
         bodyHtml += `
           <div class="lesson-item ${done ? "completed" : ""} ${locked ? "locked" : ""}" data-lesson-id="${full.id}" aria-disabled="${locked ? "true" : "false"}">
             <i class='bx ${icon} fs-5'></i>
             <span class="text-truncate flex-grow-1">${escapeHtml(full.title)}</span>
-            ${full.type === "QUIZ" ? `<span class="badge bg-light text-dark border">Quiz</span>` : ""}
-            ${full.type === "TASK" ? `<span class="badge bg-light text-dark border">Tarefa</span>` : ""}
             ${locked ? "<i class='bx bx-lock-alt text-muted'></i>" : (done ? "<i class='bx bxs-check-circle text-success'></i>" : "")}
           </div>
         `;
@@ -421,7 +423,6 @@ function renderLesson(lessonId) {
   const lesson = getLessonById(lessonId);
   if (!lesson) return;
 
-  // se for bloqueado: não abre (mantém no último acessível)
   if (!isAccessible(lesson)) {
     const first = firstAccessibleLessonId();
     if (first) lessonId = first;
@@ -439,7 +440,7 @@ function renderLesson(lessonId) {
 
   try { bootstrap.Tab.getOrCreateInstance($("tab-aula-btn")).show(); } catch {}
 
-  $("lbl-type").textContent = current.type.replace("_", " ");
+  $("lbl-type").textContent = current.type.replaceAll("_", " ");
   $("lbl-title").textContent = current.title;
 
   const desc = $("lbl-desc");
@@ -461,7 +462,7 @@ function renderLesson(lessonId) {
   player.innerHTML = "";
   area.innerHTML = "";
 
-  // extras (exceto quiz)
+  // ✅ dúvidas/comentários: exceto quiz
   $("lesson-extras").style.display = isQuiz ? "none" : "block";
 
   if (current.type === "VIDEO_AULA") {
@@ -504,10 +505,8 @@ function renderLesson(lessonId) {
   if (current.type === "TASK") {
     area.innerHTML = `
       <div class="p-3 border rounded-3 bg-white">
-        <div class="fw-bold mb-2"><i class='bx bx-edit'></i> Instruções da tarefa</div>
-        <ul class="mb-3">
-          ${(current.task?.instructions || []).map((x) => `<li>${escapeHtml(x)}</li>`).join("")}
-        </ul>
+        <div class="fw-bold mb-2"><i class='bx bx-edit'></i> Tarefa</div>
+        <div class="text-muted mb-3">Valor: <b>${current.points ?? "—"}</b></div>
         <button class="btn btn-primary rounded-pill px-4" id="btnOpenTask" type="button">
           <i class='bx bx-window-open'></i> Abrir tarefa
         </button>
@@ -523,7 +522,7 @@ function renderLesson(lessonId) {
         <div class="fw-bold mb-2"><i class='bx bx-trophy'></i> Quiz</div>
         <div class="text-muted mb-3">${current.quiz?.questions?.length || 0} questões • Valor: <b>${current.points ?? "—"}</b></div>
         <button class="btn btn-primary rounded-pill px-4" id="btnOpenQuiz" type="button">
-          <i class='bx bx-window-open'></i> ${already ? "Ver tentativa" : "Iniciar quiz"}
+          <i class='bx bx-window-open'></i> ${already ? "Revisar" : "Iniciar quiz"}
         </button>
         ${already ? `<div class="mt-3 alert alert-success mb-0"><i class='bx bx-check-circle'></i> Quiz finalizado.</div>` : ""}
       </div>
@@ -533,7 +532,6 @@ function renderLesson(lessonId) {
 
   if (!isQuiz) {
     renderComments(current.id);
-    renderStaff();
   }
 
   renderPrevNext();
@@ -580,84 +578,228 @@ function closeDrawer() {
   $("activity-drawer").setAttribute("aria-hidden", "true");
 }
 
+/* ===================== TASK WIZARD (1 etapa por vez) ===================== */
 function openTaskDrawer(lesson) {
-  const html = `
-    <div class="p-3 bg-white rounded-3 border">
-      <div class="fw-bold mb-2">Entrega (mock)</div>
-      <label class="form-label fw-bold">Resposta</label>
-      <textarea class="form-control mb-3" rows="6" placeholder="Digite sua resposta..."></textarea>
-      <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-light border" id="drawerCancel">Cancelar</button>
-        <button class="btn btn-primary" id="drawerSubmitTask"><i class='bx bx-send'></i> Enviar</button>
+  const steps =
+    (lesson.task?.questions && Array.isArray(lesson.task.questions) && lesson.task.questions.length)
+      ? lesson.task.questions
+      : [{ label: "Resposta", type: "textarea", placeholder: "Digite sua resposta..." }];
+
+  if (!STATE.taskAnswers) STATE.taskAnswers = {};
+  if (!STATE.taskAnswers[lesson.id]) STATE.taskAnswers[lesson.id] = {};
+
+  let idx = 0;
+
+  openDrawer("Tarefa", lesson.title, `<div id="taskWizard"></div>`);
+  const root = document.getElementById("taskWizard");
+
+  function getSaved(stepIndex) {
+    return STATE.taskAnswers[lesson.id]?.[stepIndex] ?? "";
+  }
+
+  function saveStep(stepIndex, value) {
+    STATE.taskAnswers[lesson.id][stepIndex] = value;
+    saveState(STATE);
+  }
+
+  function render() {
+    const step = steps[idx];
+    const isLast = idx === steps.length - 1;
+
+    const instructions = (lesson.task?.instructions || []).length
+      ? `
+        <div class="mb-3">
+          <div class="fw-bold mb-1">Orientações</div>
+          <ul class="mb-0">
+            ${(lesson.task.instructions || []).map(x => `<li>${escapeHtml(x)}</li>`).join("")}
+          </ul>
+        </div>
+      `
+      : "";
+
+    const value = getSaved(idx);
+
+    const field =
+      (step.type === "text")
+        ? `<input class="form-control" id="taskInput" value="${escapeAttr(value)}" placeholder="${escapeAttr(step.placeholder || "")}" />`
+        : `<textarea class="form-control" id="taskInput" rows="7" placeholder="${escapeAttr(step.placeholder || "")}">${escapeHtml(value)}</textarea>`;
+
+    root.innerHTML = `
+      <div class="p-3 bg-white rounded-3 border">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">Etapa ${idx + 1} de ${steps.length}</div>
+          ${lesson.points ? `<span class="badge bg-light text-dark border">${lesson.points} pts</span>` : `<span class="badge bg-light text-dark border">Tarefa</span>`}
+        </div>
+
+        ${instructions}
+
+        <label class="form-label fw-bold mb-1">${escapeHtml(step.label || "Etapa")}</label>
+        ${field}
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <button class="btn btn-light border" id="tPrev" ${idx === 0 ? "disabled" : ""}>Anterior</button>
+
+          <div class="d-flex gap-2">
+            ${!isLast
+              ? `<button class="btn btn-primary" id="tNext" disabled>Próxima</button>`
+              : `<button class="btn btn-primary" id="tSubmit" disabled><i class='bx bx-send'></i> Enviar</button>`
+            }
+          </div>
+        </div>
+
+        <div class="alert alert-light border mt-3 mb-0 small">
+          Mock: ao enviar, marca como concluída.
+        </div>
       </div>
-      <div class="alert alert-light border mt-3 mb-0 small">
-        Mock: ao enviar, marca como concluída.
-      </div>
-    </div>
-  `;
-  openDrawer("Tarefa", lesson.title, html);
-  $("drawerCancel").onclick = closeDrawer;
-  $("drawerSubmitTask").onclick = () => {
-    markCompleted(lesson.id);
-    closeDrawer();
-    renderLesson(lesson.id);
-  };
+    `;
+
+    const input = root.querySelector("#taskInput");
+    const nextBtn = root.querySelector("#tNext");
+    const submitBtn = root.querySelector("#tSubmit");
+
+    function refreshButtons() {
+      const ok = !!(input.value || "").trim();
+      if (nextBtn) nextBtn.disabled = !ok;
+      if (submitBtn) submitBtn.disabled = !ok;
+    }
+    refreshButtons();
+
+    input.addEventListener("input", () => {
+      saveStep(idx, input.value);
+      refreshButtons();
+    });
+
+    const prevBtn = root.querySelector("#tPrev");
+    if (prevBtn) prevBtn.onclick = () => {
+      if (idx > 0) {
+        saveStep(idx, input.value);
+        idx--;
+        render();
+      }
+    };
+
+    if (nextBtn) nextBtn.onclick = () => {
+      if (idx < steps.length - 1) {
+        saveStep(idx, input.value);
+        idx++;
+        render();
+      }
+    };
+
+    if (submitBtn) submitBtn.onclick = () => {
+      saveStep(idx, input.value);
+      markCompleted(lesson.id);
+      closeDrawer();
+      renderLesson(lesson.id);
+    };
+  }
+
+  render();
 }
 
+/* ===================== QUIZ WIZARD (1 questão por vez) ===================== */
 function openQuizDrawer(lesson) {
   const questions = lesson.quiz?.questions || [];
-  const saved = STATE.quizAnswers[lesson.id] || {};
+  if (!questions.length) {
+    openDrawer("Quiz", lesson.title, `<div class="p-3 bg-white rounded-3 border">Sem questões.</div>`);
+    return;
+  }
 
-  const qHtml = questions.map((q, qi) => {
-    const opts = q.options.map((opt, oi) => {
-      const checked = (saved[qi] === oi) ? "checked" : "";
+  if (!STATE.quizAnswers[lesson.id]) STATE.quizAnswers[lesson.id] = {};
+  let idx = 0;
+
+  openDrawer("Quiz", lesson.title, `<div id="quizWizard"></div>`);
+  const root = document.getElementById("quizWizard");
+
+  const isDone = !!STATE.quizDone[lesson.id];
+
+  function getSavedAnswer(qIndex) {
+    return STATE.quizAnswers[lesson.id]?.[qIndex];
+  }
+
+  function saveAnswer(qIndex, optIndex) {
+    STATE.quizAnswers[lesson.id][qIndex] = optIndex;
+    saveState(STATE);
+  }
+
+  function render() {
+    const q = questions[idx];
+    const saved = getSavedAnswer(idx);
+    const isLast = idx === questions.length - 1;
+    const canAdvance = saved !== undefined;
+
+    const optionsHtml = (q.options || []).map((opt, oi) => {
+      const checked = saved === oi ? "checked" : "";
       return `
         <label class="d-flex align-items-center gap-2 p-2 border rounded-3 bg-white mb-2" style="cursor:pointer;">
-          <input type="radio" name="q${qi}" value="${oi}" ${checked} />
+          <input type="radio" name="qOne" value="${oi}" ${checked} />
           <span>${escapeHtml(opt)}</span>
         </label>
       `;
     }).join("");
 
-    return `
-      <div class="mb-4">
-        <div class="fw-bold mb-2">${qi + 1}. ${escapeHtml(q.q)}</div>
-        ${opts}
+    root.innerHTML = `
+      <div class="p-3 bg-white rounded-3 border">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">Questão ${idx + 1} de ${questions.length}</div>
+          <span class="badge bg-light text-dark border">${lesson.points ?? "—"} pts</span>
+        </div>
+
+        <div class="fw-bold mb-2">${escapeHtml(q.q)}</div>
+        ${optionsHtml}
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <button class="btn btn-light border" id="qPrev" ${idx === 0 ? "disabled" : ""}>Anterior</button>
+
+          <div class="d-flex gap-2">
+            ${
+              !isLast
+                ? `<button class="btn btn-primary" id="qNext" ${canAdvance ? "" : "disabled"}>Próxima</button>`
+                : `<button class="btn btn-primary" id="qFinish" ${canAdvance ? "" : "disabled"}>Finalizar</button>`
+            }
+          </div>
+        </div>
+
+        ${
+          isDone
+            ? `<div class="alert alert-light border mt-3 mb-0 small">
+                 Quiz já finalizado. (Mock) Você pode revisar as respostas.
+               </div>`
+            : ""
+        }
       </div>
     `;
-  }).join("");
 
-  const html = `
-    <div class="p-3 bg-white rounded-3 border">
-      <div class="fw-bold mb-2">Responda e finalize</div>
-      ${qHtml}
-      <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-light border" id="drawerCancel">Cancelar</button>
-        <button class="btn btn-primary" id="drawerFinishQuiz"><i class='bx bx-check'></i> Finalizar</button>
-      </div>
-    </div>
-  `;
-
-  openDrawer("Quiz", lesson.title, html);
-
-  $("drawer-body").querySelectorAll("input[type=radio]").forEach((inp) => {
-    inp.addEventListener("change", (e) => {
-      const qi = parseInt(e.target.name.replace("q", ""), 10);
-      const oi = parseInt(e.target.value, 10);
-      if (!STATE.quizAnswers[lesson.id]) STATE.quizAnswers[lesson.id] = {};
-      STATE.quizAnswers[lesson.id][qi] = oi;
-      saveState(STATE);
+    root.querySelectorAll('input[name="qOne"]').forEach((inp) => {
+      inp.addEventListener("change", (e) => {
+        const oi = parseInt(e.target.value, 10);
+        saveAnswer(idx, oi);
+        const btn = root.querySelector("#qNext") || root.querySelector("#qFinish");
+        if (btn) btn.disabled = false;
+      });
     });
-  });
 
-  $("drawerCancel").onclick = closeDrawer;
-  $("drawerFinishQuiz").onclick = () => {
-    STATE.quizDone[lesson.id] = true;
-    saveState(STATE);
-    markCompleted(lesson.id); // quiz conclui aqui
-    closeDrawer();
-    renderLesson(lesson.id);
-  };
+    const prevBtn = root.querySelector("#qPrev");
+    if (prevBtn) prevBtn.onclick = () => {
+      if (idx > 0) { idx--; render(); }
+    };
+
+    const nextBtn = root.querySelector("#qNext");
+    if (nextBtn) nextBtn.onclick = () => {
+      if (idx < questions.length - 1) { idx++; render(); }
+    };
+
+    const finishBtn = root.querySelector("#qFinish");
+    if (finishBtn) finishBtn.onclick = () => {
+      STATE.quizDone[lesson.id] = true;
+      saveState(STATE);
+      markCompleted(lesson.id);
+      closeDrawer();
+      renderLesson(lesson.id);
+    };
+  }
+
+  render();
 }
 
 /* ===================== COMMENTS ===================== */
@@ -768,30 +910,61 @@ function sendReply() {
   try { bootstrap.Modal.getOrCreateInstance($("modalReply")).hide(); } catch {}
 }
 
-/* ===================== STAFF ===================== */
-function renderStaff() {
-  const container = $("staffList");
-  container.innerHTML = "";
+/* ===================== CONTATO (MODAL) ===================== */
+let selectedStaffId = null;
+
+function renderStaffModal() {
+  const list = $("staffModalList");
+  list.innerHTML = "";
 
   MOCK.staff.forEach((p) => {
-    container.insertAdjacentHTML("beforeend", `
-      <div class="d-flex justify-content-between align-items-center p-2 border rounded-3 mb-2 bg-white">
-        <div>
+    list.insertAdjacentHTML("beforeend", `
+      <button type="button"
+        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+        data-staff-id="${p.id}">
+        <div class="text-start">
           <div class="fw-bold">${escapeHtml(p.name)}</div>
           <div class="small text-muted">${escapeHtml(p.role)}</div>
         </div>
-        <button class="btn btn-outline-primary btn-sm rounded-pill"
-          data-staff-id="${p.id}"
-          data-bs-toggle="modal"
-          data-bs-target="#modalContact">
-          <i class='bx bx-chat'></i> Mensagem
-        </button>
-      </div>
+        <i class='bx bx-chevron-right text-muted'></i>
+      </button>
     `);
+  });
+
+  list.querySelectorAll("[data-staff-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedStaffId = btn.getAttribute("data-staff-id");
+
+      // marca visualmente
+      list.querySelectorAll(".active").forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+
+      const staff = MOCK.staff.find(s => s.id === selectedStaffId);
+      $("contactToName").textContent = staff?.name || "—";
+      $("contactToRole").textContent = staff?.role || "—";
+
+      $("btnSendContact").disabled = false;
+      $("contactText").focus();
+    });
   });
 }
 
+function openContactModal() {
+  const modal = bootstrap.Modal.getOrCreateInstance($("modalContact"));
+  // reset
+  selectedStaffId = null;
+  $("contactToName").textContent = "—";
+  $("contactToRole").textContent = "Selecione alguém à esquerda";
+  $("contactText").value = "";
+  $("btnSendContact").disabled = true;
+
+  renderStaffModal();
+  modal.show();
+}
+
 function sendContact() {
+  if (!selectedStaffId) return;
+  // mock: fecha
   try { bootstrap.Modal.getOrCreateInstance($("modalContact")).hide(); } catch {}
   $("contactText").value = "";
 }
@@ -903,7 +1076,7 @@ function enableMuralDrag(board) {
   }
 }
 
-/* ===================== NOTAS (alinhadas) ===================== */
+/* ===================== NOTAS ===================== */
 function renderGrades() {
   const wrap = $("grades-list");
 
@@ -1044,23 +1217,18 @@ function setupNavToggle() {
   });
 }
 
-/* ===================== TOP ACTIONS (Contato/Configs) ===================== */
+/* ===================== TOP ACTIONS ===================== */
 function setupTopActions() {
-  $("btnTopContact").addEventListener("click", () => {
-    try { bootstrap.Tab.getOrCreateInstance($("tab-aula-btn")).show(); } catch {}
-    const block = $("contactBlock");
-    if (block) block.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  $("btnTopContact").addEventListener("click", openContactModal);
 
-  // placeholders (pra não quebrar navegação agora)
   $("btnTopClassCfg").addEventListener("click", (e) => {
     e.preventDefault();
-    alert("Configurações da Turma (mock) — vamos ligar depois no módulo de configurações.");
+    alert("Configurações da Turma (mock) — vamos ligar depois.");
   });
 
   $("btnTopCourseCfg").addEventListener("click", (e) => {
     e.preventDefault();
-    alert("Configurações do Curso (mock) — vamos ligar depois no course-editor.");
+    alert("Configurações do Curso (mock) — vamos ligar depois.");
   });
 }
 
@@ -1069,7 +1237,7 @@ function setupEvents() {
   $("modules-list").addEventListener("click", (e) => {
     const item = e.target.closest(".lesson-item");
     if (!item) return;
-    if (item.classList.contains("locked")) return; // ✅ bloqueado não abre
+    if (item.classList.contains("locked")) return;
     renderLesson(item.dataset.lessonId);
   });
 
@@ -1093,15 +1261,6 @@ function setupEvents() {
   });
 
   $("btnSendReply").addEventListener("click", sendReply);
-
-  $("modalContact").addEventListener("show.bs.modal", (ev) => {
-    const btn = ev.relatedTarget;
-    const staffId = btn?.getAttribute("data-staff-id");
-    const staff = MOCK.staff.find(s => s.id === staffId);
-    $("contactToName").textContent = staff?.name || "—";
-    $("contactToRole").textContent = staff?.role || "—";
-    $("contactText").value = "";
-  });
 
   $("btnSendContact").addEventListener("click", sendContact);
 }
@@ -1129,4 +1288,5 @@ function init() {
 
   if (startId) renderLesson(startId);
 }
+
 document.addEventListener("DOMContentLoaded", init);
