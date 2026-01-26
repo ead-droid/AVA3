@@ -788,3 +788,93 @@ body{ background:var(--bg); color:var(--text); }
   .cal-grid{ gap: 8px; }
   .cal-cell{ min-height: 76px; }
 }
+/* =========================================================
+   PATCH • Tabs + ações + bloqueio visível + gaveta maior
+   Cole no FINAL do classroom-styles.css
+   ========================================================= */
+
+/* --- barra única: tabs + ações --- */
+.tabs-bar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;              /* ✅ no celular pode quebrar sem ficar torto */
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+.classroom-tabs{
+  border-bottom: 0 !important; /* já tem a borda no wrapper */
+  margin-bottom: 0 !important;
+  flex: 1 1 auto;
+  min-width: 260px;
+}
+
+.tabs-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex: 0 0 auto;
+}
+
+.tabs-actions .btn{
+  white-space: nowrap;
+}
+
+/* --- reduz “espaçação” na aula --- */
+.activity-area{
+  min-height: 160px !important;  /* era grande, gerava vazio */
+}
+.lesson-extras{
+  margin-top: 14px;              /* menor que mt-4 */
+}
+
+/* --- bloqueado visível (cinza claro), sem clique --- */
+.lesson-item.locked{
+  pointer-events: none;
+  opacity: .48;
+  background: #f7f8fb;
+  color: #94a3b8;
+}
+.lesson-item.locked:hover{
+  background: #f7f8fb;
+}
+
+/* --- gaveta MUITO maior: chega até o menu do curso --- */
+/* layout: 360px nav + gap 18 + padding 16+16 ~= 410 */
+.quiz-drawer{
+  width: calc(100vw - 410px) !important;
+  max-width: none !important;          /* ✅ sem limitar: realmente chega no menu */
+  right: -120% !important;             /* garante “fora” antes de abrir */
+}
+.quiz-drawer.open{
+  right: 0 !important;
+}
+
+/* --- responsividade: tabs roláveis e ações compactas --- */
+@media (max-width: 768px){
+  .tabs-bar{
+    align-items:stretch;
+  }
+  .classroom-tabs{
+    overflow-x:auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs-actions{
+    width: 100%;
+    justify-content:flex-start;
+  }
+}
+
+/* celular bem pequeno: deixa ações em ícone (texto some) */
+@media (max-width: 420px){
+  .tabs-actions .btn span{
+    display:none;
+  }
+  .tabs-actions .btn{
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

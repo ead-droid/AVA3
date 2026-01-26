@@ -1,9 +1,8 @@
 /* ============================================================
-   AVA3 • classroom.js (LAYOUT + MOCK FUNCIONAL + RESTRIÇÃO)
-   - Ainda sem Supabase
-   - Restrição sequencial (curso ou módulo)
-   - Modelos: VIDEO, PDF, QUIZ, AUDIO, TASK, TEXT
-   - Sem “vão” entre conteúdo e dúvidas (activity-area sem min-height fixo)
+   AVA3 • classroom.js (MOCK + LAYOUT + RESTRIÇÃO VISÍVEL)
+   - Sem Supabase / sem auth
+   - Restrição sequencial: bloqueados ficam visíveis (cinza), mas não abrem
+   - Modelos: VIDEO_AULA, PDF, QUIZ, TASK, AUDIO, TEXTO
    ============================================================ */
 
 const STORAGE_KEY = "ava3.classroom.mock.v3";
@@ -34,8 +33,8 @@ const MOCK = {
             {
               id: "l1",
               type: "VIDEO_AULA",
-              title: "1. Boas-vindas e apresentação",
-              description: "Abertura do curso, como funciona a organização e as conclusões.",
+              title: "1. Boas-vindas e apresentação (vídeo)",
+              description: "Abertura do curso, organização e dinâmica das conclusões.",
               videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
             },
             {
@@ -47,36 +46,35 @@ const MOCK = {
             },
             {
               id: "l3",
-              type: "TEXT",
-              title: "3. Leitura: Como estudar no AVA",
-              description: "Texto de apoio para orientar seu ritmo e organização.",
-              text: {
-                heading: "Como estudar no AVA sem se perder",
-                blocks: [
-                  { kind: "p", text: "A melhor forma de manter constância é ter um horário fixo e metas pequenas, mas diárias." },
-                  { kind: "callout", title: "Dica prática", text: "Use a regra 25/5: estude 25 minutos e faça 5 de pausa. Repita 2 vezes." },
-                  { kind: "h", text: "Checklist semanal" },
-                  { kind: "ul", items: ["Assistir à aula", "Fazer a leitura", "Responder atividade", "Registrar dúvidas"] },
-                  { kind: "p", text: "Se algo não ficou claro, poste no campo de dúvidas. Isso ajuda a turma toda." },
-                ],
-              }
+              type: "AUDIO",
+              title: "3. Áudio: Dicas rápidas (podcast)",
+              description: "Um exemplo de aula em áudio (mock).",
+              audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
             },
             {
               id: "l4",
-              type: "AUDIO",
-              title: "4. Áudio: Rotina de estudos (3 min)",
-              description: "Ouça um áudio curto com orientações práticas.",
-              audioUrl: "https://www.w3schools.com/html/horse.mp3",
-              transcript: [
-                "Neste áudio, reforçamos a importância de estudar por blocos curtos.",
-                "Você não precisa estudar por horas — precisa estudar com regularidade.",
-              ],
+              type: "TEXTO",
+              title: "4. Texto: Checklist de organização (leitura)",
+              description: "Exemplo de conteúdo textual estruturado.",
+              textHtml: `
+                <h4>Checklist de organização do almoxarifado</h4>
+                <p>Antes de iniciar, verifique:</p>
+                <ul>
+                  <li>Separação de áreas (recebimento / armazenagem / expedição)</li>
+                  <li>Identificação e sinalização de corredores</li>
+                  <li>Endereçamento e padrão de etiquetas</li>
+                  <li>Rotina de conferência e registro</li>
+                </ul>
+                <div class="alert alert-light border">
+                  <b>Dica:</b> padronização reduz erros e acelera inventários.
+                </div>
+              `,
             },
             {
               id: "l5",
               type: "QUIZ",
-              title: "5. Quiz diagnóstico",
-              description: "Questionário rápido para medir seu ponto de partida.",
+              title: "5. Quiz diagnóstico (modelo)",
+              description: "Questionário rápido (mock).",
               points: 10,
               quiz: {
                 questions: [
@@ -88,19 +86,19 @@ const MOCK = {
           ],
         },
         {
-          title: "Seção 1.2 — Rotina e avaliações",
+          title: "Seção 1.2 — Avaliações",
           lessons: [
             {
               id: "l6",
               type: "TASK",
-              title: "6. Tarefa: Plano de estudos",
-              description: "Monte um plano simples e objetivo.",
+              title: "6. Tarefa: Plano de estudos (modelo)",
+              description: "Monte um plano simples de estudos.",
               points: 20,
               task: {
                 instructions: [
                   "Defina 3 dias/semana para estudar.",
                   "Inclua horário e meta.",
-                  "Envie como texto.",
+                  "Envie como texto (mock).",
                 ],
               },
             },
@@ -119,15 +117,15 @@ const MOCK = {
             {
               id: "l7",
               type: "VIDEO_AULA",
-              title: "1. Conferência e documentação",
+              title: "1. Conferência e documentação (vídeo)",
               description: "Conceitos básicos do recebimento e conferência.",
               videoUrl: "https://www.youtube.com/watch?v=ysz5S6PUM-U",
             },
             {
               id: "l8",
               type: "QUIZ",
-              title: "2. Quiz: Conferência",
-              description: "Fixação dos conceitos.",
+              title: "2. Quiz: Conferência (modelo)",
+              description: "Fixação (mock).",
               points: 15,
               quiz: {
                 questions: [
@@ -181,12 +179,9 @@ const MOCK = {
 
 /* ===================== STATE ===================== */
 function loadState() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); }
-  catch { return null; }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch { return null; }
 }
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
+function saveState(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
 const DEFAULT_STATE = {
   completed: [],
@@ -195,24 +190,38 @@ const DEFAULT_STATE = {
   quizDone: {},
   quizAnswers: {},
   _comments: {},
-  contactRecipientId: null,
 };
-
 const STATE = Object.assign({}, DEFAULT_STATE, loadState() || {});
 const completedSet = new Set(STATE.completed);
 
-/* ===================== HELPERS ===================== */
 const $ = (id) => document.getElementById(id);
 
 const ICONS = {
   VIDEO_AULA: "bx-play-circle",
   PDF: "bxs-file-pdf",
-  AUDIO: "bx-headphone",
+  AUDIO: "bx-music",
+  TEXTO: "bx-book-open",
   QUIZ: "bx-trophy",
   TASK: "bx-edit",
-  TEXT: "bx-book-open",
   default: "bx-file",
 };
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+function escapeAttr(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
 
 function toEmbedUrl(url) {
   if (!url) return "";
@@ -225,13 +234,11 @@ function toEmbedUrl(url) {
 }
 
 function isCompleted(lessonId) { return completedSet.has(lessonId); }
-
 function markCompleted(lessonId) {
   completedSet.add(lessonId);
   STATE.completed = Array.from(completedSet);
   saveState(STATE);
 }
-
 function setCurrentLesson(lessonId) {
   STATE.currentLessonId = lessonId;
   saveState(STATE);
@@ -250,27 +257,23 @@ function getAllLessonsFlat() {
   return flat;
 }
 const FLAT_LESSONS = getAllLessonsFlat();
-
 function getLessonById(id) { return FLAT_LESSONS.find((l) => l.id === id) || null; }
 
-/* ===================== RESTRIÇÃO SEQUENCIAL ===================== */
+/* ===================== RESTRIÇÃO (SEQUENCIAL) ===================== */
 function getProgressionSettings() {
   const mode = MOCK.settings?.progressionMode || "free";
   const scope = MOCK.settings?.progressionScope || "course";
   return { mode, scope };
 }
-
 function computeGateCourse() {
   const idx = FLAT_LESSONS.findIndex((l) => !isCompleted(l.id));
   return idx === -1 ? (FLAT_LESSONS.length - 1) : idx;
 }
-
 function computeGateByModule(moduleId) {
   const lessons = FLAT_LESSONS.filter((l) => l.moduleId === moduleId);
   const idx = lessons.findIndex((l) => !isCompleted(l.id));
   return idx === -1 ? (lessons.length - 1) : idx;
 }
-
 function isAccessible(lesson) {
   const { mode, scope } = getProgressionSettings();
   if (mode !== "sequential") return true;
@@ -280,14 +283,12 @@ function isAccessible(lesson) {
     const myIndex = FLAT_LESSONS.findIndex((l) => l.id === lesson.id);
     return myIndex <= gate;
   }
-
   if (scope === "module") {
     const lessons = FLAT_LESSONS.filter((l) => l.moduleId === lesson.moduleId);
     const gate = computeGateByModule(lesson.moduleId);
     const myIndex = lessons.findIndex((l) => l.id === lesson.id);
     return myIndex <= gate;
   }
-
   return true;
 }
 
@@ -307,7 +308,6 @@ function getProgress() {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   return { total, done, pct };
 }
-
 function getModuleProgress(moduleId) {
   const lessons = FLAT_LESSONS.filter((l) => l.moduleId === moduleId);
   const total = lessons.length;
@@ -315,19 +315,16 @@ function getModuleProgress(moduleId) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   return { total, done, pct };
 }
-
 function updateHeaderProgress() {
   const { pct } = getProgress();
   $("overall-progress").style.width = `${pct}%`;
   $("progress-text").textContent = `${pct}%`;
 }
 
-/* ===================== RENDER: MODULES ===================== */
+/* ===================== RENDER: MODULES (bloqueado visível) ===================== */
 function renderModules() {
   const container = $("modules-list");
   container.innerHTML = "";
-
-  const { mode } = getProgressionSettings();
 
   MOCK.modules.forEach((mod, idx) => {
     const mp = getModuleProgress(mod.id);
@@ -335,71 +332,61 @@ function renderModules() {
     const collId = `coll-${mod.id}`;
     const show = idx === 0 ? "show" : "";
 
-    const header = `
-      <h2 class="accordion-header" id="${headId}">
-        <button class="accordion-button ${show ? "" : "collapsed"}" type="button"
-          data-bs-toggle="collapse" data-bs-target="#${collId}" aria-expanded="${show ? "true" : "false"}">
-          <span class="text-truncate">${escapeHtml(mod.title)}</span>
-          <span class="ms-auto d-flex align-items-center gap-2">
-            <span class="badge bg-light text-dark border">${mp.done}/${mp.total}</span>
-            <span class="small text-muted fw-bold">${mp.pct}%</span>
-          </span>
-        </button>
-      </h2>
-      <div class="px-3 pb-2 pt-0" style="background:#fff;">
-        <div class="progress" style="height:6px; width:100%;">
-          <div class="progress-bar bg-primary" style="width:${mp.pct}%"></div>
-        </div>
-      </div>
-    `;
-
     let bodyHtml = "";
-    let stopped = false;
 
     mod.sections.forEach((sec) => {
-      if (mode === "sequential" && stopped) return;
-
       bodyHtml += `<div class="section-title">${escapeHtml(sec.title)}</div>`;
 
-      for (const lesson of sec.lessons) {
+      sec.lessons.forEach((lesson) => {
         const full = getLessonById(lesson.id);
-        if (!full) continue;
-
-        const accessible = isAccessible(full);
-
-        if (!accessible) {
-          bodyHtml += `
-            <div class="px-3 py-2 text-muted small" style="border-top:1px solid #f1f5f9;">
-              <i class='bx bx-lock-alt'></i> Conclua a aula anterior para liberar as próximas.
-            </div>
-          `;
-          stopped = true;
-          break;
-        }
+        if (!full) return;
 
         const done = isCompleted(full.id);
+        const accessible = isAccessible(full);
+        const locked = !accessible; // ✅ VISÍVEL, mas cinza e sem clique
         const icon = ICONS[full.type] || ICONS.default;
 
         bodyHtml += `
-          <div class="lesson-item ${done ? "completed" : ""}" data-lesson-id="${full.id}">
+          <div class="lesson-item ${done ? "completed" : ""} ${locked ? "locked" : ""}" data-lesson-id="${full.id}" aria-disabled="${locked ? "true" : "false"}">
             <i class='bx ${icon} fs-5'></i>
             <span class="text-truncate flex-grow-1">${escapeHtml(full.title)}</span>
-            ${done ? "<i class='bx bxs-check-circle text-success'></i>" : ""}
+            ${full.type === "QUIZ" ? `<span class="badge bg-light text-dark border">Quiz</span>` : ""}
+            ${full.type === "TASK" ? `<span class="badge bg-light text-dark border">Tarefa</span>` : ""}
+            ${locked ? "<i class='bx bx-lock-alt text-muted'></i>" : (done ? "<i class='bx bxs-check-circle text-success'></i>" : "")}
           </div>
         `;
-      }
+      });
     });
 
     container.insertAdjacentHTML("beforeend", `
       <div class="accordion-item">
-        ${header}
-        <div id="${collId}" class="accordion-collapse collapse ${show}" aria-labelledby="${headId}">
-          <div class="accordion-body p-0">
-            ${bodyHtml || `<div class="p-3 text-muted small">Sem itens.</div>`}
+        <h2 class="accordion-header" id="${headId}">
+          <button class="accordion-button ${show ? "" : "collapsed"}" type="button"
+            data-bs-toggle="collapse" data-bs-target="#${collId}" aria-expanded="${show ? "true" : "false"}">
+            <span class="text-truncate">${escapeHtml(mod.title)}</span>
+            <span class="ms-auto d-flex align-items-center gap-2">
+              <span class="badge bg-light text-dark border">${mp.done}/${mp.total}</span>
+              <span class="small text-muted fw-bold">${mp.pct}%</span>
+            </span>
+          </button>
+        </h2>
+
+        <div class="px-3 pb-2 pt-0" style="background:#fff;">
+          <div class="progress" style="height:6px; width:100%;">
+            <div class="progress-bar bg-primary" style="width:${mp.pct}%"></div>
           </div>
+        </div>
+
+        <div id="${collId}" class="accordion-collapse collapse ${show}" aria-labelledby="${headId}">
+          <div class="accordion-body p-0">${bodyHtml}</div>
         </div>
       </div>
     `);
+
+    if (STATE.currentLessonId) {
+      const activeEl = container.querySelector(`[data-lesson-id="${STATE.currentLessonId}"]`);
+      if (activeEl) activeEl.classList.add("active");
+    }
   });
 }
 
@@ -430,16 +417,11 @@ function setFinishUI(isDone, isQuiz) {
   }
 }
 
-function setActivityModeEmpty(isEmpty) {
-  const area = $("activity-area");
-  if (isEmpty) area.classList.add("has-empty");
-  else area.classList.remove("has-empty");
-}
-
 function renderLesson(lessonId) {
   const lesson = getLessonById(lessonId);
   if (!lesson) return;
 
+  // se for bloqueado: não abre (mantém no último acessível)
   if (!isAccessible(lesson)) {
     const first = firstAccessibleLessonId();
     if (first) lessonId = first;
@@ -478,64 +460,45 @@ function renderLesson(lessonId) {
   player.style.display = "none";
   player.innerHTML = "";
   area.innerHTML = "";
-  setActivityModeEmpty(false);
 
+  // extras (exceto quiz)
   $("lesson-extras").style.display = isQuiz ? "none" : "block";
 
   if (current.type === "VIDEO_AULA") {
     player.style.display = "block";
     player.innerHTML = `<iframe src="${toEmbedUrl(current.videoUrl)}" title="Vídeo" allowfullscreen></iframe>`;
-    // ✅ sem conteúdo extra no activity-area => sem “vão”
-    area.innerHTML = "";
-    setActivityModeEmpty(false);
   }
 
   if (current.type === "PDF") {
     area.innerHTML = `
-      <div class="d-flex justify-content-end mb-2">
+      <div class="mb-3 d-flex justify-content-end">
         <a class="btn btn-outline-primary rounded-pill" href="${current.pdfUrl || "#"}" target="_blank" rel="noopener">
-          <i class='bx bxs-file-pdf'></i> Abrir PDF
+          <i class='bx bxs-file-pdf'></i> Abrir em nova aba
         </a>
       </div>
       <iframe class="pdf-viewer" src="${current.pdfUrl || ""}"></iframe>
     `;
-    setActivityModeEmpty(false);
-  }
-
-  if (current.type === "TEXT") {
-    const t = current.text || {};
-    area.innerHTML = `
-      <div class="reading-card">
-        <div class="reading-title">
-          <i class='bx bx-book-open'></i>
-          <span>${escapeHtml(t.heading || current.title)}</span>
-        </div>
-        <div class="reading-body">
-          ${(t.blocks || []).map(renderTextBlock).join("")}
-        </div>
-      </div>
-    `;
-    setActivityModeEmpty(false);
   }
 
   if (current.type === "AUDIO") {
     area.innerHTML = `
       <div class="audio-container">
-        <div class="audio-icon"><i class='bx bx-headphone'></i></div>
-        <div class="fw-bold mb-2">${escapeHtml(current.title)}</div>
-
-        <audio controls style="width:100%;" src="${current.audioUrl || ""}"></audio>
-
-        ${(current.transcript && current.transcript.length)
-          ? `<div class="audio-transcript mt-3">
-               <div class="fw-bold mb-1">Transcrição</div>
-               ${(current.transcript || []).map(x => `<div class="small text-muted">${escapeHtml(x)}</div>`).join("")}
-             </div>`
-          : ""
-        }
+        <div class="audio-icon"><i class='bx bx-music'></i></div>
+        <div class="fw-bold mb-1">Aula em áudio (modelo)</div>
+        <div class="text-muted small mb-3">Você pode ouvir e depois concluir a aula normalmente.</div>
+        <audio controls style="width:100%;">
+          <source src="${current.audioUrl || ""}" type="audio/mpeg">
+        </audio>
       </div>
     `;
-    setActivityModeEmpty(false);
+  }
+
+  if (current.type === "TEXTO") {
+    area.innerHTML = `
+      <div class="p-3 border rounded-3 bg-white">
+        <div class="content-text">${current.textHtml || "<p>(Sem conteúdo)</p>"}</div>
+      </div>
+    `;
   }
 
   if (current.type === "TASK") {
@@ -551,7 +514,6 @@ function renderLesson(lessonId) {
       </div>
     `;
     $("btnOpenTask").onclick = () => openTaskDrawer(current);
-    setActivityModeEmpty(false);
   }
 
   if (current.type === "QUIZ") {
@@ -567,10 +529,12 @@ function renderLesson(lessonId) {
       </div>
     `;
     $("btnOpenQuiz").onclick = () => openQuizDrawer(current);
-    setActivityModeEmpty(false);
   }
 
-  if (!isQuiz) renderComments(current.id);
+  if (!isQuiz) {
+    renderComments(current.id);
+    renderStaff();
+  }
 
   renderPrevNext();
   updateHeaderProgress();
@@ -606,7 +570,6 @@ function openDrawer(title, subtitle, html) {
   $("drawer-title").textContent = title || "Atividade";
   $("drawer-subtitle").textContent = subtitle || "";
   $("drawer-body").innerHTML = html || "";
-
   $("activity-backdrop").classList.add("show");
   $("activity-drawer").classList.add("open");
   $("activity-drawer").setAttribute("aria-hidden", "false");
@@ -620,19 +583,19 @@ function closeDrawer() {
 function openTaskDrawer(lesson) {
   const html = `
     <div class="p-3 bg-white rounded-3 border">
-      <div class="fw-bold mb-2">Entrega</div>
-
+      <div class="fw-bold mb-2">Entrega (mock)</div>
       <label class="form-label fw-bold">Resposta</label>
       <textarea class="form-control mb-3" rows="6" placeholder="Digite sua resposta..."></textarea>
-
       <div class="d-flex justify-content-end gap-2">
         <button class="btn btn-light border" id="drawerCancel">Cancelar</button>
         <button class="btn btn-primary" id="drawerSubmitTask"><i class='bx bx-send'></i> Enviar</button>
       </div>
+      <div class="alert alert-light border mt-3 mb-0 small">
+        Mock: ao enviar, marca como concluída.
+      </div>
     </div>
   `;
   openDrawer("Tarefa", lesson.title, html);
-
   $("drawerCancel").onclick = closeDrawer;
   $("drawerSubmitTask").onclick = () => {
     markCompleted(lesson.id);
@@ -668,7 +631,6 @@ function openQuizDrawer(lesson) {
     <div class="p-3 bg-white rounded-3 border">
       <div class="fw-bold mb-2">Responda e finalize</div>
       ${qHtml}
-
       <div class="d-flex justify-content-end gap-2">
         <button class="btn btn-light border" id="drawerCancel">Cancelar</button>
         <button class="btn btn-primary" id="drawerFinishQuiz"><i class='bx bx-check'></i> Finalizar</button>
@@ -692,7 +654,7 @@ function openQuizDrawer(lesson) {
   $("drawerFinishQuiz").onclick = () => {
     STATE.quizDone[lesson.id] = true;
     saveState(STATE);
-    markCompleted(lesson.id);
+    markCompleted(lesson.id); // quiz conclui aqui
     closeDrawer();
     renderLesson(lesson.id);
   };
@@ -715,7 +677,7 @@ function renderComments(lessonId) {
   const comments = getCommentsForLesson(lessonId);
 
   if (!comments || comments.length === 0) {
-    thread.innerHTML = `<div class="text-muted small">Sem comentários ainda.</div>`;
+    thread.innerHTML = `<div class="text-muted small">Sem comentários ainda. Seja o primeiro 🙂</div>`;
     return;
   }
 
@@ -806,39 +768,32 @@ function sendReply() {
   try { bootstrap.Modal.getOrCreateInstance($("modalReply")).hide(); } catch {}
 }
 
-/* ===================== CONTATO DIRETO (modal com chips) ===================== */
-function renderContactRecipients() {
-  const wrap = $("contactRecipients");
-  wrap.innerHTML = "";
-
-  const selectedId = STATE.contactRecipientId || MOCK.staff[0]?.id || null;
-  STATE.contactRecipientId = selectedId;
-  saveState(STATE);
+/* ===================== STAFF ===================== */
+function renderStaff() {
+  const container = $("staffList");
+  container.innerHTML = "";
 
   MOCK.staff.forEach((p) => {
-    const active = p.id === selectedId;
-    wrap.insertAdjacentHTML("beforeend", `
-      <button type="button" class="chip ${active ? "active" : ""}" data-recipient-id="${p.id}">
-        ${escapeHtml(p.name)}
-      </button>
+    container.insertAdjacentHTML("beforeend", `
+      <div class="d-flex justify-content-between align-items-center p-2 border rounded-3 mb-2 bg-white">
+        <div>
+          <div class="fw-bold">${escapeHtml(p.name)}</div>
+          <div class="small text-muted">${escapeHtml(p.role)}</div>
+        </div>
+        <button class="btn btn-outline-primary btn-sm rounded-pill"
+          data-staff-id="${p.id}"
+          data-bs-toggle="modal"
+          data-bs-target="#modalContact">
+          <i class='bx bx-chat'></i> Mensagem
+        </button>
+      </div>
     `);
-  });
-
-  const selected = MOCK.staff.find(s => s.id === selectedId);
-  $("contactToRole").textContent = selected ? selected.role : "—";
-
-  wrap.querySelectorAll(".chip").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      STATE.contactRecipientId = btn.getAttribute("data-recipient-id");
-      saveState(STATE);
-      renderContactRecipients();
-    });
   });
 }
 
 function sendContact() {
-  $("contactText").value = "";
   try { bootstrap.Modal.getOrCreateInstance($("modalContact")).hide(); } catch {}
+  $("contactText").value = "";
 }
 
 /* ===================== MURAL (drag) ===================== */
@@ -967,8 +922,8 @@ function renderGrades() {
     const rows = items.map((x) => `
       <tr>
         <td class="fw-bold text-truncate">${escapeHtml(x.title)}</td>
-        <td class="text-end mono">${x.value ?? "NSA"}</td>
-        <td class="text-end mono">${x.score ?? "NSA"}</td>
+        <td class="text-end">${x.value ?? "NSA"}</td>
+        <td class="text-end">${x.score ?? "NSA"}</td>
         <td class="text-end">
           ${isCompleted(x.lessonId) ? `<span class="badge bg-success">Concluído</span>` : `<span class="badge bg-light text-dark border">Pendente</span>`}
         </td>
@@ -977,24 +932,25 @@ function renderGrades() {
 
     return `
       <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
           <div>
             <div class="fw-bold">${escapeHtml(modTitle(moduleId))}</div>
             <div class="small text-muted">Pontuação do módulo</div>
           </div>
           <div class="d-flex gap-2 flex-wrap justify-content-end">
-            <span class="badge bg-light text-dark border">Total: <span class="mono">${total}</span></span>
-            <span class="badge bg-light text-dark border">Obtido: <span class="mono">${got}</span></span>
+            <span class="badge bg-light text-dark border">Total: ${total}</span>
+            <span class="badge bg-light text-dark border">Obtido: ${got}</span>
           </div>
         </div>
+
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover mb-0 grades-table">
               <colgroup>
-                <col style="width:55%">
-                <col style="width:15%">
-                <col style="width:15%">
-                <col style="width:15%">
+                <col style="width:52%">
+                <col style="width:16%">
+                <col style="width:18%">
+                <col style="width:14%">
               </colgroup>
               <thead class="table-light">
                 <tr>
@@ -1013,10 +969,10 @@ function renderGrades() {
   }).join("");
 
   wrap.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start gap-2 mb-3 flex-wrap">
+    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
       <div>
         <div class="fw-bold">Notas e pontuações</div>
-        <div class="small text-muted">Itens avaliativos do curso</div>
+        <div class="small text-muted">Itens avaliativos do curso (mock)</div>
       </div>
       <div class="d-flex gap-2 flex-wrap justify-content-end">
         <span class="badge bg-primary">Progresso: ${getProgress().pct}%</span>
@@ -1040,7 +996,7 @@ function renderCalendar() {
 
   const upcoming = cal.upcoming.map((u) => `
     <div class="up-item">
-      <div class="when mono">${escapeHtml(u.when)}</div>
+      <div class="when">${escapeHtml(u.when)}</div>
       <div class="what">
         <div class="t">${escapeHtml(u.title)}</div>
         <div class="d">${escapeHtml(u.desc)}</div>
@@ -1050,10 +1006,10 @@ function renderCalendar() {
   `).join("");
 
   el.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start gap-2 mb-3 pb-2 flex-wrap" style="border-bottom:1px solid var(--line);">
+    <div class="d-flex justify-content-between align-items-start gap-2 mb-3 pb-2" style="border-bottom:1px solid var(--line);">
       <div>
         <div class="fw-bold">Calendário da turma</div>
-        <div class="small text-muted">Visão mensal e próximos eventos</div>
+        <div class="small text-muted">Visão mensal + próximos eventos (mock)</div>
       </div>
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-light border btn-sm" type="button" disabled><i class='bx bx-chevron-left'></i></button>
@@ -1088,11 +1044,32 @@ function setupNavToggle() {
   });
 }
 
+/* ===================== TOP ACTIONS (Contato/Configs) ===================== */
+function setupTopActions() {
+  $("btnTopContact").addEventListener("click", () => {
+    try { bootstrap.Tab.getOrCreateInstance($("tab-aula-btn")).show(); } catch {}
+    const block = $("contactBlock");
+    if (block) block.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  // placeholders (pra não quebrar navegação agora)
+  $("btnTopClassCfg").addEventListener("click", (e) => {
+    e.preventDefault();
+    alert("Configurações da Turma (mock) — vamos ligar depois no módulo de configurações.");
+  });
+
+  $("btnTopCourseCfg").addEventListener("click", (e) => {
+    e.preventDefault();
+    alert("Configurações do Curso (mock) — vamos ligar depois no course-editor.");
+  });
+}
+
 /* ===================== EVENTS ===================== */
 function setupEvents() {
   $("modules-list").addEventListener("click", (e) => {
     const item = e.target.closest(".lesson-item");
     if (!item) return;
+    if (item.classList.contains("locked")) return; // ✅ bloqueado não abre
     renderLesson(item.dataset.lessonId);
   });
 
@@ -1117,8 +1094,12 @@ function setupEvents() {
 
   $("btnSendReply").addEventListener("click", sendReply);
 
-  $("modalContact").addEventListener("show.bs.modal", () => {
-    renderContactRecipients();
+  $("modalContact").addEventListener("show.bs.modal", (ev) => {
+    const btn = ev.relatedTarget;
+    const staffId = btn?.getAttribute("data-staff-id");
+    const staff = MOCK.staff.find(s => s.id === staffId);
+    $("contactToName").textContent = staff?.name || "—";
+    $("contactToRole").textContent = staff?.role || "—";
     $("contactText").value = "";
   });
 
@@ -1131,6 +1112,7 @@ function init() {
   $("header-course-title").textContent = MOCK.header.courseTitle;
 
   setupNavToggle();
+  setupTopActions();
   setupEvents();
 
   renderMural();
@@ -1147,40 +1129,4 @@ function init() {
 
   if (startId) renderLesson(startId);
 }
-
 document.addEventListener("DOMContentLoaded", init);
-
-/* ===================== TEXT RENDER ===================== */
-function renderTextBlock(b) {
-  if (!b) return "";
-  if (b.kind === "h") return `<h3 class="reading-h">${escapeHtml(b.text)}</h3>`;
-  if (b.kind === "p") return `<p class="reading-p">${escapeHtml(b.text)}</p>`;
-  if (b.kind === "ul") return `<ul class="reading-ul">${(b.items || []).map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
-  if (b.kind === "callout") {
-    return `
-      <div class="reading-callout">
-        <div class="t">${escapeHtml(b.title || "Observação")}</div>
-        <div class="d">${escapeHtml(b.text || "")}</div>
-      </div>
-    `;
-  }
-  return "";
-}
-
-/* ===================== ESCAPES ===================== */
-function escapeHtml(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-function escapeAttr(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
