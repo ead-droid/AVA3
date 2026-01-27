@@ -1,4 +1,31 @@
 import { supabase } from './supabaseClient.js';
+const toast = (type, msg) => {
+  // Verifica se a mensagem não está vazia
+  if (!msg) {
+    console.warn("Mensagem de toast está vazia!");
+    msg = "Erro desconhecido. Tente novamente.";
+  }
+
+  if (window.avaToast) {
+    window.avaToast(type, msg); // Chama o avaToast se ele estiver disponível
+  } else {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: type, // tipo do alerta (sucesso, erro, etc.)
+        title: msg, // mensagem a ser exibida
+        showConfirmButton: false, // sem botão de confirmação
+        timer: 4000, // tempo do alerta
+        timerProgressBar: true, // barra de progresso do tempo
+      });
+    } else {
+      alert(msg); // Fallback para alert caso ambos não estejam disponíveis
+    }
+    console.log(`Toast de tipo: ${type}, Mensagem: ${msg}`);
+
+  }
+};
 
 let CURRENT_USER_ID = null;
 
@@ -46,46 +73,66 @@ function renderError(container) {
 
 function computeBadge(cls, now) {
   const start = toDateSafe(cls.start_date);
-  const end = toDateSafe(cls.end_date);
+  let end = toDateSafe(cls.end_date);
 
   const enrollStart = toDateSafe(cls.enrollment_start);
-  const enrollDeadline = toDateSafe(cls.enrollment_deadline);
+  let enrollDeadline = toDateSafe(cls.enrollment_deadline);
 
   let badgeText = 'Em Breve';
   let isConcluded = false;
   let canEnroll = false;
 
-  // 1) Datas do curso (prioridade)
+  const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (typeof cls.end_date === 'string' && dateOnlyRegex.test(cls.end_date) && end) {
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (
+    typeof cls.enrollment_deadline === 'string' &&
+    dateOnlyRegex.test(cls.enrollment_deadline) &&
+    enrollDeadline
+  ) {
+    enrollDeadline.setHours(23, 59, 59, 999);
+  }
+
+  // 1) Verificar se a turma já acabou
   if (end && now > end) {
     badgeText = 'Concluído';
     isConcluded = true;
     return { badgeText, isConcluded, canEnroll, enrollDeadline };
   }
 
+  // 2) Base do badge: antes ou depois do início da turma
   if (start && now >= start) {
     badgeText = 'Em Andamento';
-    return { badgeText, isConcluded, canEnroll, enrollDeadline };
+  } else {
+    badgeText = 'Em Breve';
   }
 
-  // 2) Janela de inscrição (quando enrollment_open = true)
+  // 3) Janela de inscrição, se estiver marcada como aberta
   if (cls.enrollment_open) {
     if (enrollStart && now < enrollStart) {
-      badgeText = 'Inscrições em breve';
+      // Inscrição ainda não começou
+      if (!start || now < start) {
+        badgeText = 'Inscrições em breve';
+      }
       canEnroll = false;
     } else if (enrollDeadline && now > enrollDeadline) {
-      badgeText = 'Inscrições encerradas';
+      // Inscrição já terminou
+      badgeText = 'Indisponível';
       canEnroll = false;
     } else {
-      badgeText = 'Inscrições abertas';
+      // Dentro da janela de inscrição
+      if (!start || now < start) {
+        badgeText = 'Inscrições abertas';
+      }
       canEnroll = true;
     }
-    return { badgeText, isConcluded, canEnroll, enrollDeadline };
   }
 
-  // 3) Default
   return { badgeText, isConcluded, canEnroll, enrollDeadline };
 }
-
 function buildButtonHTML({ userId, userStatus, clsId, canEnroll, isConcluded, requiresApproval }) {
   if (!userId) {
     return `<button type="button" data-action="login" class="btn-enroll">
@@ -132,15 +179,21 @@ function buildButtonHTML({ userId, userStatus, clsId, canEnroll, isConcluded, re
   </button>`;
 }
 
+
+
 function buildCardHTML(cls, userId, enrollmentMap) {
   const now = new Date();
 
-  const courseTitle = cls.courses?.title || 'Curso';
-  const imgUrl = cls.courses?.image_url;
+  // Ajuste do conteúdo para garantir que sempre tenha um título válido
+  const courseTitle = cls.courses?.title || cls?.name || 'Turma';
+  const imgUrl = cls.courses?.image_url || 'assets/img/course-placeholder.jpg'; // Imagem default
+  const carga = cls.courses?.carga_horaria_horas ? `${cls.courses.carga_horaria_horas}h` : '';
 
+  // Computa o badge de status (Concluído, Em Andamento, Inscrições abertas, etc)
   const { badgeText, isConcluded, canEnroll, enrollDeadline } = computeBadge(cls, now);
   const userStatus = userId ? (enrollmentMap.get(cls.id) || null) : null;
 
+  // Geração do botão baseado no status da matrícula
   const btn = buildButtonHTML({
     userId,
     userStatus,
@@ -150,26 +203,19 @@ function buildCardHTML(cls, userId, enrollmentMap) {
     requiresApproval: !!cls.requires_approval,
   });
 
+  // Estilo de imagem do cabeçalho do card, com fallback
   let headerStyle = "";
-  let headerContent = "<i class='bx bx-book-reader'></i>";
+  let headerContent = "<i class='bx bx-book-reader'></i>"; // Ícone padrão
   if (imgUrl) {
     headerStyle = `background-image: url('${imgUrl}'); background-size: cover; background-position: center;`;
     headerContent = "";
   }
 
+  // Retorno do card com todas as informações corretas
   return `
     <article class="course-card" style="position: relative;">
       <div style="position: absolute; top: 15px; right: 15px; z-index: 5;">
-        <span style="
-          background-color: rgba(0, 0, 0, 0.6);
-          color: #ffffff;
-          padding: 6px 14px;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 500;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          backdrop-filter: blur(2px);">
+        <span style="background-color: rgba(0, 0, 0, 0.6); color: #ffffff; padding: 6px 14px; border-radius: 4px; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; backdrop-filter: blur(2px);">
           ${badgeText}
         </span>
       </div>
@@ -194,8 +240,8 @@ function buildCardHTML(cls, userId, enrollmentMap) {
     </article>`;
 }
 
+
 async function fetchClasses() {
-  // Mantém compatibilidade TEMPORÁRIA com banco inconsistente (published/publicado)
   const { data, error } = await supabase
     .from('classes')
     .select(`
@@ -293,8 +339,6 @@ async function enrollClass(classId, requiresApproval, btn) {
 
   const status = requiresApproval ? 'pending' : 'active';
 
-  // ✅ CORREÇÃO DO SEU ERRO:
-  // Não existe coluna "grades" no class_enrollments -> inserir só o que existe
   const { error } = await supabase
     .from('class_enrollments')
     .insert({
@@ -308,24 +352,24 @@ async function enrollClass(classId, requiresApproval, btn) {
     btn.disabled = false;
 
     if (error.code === '23505') {
-      alert('Você já solicitou matrícula nessa turma.');
+      toast('warning', 'Você já solicitou matrícula nessa turma.');
       return;
     }
 
-    // Se você ativar RLS depois, aqui vai cair quando estiver fora da janela
     const msg = (error.message || '').toLowerCase();
     if (error.code === '42501' || msg.includes('row-level security') || msg.includes('rls')) {
-      alert('Matrícula não permitida: inscrições não estão abertas (ou turma indisponível).');
+      toast('error', 'Matrícula não permitida: inscrições não estão abertas (ou turma indisponível).');
       return;
     }
 
-    alert(error.message || 'Não foi possível concluir a matrícula.');
+    toast('error', error.message || 'Não foi possível concluir a matrícula.');
     return;
   }
 
-  alert(requiresApproval ? 'Solicitação enviada!' : 'Matrícula realizada!');
-  await loadAvailableClasses(CURRENT_USER_ID); // ✅ sem reload
+  toast('success', requiresApproval ? 'Solicitação enviada!' : 'Matrícula realizada!');
+  await loadAvailableClasses(CURRENT_USER_ID);
 }
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -345,10 +389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Cursor “mãozinha”
   const style = document.createElement('style');
-  style.innerHTML = `
-    #header-name, #header-avatar-initials, .profile-header-card { 
-      cursor: pointer !important; 
-    }
-  `;
+  style.innerHTML = `#header-name, #header-avatar-initials, .profile-header-card { cursor: pointer !important; }`;
   document.head.appendChild(style);
 });

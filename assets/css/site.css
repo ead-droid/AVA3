@@ -245,4 +245,127 @@ body {
   color: #333;
 }
 
-/* Toast (substitui alert)*
+/* Estilos principais para os Cards */
+.class-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Garante altura igual */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px; /* Para garantir que os cards não se sobreponham */
+}
+
+.class-cover img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.class-body {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Cor do texto e badge */
+.class-badge {
+    background-color: #007bff;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.class-actions {
+    margin-top: 10px;
+}
+
+/* Botão para ações */
+.btn-enroll {
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-enroll:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-enroll:disabled {
+    background-color: #e5e7eb;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* Estilo para o botão de "Acessar Sala" */
+.btn-access {
+    background-color: #10b981;
+}
+
+.btn-access:hover {
+    background-color: #059669;
+}
+
+/* Ajuste para a área de texto dentro dos cards */
+.card-meta {
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Toasts de Alerta (SweetAlert2) */
+.home-loading {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+}
+
+.home-loading i {
+    font-size: 2.5rem;
+    opacity: 0.6;
+    display: inline-block;
+}
+
+.home-loading p {
+    margin: 12px 0 0;
+    font-size: 0.95rem;
+}
+
+/* Filtros de Status */
+.home-badge {
+    background-color: rgba(0, 0, 0, 0.60);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.70rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    backdrop-filter: blur(2px);
+    white-space: nowrap;
+}
+/* SweetAlert2 Toast - Ajustes de visibilidade */
+.swal2-toast {
+  z-index: 9999 !important; /* Certifique-se de que o toast não será ocultado por outros elementos */
+  background-color: rgba(0, 0, 0, 0.75) !important; /* Fundo mais escuro para visibilidade */
+  color: #fff !important; /* Texto branco */
+  border-radius: 6px !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2) !important;
+}

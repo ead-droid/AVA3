@@ -267,3 +267,50 @@ function inject(id, doc, slotName) {
 }
 
 initChrome();
+// ======================================================
+// Toast global (SweetAlert2) - AVA3
+// ======================================================
+(function setupAvaToastStyles() {
+  if (document.getElementById('ava-toast-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'ava-toast-style';
+  style.innerHTML = `
+    .ava-toast-title {
+      font-size: 0.9rem !important;
+      line-height: 1.4 !important;
+      font-weight: 500 !important;
+      color: #fff !important;
+    }
+
+    .swal2-popup.swal2-toast.swal2-icon-warning .ava-toast-title {
+      color: #212529 !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+window.avaToast = function (type, message) {
+  const msg = (message || '').toString().trim();
+  if (!msg) return;
+
+  // Fallback: se SweetAlert2 não carregou por algum motivo
+  if (!window.Swal) {
+    alert(msg);
+    return;
+  }
+
+  Swal.fire({
+    toast: true,
+    icon: type, // 'success' | 'error' | 'warning' | 'info' | 'question'
+    title: msg,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 4000,
+    timerProgressBar: true,
+    customClass: {
+      title: 'ava-toast-title'
+    }
+  });
+};
+
