@@ -1,5 +1,5 @@
 /* ============================================================
-   AVA3 • classroom-styles.css (VISUAL FINAL & LIMPO)
+   AVA3 • classroom-styles.css (COMPLETO E CORRIGIDO)
    ============================================================ */
 
 :root {
@@ -7,45 +7,42 @@
   --card: #ffffff;
   --text: #0f172a;
   --muted: #64748b;
-  --line: #e5e7eb;
+  --line: #e2e8f0;
   --primary: #2563eb;
 }
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text); }
 
-/* LAYOUT GRID */
+/* LAYOUT: Grid sem gap vertical */
 .classroom-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
-  gap: 0 18px; /* 0 vertical (cola as caixas), 18px horizontal */
+  gap: 0 18px; 
   padding: 10px 16px;
 }
 
-/* ====== HEADER SUPERIOR (CORRIGIDO: COM BORDA DE DIVISÃO) ====== */
+/* HEADER */
 .classroom-header {
   grid-column: 1 / -1;
   background: #ffffff !important;
-  
-  /* Borda restaurada para dar divisão clara */
-  border: 1px solid var(--line); 
-  border-bottom: 1px solid #e2e8f0 !important; 
-  
+  border: 1px solid var(--line);
+  border-bottom: 1px solid #cbd5e1 !important; /* Divisão clara */
   border-radius: 14px 14px 0 0;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0 !important; /* Cola no main */
+  margin-bottom: 0 !important;
   z-index: 10;
-  position: relative;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
 }
 
 .progress-bar-wrapper { display: flex; align-items: center; gap: 10px; min-width: 160px; }
 .progress { height: 8px; width: 110px; background: #eef2ff; border-radius: 999px; }
 .progress-bar { border-radius: 999px; }
 
-/* ====== MENU LATERAL ====== */
+/* MENU LATERAL */
 .course-nav {
   background: var(--card);
   border: 1px solid var(--line);
@@ -54,11 +51,10 @@ body { background: var(--bg); color: var(--text); }
   height: calc(100vh - 100px);
   position: sticky;
   top: 10px;
-  margin-top: 10px;
+  margin-top: 10px; 
 }
 .course-nav.closed { width: 64px; }
-
-.course-nav-header { padding: 12px 14px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #fff, #fafafa); display: flex; justify-content: space-between; align-items: center; }
+.course-nav-header { padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
 .accordion-button { font-weight: 800; }
 .accordion-body { background: #fff; padding: 0; }
 .section-title { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; padding: 10px 14px 6px; border-top: 1px solid var(--line); background: #fafafa; }
@@ -68,24 +64,21 @@ body { background: var(--bg); color: var(--text); }
 .lesson-item.active { background: #eef2ff; border-left: 4px solid var(--primary); padding-left: 10px; }
 .lesson-item.locked { pointer-events: none; opacity: 0.6; background: #f3f4f6; color: #9ca3af; }
 
-/* ====== ÁREA PRINCIPAL (MAIN) ====== */
+/* MAIN CONTENT (Colado no Header) */
 .classroom-main {
   background: var(--card);
-  
-  /* Remove borda do topo para colar na borda de baixo do header */
   border: 1px solid var(--line);
   border-top: 0 !important; 
-  
   border-radius: 0 0 14px 14px;
   padding: 0 14px 14px 14px;
   min-height: calc(100vh - 100px);
   margin-top: 0 !important;
 }
 
-/* === ABAS (TABS) & AÇÕES === */
+/* === ABAS (TABS) - LIMPEZA === */
 .tabs-bar {
   display: flex;
-  justify-content: space-between; /* Separa abas (esq) de botões (dir) */
+  justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
@@ -101,39 +94,62 @@ body { background: var(--bg); color: var(--text); }
   color: var(--muted);
   font-weight: 800;
   background: transparent !important;
-  padding: 10px 20px;
+  padding: 10px 24px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
 }
 .classroom-tabs .nav-link.active {
   color: var(--primary) !important;
   border-bottom-color: var(--primary) !important;
 }
 
-/* 🔴 REMOÇÃO TOTAL DE ÍCONES NAS ABAS E NO BOTÃO DE CONCLUIR 🔴 */
-.classroom-tabs .nav-link i,
-.classroom-tabs .nav-link svg,
-.classroom-tabs .nav-link .badge,
-#btn-finish i,  /* Remove ícone do botão concluir */
-.btn i.bx-check /* Remove especificamente o check */
-{
+/* ☢️ PROTOCOLO NUCLEAR PARA REMOVER ÍCONES NAS ABAS ☢️ */
+/* 1. Esconde qualquer filho direto do .nav-link que NÃO seja o .tab-label */
+.classroom-tabs .nav-link > *:not(.tab-label) {
     display: none !important;
 }
 
-/* Pseudo-elementos (limpeza extra) */
+/* 2. Garante que ::before e ::after (checks de CSS) não apareçam */
 .classroom-tabs .nav-link::before,
-.classroom-tabs .nav-link::after { content: none !important; display: none !important; }
+.classroom-tabs .nav-link::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* 3. Reforço: esconde tags de ícones comuns se estiverem soltas */
+.classroom-tabs .nav-link i,
+.classroom-tabs .nav-link svg,
+.classroom-tabs .nav-link .badge {
+    display: none !important;
+}
 
 /* === CONTEÚDO DA AULA === */
 .lesson-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 0 6px 10px; margin-bottom: 0; }
 .lesson-title { margin: 4px 0 0; font-size: 1.7rem; font-weight: 900; }
 
-/* Botões do Topo (Ajustados) */
-.lesson-actions { display: flex; flex-direction: column; align-items: flex-end; }
+.lesson-actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+#btn-finish i { display: none !important; }
 
-/* Descrição: se vazia, some completamente */
+/* Descrição: Layout Unificado */
 .lesson-desc:empty { display: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; }
-.lesson-desc { margin: 0 6px 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.lesson-desc { 
+    margin: 0 6px 16px; 
+    padding: 14px; 
+    border: 1px solid var(--line); 
+    border-radius: 12px; 
+    background: #fff; 
+}
 
-/* Player */
+/* Conteúdo de Texto (Igual ao vídeo) */
+.content-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+/* Players e Frames */
 .player-frame { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #000; margin: 0 0 20px; min-height: 500px !important; display: flex; }
 .player-frame iframe { width: 100%; height: 100%; border: 0; min-height: 500px; }
 .pdf-viewer { width: 100%; min-height: 700px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
@@ -141,7 +157,7 @@ body { background: var(--bg); color: var(--text); }
 .activity-area { margin: 0 6px; min-height: 100px; }
 .empty-state { border: 1px dashed var(--line); border-radius: 14px; padding: 40px; text-align: center; background: #fbfdff; }
 
-/* DRAWER */
+/* EXTRAS */
 .quiz-drawer { position: fixed; top: 0; right: -120%; width: 50vw; height: 100%; background: #fff; z-index: 2000; transition: right 0.3s ease; box-shadow: -10px 0 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
 .quiz-drawer.open { right: 0; }
 .quiz-drawer-header { padding: 16px; background: var(--primary); color: white; display: flex; justify-content: space-between; }
@@ -149,12 +165,10 @@ body { background: var(--bg); color: var(--text); }
 .quiz-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1999; display: none; }
 .quiz-backdrop.show { display: block; }
 
-/* MURAL */
 .postit-board { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 0; }
 .post-it { width: 240px; min-height: 160px; padding: 14px; background: #fff7cc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transform: rotate(-1deg); }
 .new-indicator, .badge.bg-danger { display: none !important; }
 
-/* RESPONSIVO */
 @media (max-width: 992px) {
   .classroom-layout { grid-template-columns: 1fr; }
   .course-nav { position: relative; height: auto; top: 0; margin-bottom: 20px; }
